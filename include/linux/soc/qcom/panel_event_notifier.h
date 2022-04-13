@@ -33,6 +33,9 @@ enum panel_event_notification_type {
 	DRM_PANEL_EVENT_UNBLANK,
 	DRM_PANEL_EVENT_BLANK_LP,
 	DRM_PANEL_EVENT_FPS_CHANGE,
+#if IS_ENABLED(CONFIG_DRM_PANEL_NOTIFY)
+	DRM_PANEL_EVENT_FOR_TOUCH,
+#endif
 	DRM_PANEL_EVENT_MAX
 };
 
@@ -40,6 +43,9 @@ struct panel_event_notification_data {
 	u32 old_fps;
 	u32 new_fps;
 	bool early_trigger;
+#if IS_ENABLED(CONFIG_DRM_PANEL_NOTIFY)
+	int *lcd_ctl_blank;
+#endif
 };
 
 struct panel_event_notification {
