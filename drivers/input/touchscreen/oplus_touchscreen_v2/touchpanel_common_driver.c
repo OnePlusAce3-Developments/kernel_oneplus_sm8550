@@ -43,7 +43,7 @@
 #endif
 #if IS_ENABLED(CONFIG_DRM_OPLUS_PANEL_NOTIFY)
 #include <linux/msm_drm_notify.h>
-#elif IS_ENABLED(CONFIG_DRM_PANEL_NOTIFY)
+#elif IS_ENABLED(CONFIG_QCOM_PANEL_EVENT_NOTIFIER)//zhangle
 #include <linux/soc/qcom/panel_event_notifier.h>
 #include <linux/msm_drm_notify.h>
 #include <drm/drm_panel.h>
@@ -83,7 +83,7 @@ void tp_delta_read_triggered_by_key(int index);
 #if IS_ENABLED(CONFIG_FB) || IS_ENABLED(CONFIG_DRM_MSM) || IS_ENABLED(CONFIG_DRM_OPLUS_NOTIFY)
 static int fb_notifier_callback(struct notifier_block *self,
 				unsigned long event, void *data);
-#elif IS_ENABLED(CONFIG_DRM_PANEL_NOTIFY)
+#elif IS_ENABLED(CONFIG_QCOM_PANEL_EVENT_NOTIFIER)//zhangle
 static void ts_panel_notifier_callback(enum panel_event_notifier_tag tag,
 		 struct panel_event_notification *event, void *client_data);
 #elif IS_ENABLED(CONFIG_OPLUS_MTK_DRM_GKI_NOTIFY)
@@ -2673,7 +2673,7 @@ static enum hrtimer_restart ts_get_temperature_timeout(struct hrtimer *timer)
 	return HRTIMER_NORESTART;
 }
 
-#if IS_ENABLED(CONFIG_DRM_OPLUS_PANEL_NOTIFY) || IS_ENABLED(CONFIG_DRM_PANEL_NOTIFY)
+#if IS_ENABLED(CONFIG_DRM_OPLUS_PANEL_NOTIFY) || IS_ENABLED(CONFIG_QCOM_PANEL_EVENT_NOTIFIER)
 static int ts_check_panel_dt(struct device *dev, struct touchpanel_data *ts)
 {
 	int i;
@@ -2716,7 +2716,7 @@ int register_common_touch_device(struct touchpanel_data *pdata)
 	char name[TP_NAME_SIZE_MAX];
 
 	int ret = -1;
-#if IS_ENABLED(CONFIG_DRM_PANEL_NOTIFY)
+#if IS_ENABLED(CONFIG_QCOM_PANEL_EVENT_NOTIFIER)
 	void *cookie = NULL;
 #endif
 
@@ -2734,7 +2734,7 @@ int register_common_touch_device(struct touchpanel_data *pdata)
 		return -1;
 	}
 
-#if IS_ENABLED(CONFIG_DRM_OPLUS_PANEL_NOTIFY) || IS_ENABLED(CONFIG_DRM_PANEL_NOTIFY)
+#if IS_ENABLED(CONFIG_DRM_OPLUS_PANEL_NOTIFY) || IS_ENABLED(CONFIG_QCOM_PANEL_EVENT_NOTIFIER)//zhangle
 	ret = ts_check_panel_dt(ts->dev, ts);
 	if (ret < 0) {
 		TP_INFO(ts->tp_index, "%s: ts_check_panel_dt failed.\n", __func__);
@@ -2905,7 +2905,7 @@ int register_common_touch_device(struct touchpanel_data *pdata)
 	if (ts->active_panel)
 		ret = drm_panel_notifier_register(ts->active_panel,
 			&ts->fb_notif);
-#elif IS_ENABLED(CONFIG_DRM_PANEL_NOTIFY)
+#elif IS_ENABLED(CONFIG_QCOM_PANEL_EVENT_NOTIFIER)//zhangle
 	if (ts->active_panel) {
 		cookie = panel_event_notifier_register(PANEL_EVENT_NOTIFICATION_PRIMARY,
 				PANEL_EVENT_NOTIFIER_CLIENT_PRIMARY_TOUCH, ts->active_panel,
@@ -3152,7 +3152,7 @@ error_fb_notif:
 			TP_INFO(ts->tp_index, "Unable to unregister fb_notifier: %d\n", ret);
 		}
 	}
-#elif IS_ENABLED(CONFIG_DRM_PANEL_NOTIFY)
+#elif IS_ENABLED(CONFIG_QCOM_PANEL_EVENT_NOTIFIER)//zhangle
 	if (ts->active_panel && ts->notifier_cookie) {
 		panel_event_notifier_unregister(ts->notifier_cookie);
 	}
@@ -3247,7 +3247,7 @@ void unregister_common_touch_device(struct touchpanel_data *pdata)
 			TP_INFO(ts->tp_index, "Unable to unregister fb_notifier: %d\n", ret);
 		}
 	}
-#elif IS_ENABLED(CONFIG_DRM_PANEL_NOTIFY)
+#elif IS_ENABLED(CONFIG_QCOM_PANEL_EVENT_NOTIFIER)//zhangle
 	if (ts->active_panel && ts->notifier_cookie) {
 		panel_event_notifier_unregister(ts->notifier_cookie);
 	}
@@ -3592,7 +3592,7 @@ EXIT:
 #if IS_ENABLED(CONFIG_FB) || \
 	IS_ENABLED(CONFIG_DRM_MSM) || \
 	IS_ENABLED(CONFIG_DRM_OPLUS_NOTIFY) || \
-	IS_ENABLED(CONFIG_DRM_PANEL_NOTIFY) || \
+	IS_ENABLED(CONFIG_QCOM_PANEL_EVENT_NOTIFIER) || \
 	IS_ENABLED(CONFIG_OPLUS_MTK_DRM_GKI_NOTIFY)
 static void lcd_off_early_event(struct touchpanel_data *ts)
 {
@@ -3672,7 +3672,7 @@ static void lcd_other_event(int *blank, struct touchpanel_data *ts)
 
 };
 
-#if IS_ENABLED(CONFIG_DRM_PANEL_NOTIFY)
+#if IS_ENABLED(CONFIG_QCOM_PANEL_EVENT_NOTIFIER)//zhangle
 static void ts_panel_notifier_callback(enum panel_event_notifier_tag tag,
 		 struct panel_event_notification *notification, void *client_data)
 {
