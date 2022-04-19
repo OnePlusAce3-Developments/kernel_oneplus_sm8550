@@ -677,7 +677,7 @@ static ssize_t proc_fw_update_write(struct file *file,
 		return count;
 	}
 
-#ifndef REMOVE_OPLUS_FUNCTION
+#ifndef CONFIG_REMOVE_OPLUS_FUNCTION
 #ifdef CONFIG_TOUCHPANEL_MTK_PLATFORM
 
 	if (ts->boot_mode == KERNEL_POWER_OFF_CHARGING_BOOT)
@@ -2566,7 +2566,9 @@ static int tp_main_register_read_func(struct seq_file *s, void *v)
 {
 	struct touchpanel_data *ts = s->private;
 	struct debug_info_proc_operations *debug_info_ops;
+#ifndef CONFIG_REMOVE_OPLUS_FUNCTION
 	struct monitor_data *monitor_data = &ts->monitor_data;
+#endif
 
 	if (!ts) {
 		return 0;
@@ -2600,7 +2602,7 @@ static int tp_main_register_read_func(struct seq_file *s, void *v)
 		seq_printf(s, "kernel_grip_info:\n");
 		kernel_grip_print_func(s, ts->grip_info);
 	}
-
+#ifndef CONFIG_REMOVE_OPLUS_FUNCTION
 	if (ts->health_monitor_support && tp_debug == 2) {
 		if (monitor_data->fw_version) {
 			memset(monitor_data->fw_version, 0, MAX_DEVICE_VERSION_LENGTH);
@@ -2610,7 +2612,7 @@ static int tp_main_register_read_func(struct seq_file *s, void *v)
 
 		tp_healthinfo_read(s, monitor_data);
 	}
-
+#endif
 	mutex_unlock(&ts->mutex);
 
 	if (ts->int_mode == BANNABLE) {
@@ -2938,6 +2940,7 @@ DECLARE_PROC_OPS(proc_freq_hop_fops, simple_open, proc_freq_hop_read, proc_freq_
 
 
 /*proc/touchpanel/debug_info/health_monitor*/
+#ifndef CONFIG_REMOVE_OPLUS_FUNCTION
 static int tp_health_monitor_read_func(struct seq_file *s, void *v)
 {
 	struct touchpanel_data *ts = s->private;
@@ -2989,6 +2992,7 @@ static int health_monitor_open(struct inode *inode, struct file *file)
 }
 
 DECLARE_PROC_OPS(tp_health_monitor_proc_fops, health_monitor_open, seq_read, health_monitor_control, single_release);
+#endif
 
 /*******Part5:Register node Function  Area********************/
 
@@ -3027,10 +3031,12 @@ static int init_debug_info_proc(struct touchpanel_data *ts)
 			"snr", 0666, NULL, &proc_snr_ops, ts, false,
 			ts->snr_read_support
 		},/* show abs_doze interface*/
+#ifndef CONFIG_REMOVE_OPLUS_FUNCTION
 		{
 			"health_monitor", 0666, NULL, &tp_health_monitor_proc_fops, ts, false,
 			ts->health_monitor_support
 		},
+#endif
 		{
 			"freq_hop_simulate_support", 0666, NULL, &proc_freq_hop_fops, ts, false,
 			ts->freq_hop_simulate_support
@@ -3198,7 +3204,7 @@ int init_touchpanel_proc(struct touchpanel_data *ts)
 	TP_INFO(ts->tp_index, "%s entry\n", __func__);
 
 	/*proc files-step1:/proc/devinfo/tp  (touchpanel device info)*/
-#ifndef REMOVE_OPLUS_FUNCTION
+#ifndef CONFIG_REMOVE_OPLUS_FUNCTION
 
 	if (ts->tp_index == 0) {
 		snprintf(name, TP_NAME_SIZE_MAX, "%s", "tp");

@@ -2588,6 +2588,7 @@ static int syna_get_chip_info(void *chip_data)
 	return 0;
 }
 
+#ifndef CONFIG_REMOVE_OPLUS_FUNCTION
 static int syna_get_vendor(void *chip_data, struct panel_info *panel_data)
 {
 	char manu_temp[MAX_DEVICE_MANU_LENGTH] = SYNAPTICS_PREFIX;
@@ -2603,7 +2604,7 @@ static int syna_get_vendor(void *chip_data, struct panel_info *panel_data)
 		 panel_data->tp_type, panel_data->fw_name);
 	return 0;
 }
-
+#endif
 static u32 syna_trigger_reason(void *chip_data, int gesture_enable,
 			       int is_suspended)
 {
@@ -3381,8 +3382,10 @@ static fw_check_state syna_fw_check(void *chip_data,
 	struct syna_tcm_data *tcm_info = (struct syna_tcm_data *)chip_data;
 	u16 config = 0;
 	int retval = 0;
+#ifndef CONFIG_REMOVE_OPLUS_FUNCTION
 	int ver_len = 0;
 	char dev_version[MAX_DEVICE_VERSION_LENGTH] = {0};
+#endif
 
 	TPD_INFO("fw id %d, custom config id 0x%s\n", panel_data->tp_fw,
 		 tcm_info->app_info.customer_config_id);
@@ -3399,7 +3402,7 @@ static fw_check_state syna_fw_check(void *chip_data,
 		return FW_ABNORMAL;
 	}
 
-
+#ifndef CONFIG_REMOVE_OPLUS_FUNCTION
 	if (panel_data->manufacture_info.version) {
 		if (panel_data->vid_len == 0) {
 			sprintf(panel_data->manufacture_info.version, "0x%s", tcm_info->app_info.customer_config_id);
@@ -3414,7 +3417,7 @@ static fw_check_state syna_fw_check(void *chip_data,
 				dev_version, MAX_DEVICE_VERSION_LENGTH - ver_len);
 		}
 	}
-
+#endif
 	retval = syna_tcm_get_dynamic_config(tcm_info, DC_NOISE_LENGTH, &config);
 
 	if (retval < 0) {
@@ -7066,7 +7069,9 @@ static int syna_tcm_send_temperature(void *chip_data, int temp, bool status)
 
 static struct oplus_touchpanel_operations syna_tcm_ops = {
 	.ftm_process			= syna_ftm_process,
+#ifndef CONFIG_REMOVE_OPLUS_FUNCTION
 	.get_vendor			= syna_get_vendor,
+#endif
 	.get_chip_info			= syna_get_chip_info,
 	.get_touch_points		= syna_get_touch_points,
 	.get_gesture_info		= syna_get_gesture_info,

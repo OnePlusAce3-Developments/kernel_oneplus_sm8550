@@ -26,7 +26,7 @@
 #include <soc/oplus/device_info.h>
 #endif
 
-#if IS_ENABLED(CONFIG_DRM_OPLUS_PANEL_NOTIFY) || IS_ENABLED(CONFIG_QCOM_PANEL_EVENT_NOTIFIER)//zhangle
+#if IS_ENABLED(CONFIG_DRM_OPLUS_PANEL_NOTIFY) || IS_ENABLED(CONFIG_QCOM_PANEL_EVENT_NOTIFIER)
 #include <drm/drm_panel.h>
 #endif
 
@@ -861,7 +861,7 @@ struct touchpanel_data {
 #if IS_ENABLED(CONFIG_DRM_OPLUS_PANEL_NOTIFY)
 	struct drm_panel *active_panel;
 	struct notifier_block fb_notif; /*register to control suspend/resume*/
-#elif IS_ENABLED(CONFIG_QCOM_PANEL_EVENT_NOTIFIER)//zhangle
+#elif IS_ENABLED(CONFIG_QCOM_PANEL_EVENT_NOTIFIER)
 	struct drm_panel *active_panel;
 	void *notifier_cookie;
 #elif IS_ENABLED(CONFIG_OPLUS_MTK_DRM_GKI_NOTIFY)

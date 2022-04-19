@@ -43,7 +43,7 @@
 #endif
 #if IS_ENABLED(CONFIG_DRM_OPLUS_PANEL_NOTIFY)
 #include <linux/msm_drm_notify.h>
-#elif IS_ENABLED(CONFIG_QCOM_PANEL_EVENT_NOTIFIER)//zhangle
+#elif IS_ENABLED(CONFIG_QCOM_PANEL_EVENT_NOTIFIER)
 #include <linux/soc/qcom/panel_event_notifier.h>
 #include <linux/msm_drm_notify.h>
 #include <drm/drm_panel.h>
@@ -83,7 +83,7 @@ void tp_delta_read_triggered_by_key(int index);
 #if IS_ENABLED(CONFIG_FB) || IS_ENABLED(CONFIG_DRM_MSM) || IS_ENABLED(CONFIG_DRM_OPLUS_NOTIFY)
 static int fb_notifier_callback(struct notifier_block *self,
 				unsigned long event, void *data);
-#elif IS_ENABLED(CONFIG_QCOM_PANEL_EVENT_NOTIFIER)//zhangle
+#elif IS_ENABLED(CONFIG_QCOM_PANEL_EVENT_NOTIFIER)
 static void ts_panel_notifier_callback(enum panel_event_notifier_tag tag,
 		 struct panel_event_notification *event, void *client_data);
 #elif IS_ENABLED(CONFIG_OPLUS_MTK_DRM_GKI_NOTIFY)
@@ -127,19 +127,17 @@ void display_esd_check_enable_bytouchpanel(bool enable);
 /*******Part3:Function  Area********************************/
 bool inline is_ftm_boot_mode(struct touchpanel_data *ts)
 {
-#if 0//del by zhangle
+#ifndef CONFIG_REMOVE_OPLUS_FUNCTION
 #ifdef CONFIG_TOUCHPANEL_MTK_PLATFORM
-
 	if ((ts->boot_mode == META_BOOT || ts->boot_mode == FACTORY_BOOT))
+		return true;
 #else
 	if ((ts->boot_mode == MSM_BOOT_MODE__FACTORY
 	     || ts->boot_mode == MSM_BOOT_MODE__RF || ts->boot_mode == MSM_BOOT_MODE__WLAN))
-#endif
-	{
 		return true;
-	}
-
 #endif
+#endif
+
 	return false;
 }
 
@@ -2536,7 +2534,7 @@ static int tp_paneldata_init(struct touchpanel_data *pdata)
 		return ret;
 	}
 
-#ifndef REMOVE_OPLUS_FUNCTION
+#ifndef CONFIG_REMOVE_OPLUS_FUNCTION
 	ts->panel_data.manufacture_info.version = tp_devm_kzalloc(ts->dev,
 			MAX_DEVICE_VERSION_LENGTH, GFP_KERNEL);
 
@@ -2555,7 +2553,6 @@ static int tp_paneldata_init(struct touchpanel_data *pdata)
 		return ret;
 	}
 
-#endif
 	/*step8 : touchpanel vendor*/
 	tp_util_get_vendor(&ts->hw_res, &ts->panel_data);
 
@@ -2565,6 +2562,7 @@ static int tp_paneldata_init(struct touchpanel_data *pdata)
 	if (ts->health_monitor_support) {
 		ts->monitor_data.vendor = ts->panel_data.manufacture_info.manufacture;
 	}
+#endif
 
 	return 0;
 }
@@ -2734,7 +2732,7 @@ int register_common_touch_device(struct touchpanel_data *pdata)
 		return -1;
 	}
 
-#if IS_ENABLED(CONFIG_DRM_OPLUS_PANEL_NOTIFY) || IS_ENABLED(CONFIG_QCOM_PANEL_EVENT_NOTIFIER)//zhangle
+#if IS_ENABLED(CONFIG_DRM_OPLUS_PANEL_NOTIFY) || IS_ENABLED(CONFIG_QCOM_PANEL_EVENT_NOTIFIER)
 	ret = ts_check_panel_dt(ts->dev, ts);
 	if (ret < 0) {
 		TP_INFO(ts->tp_index, "%s: ts_check_panel_dt failed.\n", __func__);
@@ -2905,7 +2903,7 @@ int register_common_touch_device(struct touchpanel_data *pdata)
 	if (ts->active_panel)
 		ret = drm_panel_notifier_register(ts->active_panel,
 			&ts->fb_notif);
-#elif IS_ENABLED(CONFIG_QCOM_PANEL_EVENT_NOTIFIER)//zhangle
+#elif IS_ENABLED(CONFIG_QCOM_PANEL_EVENT_NOTIFIER)
 	if (ts->active_panel) {
 		cookie = panel_event_notifier_register(PANEL_EVENT_NOTIFICATION_PRIMARY,
 				PANEL_EVENT_NOTIFIER_CLIENT_PRIMARY_TOUCH, ts->active_panel,
@@ -3152,7 +3150,7 @@ error_fb_notif:
 			TP_INFO(ts->tp_index, "Unable to unregister fb_notifier: %d\n", ret);
 		}
 	}
-#elif IS_ENABLED(CONFIG_QCOM_PANEL_EVENT_NOTIFIER)//zhangle
+#elif IS_ENABLED(CONFIG_QCOM_PANEL_EVENT_NOTIFIER)
 	if (ts->active_panel && ts->notifier_cookie) {
 		panel_event_notifier_unregister(ts->notifier_cookie);
 	}
@@ -3247,7 +3245,7 @@ void unregister_common_touch_device(struct touchpanel_data *pdata)
 			TP_INFO(ts->tp_index, "Unable to unregister fb_notifier: %d\n", ret);
 		}
 	}
-#elif IS_ENABLED(CONFIG_QCOM_PANEL_EVENT_NOTIFIER)//zhangle
+#elif IS_ENABLED(CONFIG_QCOM_PANEL_EVENT_NOTIFIER)
 	if (ts->active_panel && ts->notifier_cookie) {
 		panel_event_notifier_unregister(ts->notifier_cookie);
 	}
@@ -3672,7 +3670,7 @@ static void lcd_other_event(int *blank, struct touchpanel_data *ts)
 
 };
 
-#if IS_ENABLED(CONFIG_QCOM_PANEL_EVENT_NOTIFIER)//zhangle
+#if IS_ENABLED(CONFIG_QCOM_PANEL_EVENT_NOTIFIER)
 static void ts_panel_notifier_callback(enum panel_event_notifier_tag tag,
 		 struct panel_event_notification *notification, void *client_data)
 {
@@ -3954,7 +3952,7 @@ bool is_oem_unlocked(void)
 }
 EXPORT_SYMBOL(is_oem_unlocked);
 
-#if 0//del by zhangle
+#ifndef CONFIG_REMOVE_OPLUS_FUNCTION
 #if IS_MODULE(CONFIG_TOUCHPANEL_OPLUS)
 extern char verified_bootstate[];
 #endif
@@ -3975,7 +3973,6 @@ int get_oem_verified_boot_state(void)
 #endif
     return 0;
 }
-
 EXPORT_SYMBOL(get_oem_verified_boot_state);
 #endif
 

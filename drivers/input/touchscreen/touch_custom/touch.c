@@ -9,8 +9,9 @@
 #include <linux/input.h>
 #include <linux/serio.h>
 #include <linux/regulator/consumer.h>
+#ifndef CONFIG_REMOVE_OPLUS_FUNCTION
 #include <soc/oplus/system/oplus_project.h>
-
+#endif
 #include "touch.h"
 
 #define MAX_CMDLINE_PARAM_LEN 512
@@ -112,7 +113,7 @@ int tp_judge_ic_match_commandline(struct panel_info *panel_data)
 }
 EXPORT_SYMBOL(tp_judge_ic_match_commandline);
 
-
+#ifndef CONFIG_REMOVE_OPLUS_FUNCTION
 int tp_util_get_vendor(struct hw_resource *hw_res, struct panel_info *panel_data)
 {
 	char *vendor;
@@ -155,7 +156,7 @@ int tp_util_get_vendor(struct hw_resource *hw_res, struct panel_info *panel_data
 	return 0;
 }
 EXPORT_SYMBOL(tp_util_get_vendor);
-
+#endif
 int preconfig_power_control(struct touchpanel_data *ts)
 {
 	return 0;

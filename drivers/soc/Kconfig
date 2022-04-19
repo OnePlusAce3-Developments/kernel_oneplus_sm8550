@@ -24,5 +24,4 @@ source "drivers/soc/ux500/Kconfig"
 source "drivers/soc/versatile/Kconfig"
 source "drivers/soc/xilinx/Kconfig"
 
-source "drivers/soc/oplus/device_info/Kconfig"
 endmenu

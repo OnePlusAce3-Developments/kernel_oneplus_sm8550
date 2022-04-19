@@ -33,7 +33,7 @@ enum panel_event_notification_type {
 	DRM_PANEL_EVENT_UNBLANK,
 	DRM_PANEL_EVENT_BLANK_LP,
 	DRM_PANEL_EVENT_FPS_CHANGE,
-#if IS_ENABLED(CONFIG_QCOM_PANEL_EVENT_NOTIFIER)//zhangle
+#if IS_ENABLED(CONFIG_QCOM_PANEL_EVENT_NOTIFIER)
 	DRM_PANEL_EVENT_FOR_TOUCH,
 #endif
 	DRM_PANEL_EVENT_MAX
@@ -43,7 +43,7 @@ struct panel_event_notification_data {
 	u32 old_fps;
 	u32 new_fps;
 	bool early_trigger;
-#if IS_ENABLED(CONFIG_QCOM_PANEL_EVENT_NOTIFIER)//zhangle
+#if IS_ENABLED(CONFIG_QCOM_PANEL_EVENT_NOTIFIER)
 	int *lcd_ctl_blank;
 #endif
 };
