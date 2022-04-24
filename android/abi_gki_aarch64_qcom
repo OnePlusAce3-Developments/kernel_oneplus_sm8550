@@ -1876,3 +1876,4 @@
   xa_store
   xhci_get_endpoint_index
   __put_task_struct
+  cam_cci_get_subdev
