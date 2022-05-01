@@ -63,7 +63,7 @@ unsigned int sched_capacity_margin_down[WALT_NR_CPUS] = {
 static inline bool
 bias_to_this_cpu(struct task_struct *p, int cpu, int start_cpu)
 {
-	bool base_test = cpumask_test_cpu(cpu, &p->cpus_mask) &&
+	bool base_test = cpumask_test_cpu(cpu, p->cpus_ptr) &&
 						cpu_active(cpu);
 
 	struct walt_rq *wrq = (struct walt_rq *) cpu_rq(cpu)->android_vendor_data1;
@@ -295,7 +295,7 @@ static void walt_find_best_target(struct sched_domain *sd,
 		min_exit_latency = INT_MAX;
 		best_idle_cuml_util = ULONG_MAX;
 
-		cpumask_and(&visit_cpus, &p->cpus_mask,
+		cpumask_and(&visit_cpus, p->cpus_ptr,
 				&cpu_array[order_index][cluster]);
 		for_each_cpu(i, &visit_cpus) {
 			unsigned long capacity_orig = capacity_orig_of(i);
@@ -785,7 +785,7 @@ int walt_find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
 	struct walt_rq *start_wrq;
 
 	if (walt_is_many_wakeup(sibling_count_hint) && prev_cpu != cpu &&
-			cpumask_test_cpu(prev_cpu, &p->cpus_mask))
+			cpumask_test_cpu(prev_cpu, p->cpus_ptr))
 		return prev_cpu;
 
 	if (unlikely(!cpu_array))
@@ -867,7 +867,7 @@ int walt_find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
 	if (READ_ONCE(p->__state) == TASK_WAKING)
 		delta = task_util(p);
 
-	if (cpumask_test_cpu(prev_cpu, &p->cpus_mask) && !__cpu_overutilized(prev_cpu, delta)) {
+	if (cpumask_test_cpu(prev_cpu, p->cpus_ptr) && !__cpu_overutilized(prev_cpu, delta)) {
 		if (trace_sched_compute_energy_enabled()) {
 			memset(&output, 0, sizeof(output));
 			prev_energy = walt_compute_energy(p, prev_cpu, pd, candidates, fbt_env.prs,
@@ -1018,7 +1018,7 @@ static void binder_restore_priority_hook(void *data,
  * they can preempt long running rtg prio tasks but binders loose their
  * powers with in 3 msec where as rtg prio tasks can run more than that.
  */
-static inline int walt_get_mvp_task_prio(struct task_struct *p)
+int walt_get_mvp_task_prio(struct task_struct *p)
 {
 	if (per_task_boost(p) == TASK_BOOST_STRICT_MAX)
 		return WALT_TASK_BOOST_MVP;
@@ -1065,7 +1065,7 @@ static void walt_cfs_insert_mvp_task(struct walt_rq *wrq, struct walt_task_struc
 	list_add(&wts->mvp_list, pos->prev);
 }
 
-static void walt_cfs_deactivate_mvp_task(struct task_struct *p)
+void walt_cfs_deactivate_mvp_task(struct task_struct *p)
 {
 	struct walt_task_struct *wts = (struct walt_task_struct *) p->android_vendor_data1;
 
@@ -1084,7 +1084,7 @@ static void walt_cfs_account_mvp_runtime(struct rq *rq, struct task_struct *curr
 {
 	struct walt_rq *wrq = (struct walt_rq *) rq->android_vendor_data1;
 	struct walt_task_struct *wts = (struct walt_task_struct *) curr->android_vendor_data1;
-	s64 delta;
+	u64 slice;
 	unsigned int limit;
 
 	lockdep_assert_held(&rq->__lock);
@@ -1099,24 +1099,26 @@ static void walt_cfs_account_mvp_runtime(struct rq *rq, struct task_struct *curr
 	if (!(rq->clock_update_flags & RQCF_UPDATED))
 		update_rq_clock(rq);
 
-	/* sum_exec_snapshot can be ahead. See below increment */
-	delta = curr->se.sum_exec_runtime - wts->sum_exec_snapshot;
-	if (delta < 0)
-		delta = 0;
+	if (curr->se.sum_exec_runtime > wts->sum_exec_snapshot_for_total)
+		wts->total_exec = curr->se.sum_exec_runtime - wts->sum_exec_snapshot_for_total;
 	else
-		delta += rq_clock_task(rq) - curr->se.exec_start;
+		wts->total_exec = 0;
+
+	if (curr->se.sum_exec_runtime > wts->sum_exec_snapshot_for_slice)
+		slice = curr->se.sum_exec_runtime - wts->sum_exec_snapshot_for_slice;
+	else
+		slice = 0;
 
 	/* slice is not expired */
-	if (delta < WALT_MVP_SLICE)
+	if (slice < WALT_MVP_SLICE)
 		return;
 
+	wts->sum_exec_snapshot_for_slice = curr->se.sum_exec_runtime;
 	/*
 	 * slice is expired, check if we have to deactivate the
 	 * MVP task, otherwise requeue the task in the list so
 	 * that other MVP tasks gets a chance.
 	 */
-	wts->sum_exec_snapshot += delta;
-	wts->total_exec += delta;
 
 	limit = walt_cfs_mvp_task_limit(curr);
 	if (wts->total_exec > limit) {
@@ -1128,16 +1130,6 @@ static void walt_cfs_account_mvp_runtime(struct rq *rq, struct task_struct *curr
 	/* slice expired. re-queue the task */
 	list_del(&wts->mvp_list);
 	walt_cfs_insert_mvp_task(wrq, wts, false);
-}
-
-static void walt_cfs_mvp_do_sched_yield(void *unused, struct rq *rq)
-{
-	struct task_struct *curr = rq->curr;
-	int mvp_prio = walt_get_mvp_task_prio(curr);
-
-	lockdep_assert_held(&rq->__lock);
-	if (mvp_prio != WALT_NOT_MVP)
-		walt_cfs_deactivate_mvp_task(curr);
 }
 
 void walt_cfs_enqueue_task(struct rq *rq, struct task_struct *p)
@@ -1165,9 +1157,10 @@ void walt_cfs_enqueue_task(struct rq *rq, struct task_struct *p)
 	 * task runtime snapshot. From now onwards we use this point as a
 	 * baseline to enforce the slice and demotion.
 	 */
-	if (!wts->total_exec) /* queue after sleep */
-		wts->sum_exec_snapshot = p->se.sum_exec_runtime;
-
+	if (!wts->total_exec) /* queue after sleep */ {
+		wts->sum_exec_snapshot_for_total = p->se.sum_exec_runtime;
+		wts->sum_exec_snapshot_for_slice = p->se.sum_exec_runtime;
+	}
 }
 
 void walt_cfs_dequeue_task(struct rq *rq, struct task_struct *p)
@@ -1346,6 +1339,4 @@ void walt_cfs_init(void)
 
 	register_trace_android_rvh_check_preempt_wakeup(walt_cfs_check_preempt_wakeup, NULL);
 	register_trace_android_rvh_replace_next_task_fair(walt_cfs_replace_next_task_fair, NULL);
-
-	register_trace_android_rvh_do_sched_yield(walt_cfs_mvp_do_sched_yield, NULL);
 }

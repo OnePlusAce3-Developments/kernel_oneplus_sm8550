@@ -87,14 +87,19 @@ static struct msm_pinctrl *msm_pinctrl_data;
 
 #define EGPIO_PRESENT			11
 #define EGPIO_ENABLE			12
+<<<<<<< HEAD
 //#ifdef OPLUS_ARCH_EXTENDS
 //Nan.Zhongu@MULTIMEDIA.AUDIODRIVER.SMARTPA, 2022/04/28, add for CR#3125952 CR#3180812 fix i2c isue
 #define I2C_PULL		    	13
 //#endif /* OPLUS_ARCH_EXTENDS */
+=======
+#define I2C_PULL			13
+>>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.015
 #define MSM_APPS_OWNER			1
 #define MSM_REMOTE_OWNER		0
 
 /* custom pinconf parameters for msm pinictrl*/
+<<<<<<< HEAD
 #define MSM_PIN_CONFIG_APPS		(PIN_CONFIG_END + 1)
 #define MSM_PIN_CONFIG_REMOTE		(PIN_CONFIG_END + 2)
 //#ifdef OPLUS_ARCH_EXTENDS
@@ -109,6 +114,16 @@ static const struct pinconf_generic_params msm_gpio_bindings[] = {
 //Nan.Zhongu@MULTIMEDIA.AUDIODRIVER.SMARTPA, 2022/04/28, add for CR#3125952 CR#3180812 fix i2c isue
 	{"qcom,i2c_pull",	       MSM_PIN_CONFIG_I2C_PULL, 0},
 //#endif /* OPLUS_ARCH_EXTENDS */
+=======
+#define MSM_PIN_CONFIG_APPS           (PIN_CONFIG_END + 1)
+#define MSM_PIN_CONFIG_REMOTE         (PIN_CONFIG_END + 2)
+#define MSM_PIN_CONFIG_I2C_PULL       (PIN_CONFIG_END + 3)
+
+static const struct pinconf_generic_params msm_gpio_bindings[] = {
+	{"qcom,apps",        MSM_PIN_CONFIG_APPS,     0},
+	{"qcom,remote",      MSM_PIN_CONFIG_REMOTE,   0},
+	{"qcom,i2c_pull",    MSM_PIN_CONFIG_I2C_PULL, 0},
+>>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.015
 };
 
 #define MSM_ACCESSOR(name) \
@@ -331,13 +346,19 @@ static int msm_config_reg(struct msm_pinctrl *pctrl,
 		*bit = EGPIO_ENABLE;
 		*mask = 1;
 		break;
+<<<<<<< HEAD
 //#ifdef OPLUS_ARCH_EXTENDS
 //Nan.Zhongu@MULTIMEDIA.AUDIODRIVER.SMARTPA, 2022/04/28, add for CR#3125952 CR#3180812 fix i2c isue
+=======
+>>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.015
 	case MSM_PIN_CONFIG_I2C_PULL:
 		*bit = I2C_PULL;
 		*mask = 1;
 		break;
+<<<<<<< HEAD
 //#endif /* OPLUS_ARCH_EXTENDS */
+=======
+>>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.015
 	default:
 		return -ENOTSUPP;
 	}
@@ -443,12 +464,18 @@ static int msm_config_group_get(struct pinctrl_dev *pctldev,
 
 		arg = 1;
 		break;
+<<<<<<< HEAD
 //#ifdef OPLUS_ARCH_EXTENDS
 //Nan.Zhongu@MULTIMEDIA.AUDIODRIVER.SMARTPA, 2022/04/28, add for CR#3125952 CR#3180812 fix i2c isue
 	case MSM_PIN_CONFIG_I2C_PULL:
 		arg = 1;
 		break;
 //#endif /* OPLUS_ARCH_EXTENDS */
+=======
+	case MSM_PIN_CONFIG_I2C_PULL:
+		arg = 1;
+		break;
+>>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.015
 	default:
 		return -ENOTSUPP;
 	}
@@ -541,12 +568,18 @@ static int msm_config_group_set(struct pinctrl_dev *pctldev,
 			owner_update = 1;
 			owner_bit = MSM_REMOTE_OWNER;
 			break;
+<<<<<<< HEAD
 //#ifdef OPLUS_ARCH_EXTENDS
 //Nan.Zhongu@MULTIMEDIA.AUDIODRIVER.SMARTPA, 2022/04/28, add for CR#3125952 CR#3180812 fix i2c isue
 		case MSM_PIN_CONFIG_I2C_PULL:
 			arg = 1;
 			break;
 //#endif /* OPLUS_ARCH_EXTENDS */
+=======
+		case MSM_PIN_CONFIG_I2C_PULL:
+			arg = 1;
+			break;
+>>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.015
 		default:
 			dev_err(pctrl->dev, "Unsupported config parameter: %x\n",
 				param);
