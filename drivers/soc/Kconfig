@@ -24,4 +24,7 @@ source "drivers/soc/ux500/Kconfig"
 source "drivers/soc/versatile/Kconfig"
 source "drivers/soc/xilinx/Kconfig"
 
+#ifdef OPLUS_BUG_STABILITY
+source "drivers/soc/oplus/system/Kconfig"
+#endif /* OPLUS_BUG_STABILITY */
 endmenu

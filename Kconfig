@@ -11,6 +11,11 @@ config OPLUS_SYSTEM_KERNEL_QCOM
   help
 	define this config to Distinguish between qcom and mtk platform
 
+config OPLUS_SYSTEM_KERNEL_MTK
+  bool "config oplus system feature "
+  default n
+  help
+	define this config to Distinguish between qcom and mtk platform
 
 source "scripts/Kconfig.include"
 
