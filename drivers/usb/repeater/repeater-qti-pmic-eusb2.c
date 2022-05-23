@@ -89,6 +89,9 @@
 #define V_CLK_19P2M_EN			BIT(6)
 #define V_CLK_19P2M_EN_SHIFT		6
 
+#undef dev_dbg
+#define dev_dbg dev_err
+
 struct eusb2_repeater {
 	struct usb_repeater	ur;
 	struct regmap		*regmap;
@@ -309,7 +312,6 @@ static int eusb2_repeater_init(struct usb_repeater *ur)
 	/* override init sequence using devicetree based values */
 	eusb2_repeater_update_seq(er, er->param_override_seq,
 			er->param_override_seq_cnt);
-
 	/* override tune params using debugfs based values */
 	if (er->usb2_crossover && er->usb2_crossover <= 0x7)
 		eusb2_repeater_masked_write(er, EUSB2_TUNE_USB2_CROSSOVER,
