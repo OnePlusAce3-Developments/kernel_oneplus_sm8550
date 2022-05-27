@@ -3474,22 +3474,7 @@ static int kernel_grip_open(struct inode *inode, struct file *file)
 	return single_open(file, kernel_grip_read_func, PDE_DATA(inode));
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,10,0)
-static const struct proc_ops tp_kernel_grip_fops = {
-	.proc_open  = kernel_grip_open,
-	.proc_read  = seq_read,
-	.proc_write = kernel_grip_write,
-	.proc_release = single_release,
-};
-#else
-static const struct file_operations tp_kernel_grip_fops = {
-	.owner = THIS_MODULE,
-	.open  = kernel_grip_open,
-	.read  = seq_read,
-	.write = kernel_grip_write,
-	.release = single_release,
-};
-#endif
+DECLARE_PROC_OPS(tp_kernel_grip_fops, kernel_grip_open, seq_read, kernel_grip_write, single_release);
 
 static ssize_t proc_touch_dir_read(struct file *file, char __user *user_buf,
 				   size_t count, loff_t *ppos)
@@ -3556,20 +3541,7 @@ static ssize_t proc_touch_dir_write(struct file *file,
 	return count;
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,10,0)
-static const struct proc_ops touch_dir_proc_fops = {
-	.proc_read  = proc_touch_dir_read,
-	.proc_write = proc_touch_dir_write,
-	.proc_open  = simple_open,
-};
-#else
-static const struct file_operations touch_dir_proc_fops = {
-	.read  = proc_touch_dir_read,
-	.write = proc_touch_dir_write,
-	.open  = simple_open,
-	.owner = THIS_MODULE,
-};
-#endif
+DECLARE_PROC_OPS(touch_dir_proc_fops, simple_open, proc_touch_dir_read, proc_touch_dir_write, NULL);
 
 void init_kernel_grip_proc(struct proc_dir_entry *prEntry_tp,
 			   struct kernel_grip_info *grip_info)

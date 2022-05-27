@@ -1080,6 +1080,7 @@ static ssize_t proc_hall_data_read(struct file *file, char __user *user_buf,
 static const struct proc_ops proc_hall_data_ops = {
 	.proc_read  = proc_hall_data_read,
 	.proc_open  = simple_open,
+	.proc_lseek	= default_llseek,
 };
 
 static ssize_t proc_tri_state_read(struct file *file, char __user *user_buf,
@@ -1103,6 +1104,7 @@ static ssize_t proc_tri_state_read(struct file *file, char __user *user_buf,
 static const struct proc_ops proc_tri_state_ops = {
 	.proc_read  = proc_tri_state_read,
 	.proc_open  = simple_open,
+	.proc_lseek	= default_llseek,
 };
 
 static ssize_t proc_hall_data_calib_read(struct file *file, char __user *user_buf,
@@ -1166,6 +1168,7 @@ static const struct proc_ops proc_hall_data_calib_ops = {
 	.proc_write = proc_hall_data_calib_write,
 	.proc_read  = proc_hall_data_calib_read,
 	.proc_open  = simple_open,
+	.proc_lseek	= default_llseek,
 };
 
 static ssize_t proc_hall_debug_info_write(struct file *file, const char __user *buffer,
@@ -1210,6 +1213,7 @@ static const struct proc_ops proc_hall_debug_info_ops = {
 	.proc_write = proc_hall_debug_info_write,
 	.proc_read  = proc_hall_debug_info_read,
 	.proc_open  = simple_open,
+	.proc_lseek	= default_llseek,
 };
 
 static ssize_t proc_hall_enable_irq_write(struct file *file, const char __user *buffer,
@@ -1240,6 +1244,7 @@ static ssize_t proc_hall_enable_irq_write(struct file *file, const char __user *
 static const struct proc_ops proc_hall_enable_irq_ops = {
 	.proc_write = proc_hall_enable_irq_write,
 	.proc_open  = simple_open,
+	.proc_lseek	= default_llseek,
 };
 
 static int init_trikey_proc(struct extcon_dev_data *hall_dev)

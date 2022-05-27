@@ -16,6 +16,7 @@
 #include <linux/proc_fs.h>
 #include <linux/of_gpio.h>
 #include <linux/delay.h>
+#include <linux/seq_file.h>
 
 #include "../touchpanel_common.h"
 #include "../touch_comon_api/touch_comon_api.h"

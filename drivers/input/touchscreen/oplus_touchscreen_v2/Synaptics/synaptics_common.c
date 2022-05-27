@@ -560,20 +560,7 @@ static int RT251_open(struct inode *inode, struct file *file)
 	return single_open(file, tp_RT251_read_func, PDE_DATA(inode));
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,10,0)
-static const struct proc_ops tp_RT251_proc_fops = {
-	.proc_open  = RT251_open,
-	.proc_read  = seq_read,
-	.proc_release = single_release,
-};
-#else
-static const struct file_operations tp_RT251_proc_fops = {
-	.owner = THIS_MODULE,
-	.open  = RT251_open,
-	.read  = seq_read,
-	.release = single_release,
-};
-#endif
+DECLARE_PROC_OPS(tp_RT251_proc_fops, RT251_open, seq_read, NULL, single_release);
 
 static int tp_RT76_read_func(struct seq_file *s, void *v)
 {
@@ -609,20 +596,7 @@ static int RT76_open(struct inode *inode, struct file *file)
 	return single_open(file, tp_RT76_read_func, PDE_DATA(inode));
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,10,0)
-static const struct proc_ops tp_RT76_proc_fops = {
-	.proc_open  = RT76_open,
-	.proc_read  = seq_read,
-	.proc_release = single_release,
-};
-#else
-static const struct file_operations tp_RT76_proc_fops = {
-	.owner = THIS_MODULE,
-	.open  = RT76_open,
-	.read  = seq_read,
-	.release = single_release,
-};
-#endif
+DECLARE_PROC_OPS(tp_RT76_proc_fops, RT76_open, seq_read, NULL, single_release);
 
 static int tp_DRT_read_func(struct seq_file *s, void *v)
 {
@@ -669,20 +643,7 @@ static int DRT_open(struct inode *inode, struct file *file)
 	return single_open(file, tp_DRT_read_func, PDE_DATA(inode));
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,10,0)
-static const struct proc_ops tp_DRT_proc_fops = {
-	.proc_open  = DRT_open,
-	.proc_read  = seq_read,
-	.proc_release = single_release,
-};
-#else
-static const struct file_operations tp_DRT_proc_fops = {
-	.owner = THIS_MODULE,
-	.open  = DRT_open,
-	.read  = seq_read,
-	.release = single_release,
-};
-#endif
+DECLARE_PROC_OPS(tp_DRT_proc_fops, DRT_open, seq_read, NULL, single_release);
 
 static ssize_t proc_touchfilter_control_read(struct file *file,
 		char __user *user_buf, size_t count, loff_t *ppos)
@@ -745,20 +706,7 @@ static ssize_t proc_touchfilter_control_write(struct file *file,
 	return count;
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,10,0)
-static const struct proc_ops touch_filter_proc_fops = {
-	.proc_read  = proc_touchfilter_control_read,
-	.proc_write = proc_touchfilter_control_write,
-	.proc_open  = simple_open,
-};
-#else
-static const struct file_operations touch_filter_proc_fops = {
-	.read  = proc_touchfilter_control_read,
-	.write = proc_touchfilter_control_write,
-	.open  = simple_open,
-	.owner = THIS_MODULE,
-};
-#endif
+DECLARE_PROC_OPS(touch_filter_proc_fops, simple_open, proc_touchfilter_control_read, proc_touchfilter_control_write, NULL);
 
 int synaptics_create_proc(struct touchpanel_data *ts,
 			  struct synaptics_proc_operations *syna_ops)
