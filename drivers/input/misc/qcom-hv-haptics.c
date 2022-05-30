@@ -27,8 +27,19 @@
 #include <linux/uaccess.h>
 #include <linux/qpnp/qpnp-pbs.h>
 
+#ifndef OPLUS_FEATURE_CHG_BASIC
+#define OPLUS_FEATURE_CHG_BASIC
+#endif
+
+#ifdef OPLUS_FEATURE_CHG_BASIC
+#include <soc/oplus/system/boot_mode.h>
+#endif
 #include <linux/soc/qcom/battery_charger.h>
 
+//#ifdef OPLUS_FEATURE_CHG_BASIC
+#undef dev_dbg
+#define dev_dbg dev_err
+//#endif
 /* status register definitions in HAPTICS_CFG module */
 #define HAP_CFG_REVISION2_REG			0x01
 #define HAP_CFG_V1				0x1
@@ -80,6 +91,7 @@
 #define DRV_SLEW_RATE_MASK			GENMASK(2, 0)
 
 #define HAP_CFG_VMAX_REG			0x48
+#define VMAX_STEP_MV				50
 #define VMAX_HV_STEP_MV				50
 #define VMAX_MV_STEP_MV				32
 #define MAX_VMAX_MV				11000
@@ -87,7 +99,14 @@
 #define MAX_MV_VMAX_MV				6000
 #define CLAMPED_VMAX_MV				5000
 #define DEFAULT_VMAX_MV				5000
-
+#ifdef OPLUS_FEATURE_CHG_BASIC
+#define DEFAULT_CL_VMAX_MV			2000
+#define DEFAULT_FIFO_VMAX			9500
+#define DEFAULT_OLD_STEADY_VMAX		9700
+#define VIBRATOR_TYPE_SLA0815		8151
+#define VIBRATOR_TYPE_ELA0809		809
+#define AT_TEST_VMAX_MV				3700
+#endif
 #define HAP_CFG_DRV_WF_SEL_REG			0x49
 #define DRV_WF_FMT_BIT				BIT(4)
 #define DRV_WF_SEL_MASK				GENMASK(1, 0)
@@ -136,6 +155,10 @@
 
 #define HAP_CFG_DRV_DUTY_CFG_REG		0x60
 #define ADT_DRV_DUTY_EN_BIT			BIT(7)
+#define ADT_BRK_DUTY_75				0x6
+#define ADT_DRV_DUTY_62_5			0x10
+#define ADT_BRK_DUTY_EN_BIT			BIT(6)
+
 
 #define HAP_CFG_ADT_DRV_DUTY_CFG_REG		0x61
 #define HAP_CFG_ZX_WIND_CFG_REG			0x62
@@ -547,6 +570,13 @@ struct haptics_play_info {
 struct haptics_hw_config {
 	struct brake_cfg	brake;
 	u32			vmax_mv;
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	u32			cl_vmax_mv;
+	u32			cali_time;
+	u32			fifo_vmax_mv;
+	u32			old_steady_vmax_mv;
+	u32			vibrator_type;
+#endif
 	u32			t_lra_us;
 	u32			cl_t_lra_us;
 	u32			lra_min_mohms;
@@ -567,6 +597,12 @@ struct custom_fifo_data {
 	u32	play_rate_hz;
 	u8	*data;
 };
+#ifdef OPLUS_FEATURE_CHG_BASIC
+struct haptics_calibration_data {
+	u32			cl_t_lra_us;
+	u16			rc_clk_cal_count;
+};
+#endif
 
 struct haptics_chip {
 	struct device			*dev;
@@ -579,6 +615,11 @@ struct haptics_chip {
 	struct haptics_mmap		mmap;
 	struct dentry			*debugfs_dir;
 	struct regulator_dev		*swr_slave_rdev;
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	struct haptics_calibration_data cal_data;
+	struct mutex			fd_lock;
+	bool				cal_data_restore;
+#endif
 	struct nvmem_cell		*cl_brake_nvmem;
 	struct nvmem_device		*hap_cfg_nvmem;
 	struct device_node		*pbs_node;
@@ -604,7 +645,10 @@ struct haptics_chip {
 	bool				swr_slave_enabled;
 	bool				clamp_at_5v;
 	bool				hpwr_vreg_enabled;
-	bool				is_hv_haptics;
+	bool                            is_hv_haptics;
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	bool				disable_pm_ops;
+#endif
 	bool				hboost_enabled;
 };
 
@@ -1493,6 +1537,11 @@ static int haptics_enable_play(struct haptics_chip *chip, bool en)
 	int rc;
 	u8 val;
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	if (chip->disable_pm_ops)
+		return 0;
+#endif
+
 	if (en) {
 		val = SC_CLR_BIT | AUTO_RES_ERR_CLR_BIT |
 			HPWR_RDY_FAULT_CLR_BIT;
@@ -1984,6 +2033,11 @@ static int haptics_set_fifo(struct haptics_chip *chip, struct fifo_cfg *fifo)
 	return 0;
 }
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+static int haptics_config_openloop_lra_period(struct haptics_chip *chip,
+							u32 t_lra_us);
+#endif
+
 static int haptics_load_constant_effect(struct haptics_chip *chip, u8 amplitude)
 {
 	struct haptics_play_info *play = &chip->play;
@@ -2009,6 +2063,8 @@ static int haptics_load_constant_effect(struct haptics_chip *chip, u8 amplitude)
 		vmax_mv = chip->hpwr_voltage_mv - hdrm_mv;
 	}
 
+
+
 	/* configure VMAX in case it was changed in previous effect playing */
 	rc = haptics_set_vmax_mv(chip, vmax_mv);
 	if (rc < 0)
@@ -2026,8 +2082,11 @@ static int haptics_load_constant_effect(struct haptics_chip *chip, u8 amplitude)
 	if (rc < 0)
 		goto unlock;
 
-	/* Always enable LRA auto resonance for DIRECT_PLAY */
+#ifndef OPLUS_FEATURE_CHG_BASIC
 	rc = haptics_enable_autores(chip, !chip->config.is_erm);
+#else
+	rc = haptics_enable_autores(chip, false);
+#endif
 	if (rc < 0)
 		goto unlock;
 
@@ -2067,7 +2126,11 @@ static int haptics_load_predefined_effect(struct haptics_chip *chip,
 			return rc;
 	}
 
+#ifndef OPLUS_FEATURE_CHG_BASIC
 	rc = haptics_enable_autores(chip, !play->effect->auto_res_disable);
+#else
+	rc = haptics_enable_autores(chip, false);
+#endif
 	if (rc < 0)
 		return rc;
 
@@ -2136,7 +2199,11 @@ static int haptics_init_custom_effect(struct haptics_chip *chip)
 	chip->custom_effect->pattern = NULL;
 	chip->custom_effect->brake = NULL;
 	chip->custom_effect->id = UINT_MAX;
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	chip->custom_effect->vmax_mv = chip->config.fifo_vmax_mv;
+#else
 	chip->custom_effect->vmax_mv = chip->config.vmax_mv;
+#endif
 	chip->custom_effect->t_lra_us = chip->config.t_lra_us;
 	chip->custom_effect->src = FIFO;
 	chip->custom_effect->auto_res_disable = true;
@@ -2206,9 +2273,13 @@ static int haptics_load_custom_effect(struct haptics_chip *chip,
 	fifo = chip->custom_effect->fifo;
 	if (copy_from_user(&custom_data, data, sizeof(custom_data)))
 		return -EFAULT;
-
+#ifndef OPLUS_FEATURE_CHG_BASIC
 	dev_dbg(chip->dev, "custom data length %d with play-rate %d Hz\n",
 			custom_data.length, custom_data.play_rate_hz);
+#else
+	dev_err(chip->dev, "custom data %d length %d with play-rate %d Hz,magnitude=0x%x\n",
+			custom_data.idx, custom_data.length, custom_data.play_rate_hz, magnitude);
+#endif
 	rc = haptics_convert_sample_period(chip, custom_data.play_rate_hz);
 	if (rc < 0) {
 		dev_err(chip->dev, "Can't support play rate: %d Hz\n",
@@ -2324,8 +2395,14 @@ static int haptics_load_periodic_effect(struct haptics_chip *chip,
 	}
 
 	mutex_lock(&chip->play.lock);
+
+#ifndef OPLUS_FEATURE_CHG_BASIC
 	dev_dbg(chip->dev, "upload effect %d, vmax_mv=%d\n",
 			chip->effects[i].id, play->vmax_mv);
+#else
+	dev_dbg(chip->dev, "upload effect %d,vmax_mv=%d,magnitude=%d,effect.vmax_mv=%d\n",
+			chip->effects[i].id, play->vmax_mv, magnitude, chip->effects[i].vmax_mv);
+#endif
 
 	if (chip->play.in_calibration) {
 		dev_err(chip->dev, "calibration in progress, ignore playing predefined effect\n");
@@ -4292,6 +4369,14 @@ static int haptics_parse_dt(struct haptics_chip *chip)
 		goto free_pbs;
 	}
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	chip->cal_data_restore =
+		of_property_read_bool(node, "qcom,cal-data-restore");
+	if (!chip->cal_data_restore) {
+		dev_err(chip->dev, "not support calibration data restore when boot up\n");
+	}
+#endif
+
 	config->vmax_mv = DEFAULT_VMAX_MV;
 	of_property_read_u32(node, "qcom,vmax-mv", &config->vmax_mv);
 	if (config->vmax_mv >= MAX_VMAX_MV) {
@@ -4300,7 +4385,27 @@ static int haptics_parse_dt(struct haptics_chip *chip)
 		rc = -EINVAL;
 		goto free_pbs;
 	}
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	rc = of_property_read_u32(node, "qcom,cl-vmax-mv", &config->cl_vmax_mv);
+	if (rc || config->cl_vmax_mv >= MAX_VMAX_MV) {
+		config->cl_vmax_mv = DEFAULT_CL_VMAX_MV;
+	}
 
+	rc = of_property_read_u32(node, "qcom,fifo-vmax-mv", &config->fifo_vmax_mv);
+	if (rc || config->fifo_vmax_mv >= MAX_VMAX_MV) {
+		config->fifo_vmax_mv = DEFAULT_FIFO_VMAX;
+	}
+
+	rc = of_property_read_u32(node, "qcom,old-steady-vmax-mv", &config->old_steady_vmax_mv);
+	if (rc || config->old_steady_vmax_mv >= MAX_VMAX_MV) {
+		config->old_steady_vmax_mv = DEFAULT_OLD_STEADY_VMAX;
+	}
+	rc = of_property_read_u32(node, "qcom,vibrator-type", &config->vibrator_type);
+	if (rc) {
+		config->vibrator_type = VIBRATOR_TYPE_SLA0815;
+	}
+	dev_err(chip->dev, "qcom,vibrator-type = %d\n", config->vibrator_type);
+#endif
 	config->fifo_empty_thresh = get_fifo_empty_threshold(chip);
 	of_property_read_u32(node, "qcom,fifo-empty-threshold",
 			&config->fifo_empty_thresh);
@@ -4365,6 +4470,11 @@ static int haptics_parse_dt(struct haptics_chip *chip)
 				 rc);
 		goto free_pbs;
 	}
+
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	chip->disable_pm_ops = false;
+	chip->disable_pm_ops = of_property_read_bool(node, "qcom,disable-pm-ops");
+#endif
 
 	return 0;
 free_pbs:
@@ -4893,7 +5003,11 @@ static int haptics_detect_lra_frequency(struct haptics_chip *chip)
 	if (is_haptics_external_powered(chip))
 		vmax_mv = chip->hpwr_voltage_mv - LRA_CALIBRATION_VMAX_HDRM_MV;
 
+#ifndef OPLUS_FEATURE_CHG_BASIC
 	rc = haptics_set_vmax_mv(chip, vmax_mv);
+#else
+	rc = haptics_set_vmax_mv(chip, chip->config.cl_vmax_mv);
+#endif
 	if (rc < 0)
 		goto restore;
 
@@ -4910,10 +5024,12 @@ static int haptics_detect_lra_frequency(struct haptics_chip *chip)
 	rc = haptics_enable_play(chip, true);
 	if (rc < 0)
 		goto restore;
-
+#ifndef OPLUS_FEATURE_CHG_BASIC
 	/* wait for ~150ms to get the LRA calibration result */
 	usleep_range(150000, 155000);
-
+#else
+	usleep_range(chip->config.cali_time * 1000, chip->config.cali_time * 1000 + 5000);
+#endif
 	rc = haptics_get_closeloop_lra_period(chip, false);
 	if (rc < 0)
 		goto restore;
@@ -4983,12 +5099,87 @@ static int haptics_start_lra_calibrate(struct haptics_chip *chip)
 		dev_err(chip->dev, "Detect LRA impedance failed, rc=%d\n", rc);
 		goto unlock;
 	}
-
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	chip->cal_data.cl_t_lra_us = chip->config.cl_t_lra_us;
+	chip->cal_data.rc_clk_cal_count = chip->config.rc_clk_cal_count;
+	/*calib will  get chip->cal_data.cl_t_lra_us and chip->cal_data.rc_clk_cal_count*/
+#endif
 unlock:
 	chip->play.in_calibration = false;
 	mutex_unlock(&chip->play.lock);
 	return rc;
 }
+
+static ssize_t lra_cal_rc_clk_cal_count_store(struct class *c,
+		struct class_attribute *attr, const char *buf, size_t count)
+{
+	struct haptics_chip *chip = container_of(c,
+			struct haptics_chip, hap_class);
+	int val;
+	int rc;
+
+	rc = kstrtouint(buf, 0, &val);
+	if (rc < 0)
+		return rc;
+
+	chip->cal_data.rc_clk_cal_count = val;
+	chip->config.rc_clk_cal_count = val;
+	pr_info("store rc_clk_cal_count:%d\n", val);
+	return count;
+}
+
+static ssize_t lra_cal_rc_clk_cal_count_show(struct class *c,
+		struct class_attribute *attr, char *buf)
+{
+	struct haptics_chip *chip = container_of(c,
+			struct haptics_chip, hap_class);
+
+	if (chip->cal_data.rc_clk_cal_count == 0)
+		return -EINVAL;
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n", chip->cal_data.rc_clk_cal_count);
+}
+
+static CLASS_ATTR_RW(lra_cal_rc_clk_cal_count);
+
+static ssize_t lra_cal_cl_t_lra_us_store(struct class *c,
+		struct class_attribute *attr, const char *buf, size_t count)
+{
+	struct haptics_chip *chip = container_of(c,
+			struct haptics_chip, hap_class);
+	int val;
+	int rc;
+
+	rc = kstrtouint(buf, 0, &val);
+	if (rc < 0)
+		return rc;
+
+	chip->cal_data.cl_t_lra_us = val;
+	chip->config.cl_t_lra_us = val;
+	pr_info("store cl_t_lra_us:%d\n", val);
+
+	rc = haptics_config_openloop_lra_period(chip, chip->config.cl_t_lra_us);
+	if (rc < 0){
+		dev_err(chip->dev, "%s:rc = %d\n", __func__, rc);
+		return rc;
+	}
+
+	return count;
+}
+
+static ssize_t lra_cal_cl_t_lra_us_show(struct class *c,
+		struct class_attribute *attr, char *buf)
+{
+	struct haptics_chip *chip = container_of(c,
+			struct haptics_chip, hap_class);
+
+	if (chip->cal_data.cl_t_lra_us == 0)
+		return -EINVAL;
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n", chip->cal_data.cl_t_lra_us);
+}
+
+static CLASS_ATTR_RW(lra_cal_cl_t_lra_us);
 
 static ssize_t lra_calibration_store(struct class *c,
 		struct class_attribute *attr, const char *buf, size_t count)
@@ -5022,9 +5213,36 @@ static ssize_t lra_frequency_hz_show(struct class *c,
 		return -EINVAL;
 
 	cl_f_lra = USEC_PER_SEC / chip->config.cl_t_lra_us;
-	return scnprintf(buf, PAGE_SIZE, "%d Hz\n", cl_f_lra);
-}
-static CLASS_ATTR_RO(lra_frequency_hz);
+
+#ifdef OPLUS_FEATURE_CHG_BASIC
+		if (chip->cal_data.cl_t_lra_us != 0) {
+			cl_f_lra = USEC_PER_SEC / chip->cal_data.cl_t_lra_us;
+		} else {
+			cl_f_lra = 0;
+		}
+		dev_err(chip->dev, "lra_frequency_hz read : %d,chip->cal_data.cl_t_lra_us:%d\n",
+					cl_f_lra, chip->cal_data.cl_t_lra_us);
+		return scnprintf(buf, PAGE_SIZE, "%d\n", cl_f_lra);
+#else
+		return scnprintf(buf, PAGE_SIZE, "%d Hz\n", cl_f_lra);
+#endif
+	}
+
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	static ssize_t lra_frequency_hz_store(struct class *c,
+			struct class_attribute *attr, const char *buf, size_t count)
+	{
+		bool val;
+
+		if (kstrtobool(buf, &val))
+			return -EINVAL;
+		pr_info("val:%d\n",val );
+		return count;
+	}
+	static CLASS_ATTR_RW(lra_frequency_hz);
+#else
+	static CLASS_ATTR_RO(lra_frequency_hz);
+#endif
 
 static ssize_t lra_impedance_show(struct class *c,
 		struct class_attribute *attr, char *buf)
@@ -5043,16 +5261,220 @@ static ssize_t lra_impedance_show(struct class *c,
 	else if (chip->config.lra_max_mohms >= chip->config.lra_open_mohms)
 		return scnprintf(buf, PAGE_SIZE, "%s\n", "Open circuit");
 	else
+#ifndef OPLUS_FEATURE_CHG_BASIC
 		return scnprintf(buf, PAGE_SIZE, "%u ~ %u mohms\n",
 				chip->config.lra_min_mohms,
 				chip->config.lra_max_mohms);
+#else
+		return scnprintf(buf, PAGE_SIZE, "%u\n",
+				(chip->config.lra_min_mohms + chip->config.lra_max_mohms) / 2);
+#endif
 }
 static CLASS_ATTR_RO(lra_impedance);
+
+#ifdef OPLUS_FEATURE_CHG_BASIC
+static ssize_t vmax_show(struct class *c,
+		struct class_attribute *attr, char *buf)
+{
+	struct haptics_chip *chip = container_of(c,
+			struct haptics_chip, hap_class);
+
+	return scnprintf(buf, PAGE_SIZE, "%u\n", chip->config.vmax_mv);
+}
+
+static ssize_t vmax_store(struct class *c,
+		struct class_attribute *attr, const char *buf, size_t count)
+{
+	struct haptics_chip *chip = container_of(c,
+			struct haptics_chip, hap_class);
+	u32 val;
+
+	if (kstrtouint(buf, 0, &val))
+		return -EINVAL;
+
+	if (val) {
+		chip->config.vmax_mv = val;
+	}
+
+	return count;
+}
+static CLASS_ATTR_RW(vmax);
+
+static ssize_t cl_vmax_show(struct class *c,
+		struct class_attribute *attr, char *buf)
+{
+	struct haptics_chip *chip = container_of(c,
+			struct haptics_chip, hap_class);
+
+	return scnprintf(buf, PAGE_SIZE, "%u\n", chip->config.cl_vmax_mv);
+}
+
+static ssize_t cl_vmax_store(struct class *c,
+		struct class_attribute *attr, const char *buf, size_t count)
+{
+	struct haptics_chip *chip = container_of(c,
+			struct haptics_chip, hap_class);
+	u32 val;
+
+	if (kstrtouint(buf, 0, &val))
+		return -EINVAL;
+
+	if (val) {
+		chip->config.cl_vmax_mv = val;
+	}
+
+	return count;
+}
+static CLASS_ATTR_RW(cl_vmax);
+
+static ssize_t cali_time_show(struct class *c,
+		struct class_attribute *attr, char *buf)
+{
+	struct haptics_chip *chip = container_of(c,
+			struct haptics_chip, hap_class);
+
+	return scnprintf(buf, PAGE_SIZE, "%u\n", chip->config.cali_time);
+}
+
+static ssize_t cali_time_store(struct class *c,
+		struct class_attribute *attr, const char *buf, size_t count)
+{
+	struct haptics_chip *chip = container_of(c,
+			struct haptics_chip, hap_class);
+	u32 val;
+
+	if (kstrtouint(buf, 0, &val))
+		return -EINVAL;
+
+	if (val) {
+		chip->config.cali_time = val;
+	}
+
+	return count;
+}
+static CLASS_ATTR_RW(cali_time);
+
+static ssize_t t_lra_us_show(struct class *c,
+		struct class_attribute *attr, char *buf)
+{
+	struct haptics_chip *chip = container_of(c,
+			struct haptics_chip, hap_class);
+
+	return scnprintf(buf, PAGE_SIZE, "%u\n", chip->config.t_lra_us);
+}
+
+static ssize_t t_lra_us_store(struct class *c,
+		struct class_attribute *attr, const char *buf, size_t count)
+{
+	struct haptics_chip *chip = container_of(c,
+			struct haptics_chip, hap_class);
+	int val;
+
+	if (kstrtouint(buf, 0, &val))
+		return -EINVAL;
+
+	if (val) {
+		chip->config.t_lra_us = val;
+	}
+
+	return count;
+}
+static CLASS_ATTR_RW(t_lra_us);
+
+static ssize_t register_write_store(struct class *c,
+		struct class_attribute *attr, const char *buf, size_t count)
+{
+	struct haptics_chip *chip = container_of(c,
+			struct haptics_chip, hap_class);
+	int rc = -1;
+	u16 reg;
+	u8 val;
+
+	if (2 == sscanf(buf, "%x %x", &reg, &val)) {
+		if(reg >= 0xf000 && reg < 0xf300) {
+			rc = regmap_update_bits(chip->regmap, reg, 0xFF, val);
+			if (rc < 0)
+				dev_err(chip->dev, "update addr %d failed, rc=%d\n", reg, rc);
+		}
+		dev_err(chip->dev, "write address=%x, val=%d\n", reg, val);
+	}
+
+	return count;
+}
+static CLASS_ATTR_WO(register_write);
+
+static ssize_t fifo_vmax_show(struct class *c,
+		struct class_attribute *attr, char *buf)
+{
+	struct haptics_chip *chip = container_of(c,
+			struct haptics_chip, hap_class);
+
+	return scnprintf(buf, PAGE_SIZE, "%u\n", chip->config.fifo_vmax_mv);
+}
+
+static ssize_t fifo_vmax_store(struct class *c,
+		struct class_attribute *attr, const char *buf, size_t count)
+{
+	struct haptics_chip *chip = container_of(c,
+			struct haptics_chip, hap_class);
+	int val;
+
+	if (kstrtouint(buf, 0, &val))
+		return -EINVAL;
+
+	if (val) {
+		chip->config.fifo_vmax_mv = val;
+		chip->custom_effect->vmax_mv = val;
+	}
+
+	return count;
+}
+static CLASS_ATTR_RW(fifo_vmax);
+
+static ssize_t vibrator_type_show(struct class *c,
+		struct class_attribute *attr, char *buf)
+{
+	struct haptics_chip *chip = container_of(c,
+			struct haptics_chip, hap_class);
+
+	return scnprintf(buf, PAGE_SIZE, "%u\n", chip->config.vibrator_type);
+}
+
+static ssize_t vibrator_type_store(struct class *c,
+		struct class_attribute *attr, const char *buf, size_t count)
+{
+	struct haptics_chip *chip = container_of(c,
+			struct haptics_chip, hap_class);
+	int val;
+
+	if (kstrtouint(buf, 0, &val))
+		return -EINVAL;
+
+	if (val) {
+		chip->config.vibrator_type = val;
+	}
+
+	return count;
+}
+
+static CLASS_ATTR_RW(vibrator_type);
+#endif
 
 static struct attribute *hap_class_attrs[] = {
 	&class_attr_lra_calibration.attr,
 	&class_attr_lra_frequency_hz.attr,
 	&class_attr_lra_impedance.attr,
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	&class_attr_vmax.attr,
+	&class_attr_cl_vmax.attr,
+	&class_attr_cali_time.attr,
+	&class_attr_t_lra_us.attr,
+	&class_attr_register_write.attr,
+	&class_attr_fifo_vmax.attr,
+	&class_attr_lra_cal_cl_t_lra_us.attr,
+	&class_attr_lra_cal_rc_clk_cal_count.attr,
+	&class_attr_vibrator_type.attr,
+#endif
 	NULL,
 };
 ATTRIBUTE_GROUPS(hap_class);
@@ -5112,6 +5534,9 @@ static int haptics_probe(struct platform_device *pdev)
 	struct input_dev *input_dev;
 	struct ff_device *ff_dev;
 	int rc, count;
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	u8 val = 0;
+#endif
 
 	chip = devm_kzalloc(&pdev->dev, sizeof(*chip), GFP_KERNEL);
 	if (!chip)
@@ -5165,6 +5590,9 @@ static int haptics_probe(struct platform_device *pdev)
 	}
 
 	mutex_init(&chip->play.lock);
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	mutex_init(&chip->fd_lock);
+#endif
 	disable_irq_nosync(chip->fifo_empty_irq);
 	chip->fifo_empty_irq_en = false;
 	hrtimer_init(&chip->hbst_off_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
@@ -5195,7 +5623,20 @@ static int haptics_probe(struct platform_device *pdev)
 				rc);
 		return rc;
 	}
+#ifdef OPLUS_FEATURE_CHG_BASIC
+//temp cali time
+	chip->config.cali_time = 150;
+	val = 0x54;
+	rc = haptics_write(chip, 0xF200, HAP_CFG_TLRA_OL_LOW_REG, &val, 1);
+/*add qcom patch to solve F0 cali fail issue*/
+	val = ADT_BRK_DUTY_EN_BIT|ADT_DRV_DUTY_62_5|ADT_BRK_DUTY_75;
+	rc = haptics_write(chip, chip->cfg_addr_base,
+				HAP_CFG_DRV_DUTY_CFG_REG, &val, 1);
 
+	val = 0x32;
+	rc = haptics_write(chip, chip->cfg_addr_base,
+				HAP_CFG_AUTORES_CFG_REG, &val, 1);
+#endif
 	ff_dev = input_dev->ff;
 	ff_dev->upload = haptics_upload_effect;
 	ff_dev->playback = haptics_playback;
@@ -5255,6 +5696,11 @@ static int haptics_suspend(struct device *dev)
 	struct haptics_play_info *play = &chip->play;
 	int rc;
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	if (chip->disable_pm_ops)
+		return 0;
+#endif
+
 	mutex_lock(&play->lock);
 	if ((play->pattern_src == FIFO) &&
 			atomic_read(&play->fifo_status.is_busy)) {
@@ -5298,6 +5744,10 @@ static int haptics_resume(struct device *dev)
 {
 	struct haptics_chip *chip = dev_get_drvdata(dev);
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	if (chip->disable_pm_ops)
+		return 0;
+#endif
 	return haptics_module_enable(chip, true);
 }
 #endif
