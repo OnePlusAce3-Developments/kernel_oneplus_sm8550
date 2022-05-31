@@ -1334,6 +1334,7 @@ static inline int of_get_available_child_count(const struct device_node *np)
 	return num;
 }
 
+#include <soc/qcom/of_common.h>
 #define _OF_DECLARE_STUB(table, name, compat, fn, fn_type)		\
 	static const struct of_device_id __of_table_##name		\
 		__attribute__((unused))					\

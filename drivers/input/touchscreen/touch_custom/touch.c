@@ -62,13 +62,6 @@ TP_USED_INDEX tp_used_index  = TP_INDEX_NULL;
 
 bool tp_judge_ic_match(char *tp_ic_name)
 {
-	if (tp_dsi_display_primary[0] == '\0' || strlen(tp_dsi_display_primary) == 0) {
-		pr_err("[TP] zhangle add tp_dsi_display_primary to bringup baizeT \n");
-		strncpy(tp_dsi_display_primary,
-			"qcom,mdss_dsi_panel_samsung_amb670yf07_1440_3216_dsc_cmd:synaptics-s3908",
-			sizeof(tp_dsi_display_primary));
-	}
-
 	pr_err("[TP] tp_ic_name = %s \n", tp_ic_name);
 	pr_err("[TP] tp_dsi_display_primary = %s \n", tp_dsi_display_primary);
 
@@ -86,8 +79,9 @@ int tp_judge_ic_match_commandline(struct panel_info *panel_data)
 {
 	int prj_id = 0;
 	int i = 0;
-	prj_id = 21001;//get_project();//mod by zhangle for bringup TP
+	prj_id = get_project();
 
+	pr_err("[TP] prj_id = %d \n", prj_id);
 	pr_err("[TP] tp_dsi_display_primary = %s \n", tp_dsi_display_primary);
 	for(i = 0; i < panel_data->project_num; i++) {
 		if(prj_id == panel_data->platform_support_project[i]) {

@@ -28,3 +28,7 @@ source "drivers/soc/xilinx/Kconfig"
 source "drivers/soc/oplus/system/Kconfig"
 #endif /* OPLUS_BUG_STABILITY */
 endmenu
+
+#ifdef OPLUS_FEATURE_TP_BASIC
+source "drivers/soc/oplus/device_info/Kconfig"
+#endif /* OPLUS_FEATURE_TP_BASIC */
