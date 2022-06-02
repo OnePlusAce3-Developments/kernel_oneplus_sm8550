@@ -11,6 +11,8 @@
 #define OPLUS_EVB4       11
 #define OPLUS_EVB5       12
 #define OPLUS_EVB6       13
+#define OPLUS_EVB7       14
+#define OPLUS_EVB8       15
 #define OPLUS_T0         16
 #define OPLUS_T1         17
 #define OPLUS_T2         18
