@@ -2223,10 +2223,6 @@
   xhci_free_command
   xhci_free_erst
   xhci_get_endpoint_index
-<<<<<<< HEAD
-  __put_task_struct
-  cam_cci_get_subdev
-=======
   xhci_queue_stop_endpoint
   xhci_ring_alloc
   xhci_ring_cmd_db
@@ -2248,4 +2244,3 @@
   xsk_tx_peek_desc
   xsk_tx_release
   xsk_uses_need_wakeup
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.020
