@@ -18,6 +18,7 @@ android/abi_gki_aarch64_fips140
 android/abi_gki_aarch64_pixel
 android/abi_gki_aarch64_mtktv
 android/abi_gki_aarch64_qcom
+android/abi_gki_aarch64_oplus
 "
 KMI_SYMBOL_LIST_MODULE_GROUPING=0
 KMI_SYMBOL_LIST_ADD_ONLY=1
