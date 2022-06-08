@@ -271,6 +271,11 @@ static int halt_cpus(struct cpumask *cpus)
 
 	for_each_cpu(cpu, cpus) {
 
+		if (cpu == cpumask_first(system_32bit_el0_cpumask())) {
+			ret = -EINVAL;
+			goto out;
+		}
+
 		halt_cpu_state = per_cpu_ptr(&halt_state, cpu);
 
 		/* set the cpu as halted */
@@ -290,6 +295,7 @@ static int halt_cpus(struct cpumask *cpus)
 	if (!IS_ERR(walt_drain_thread))
 		wake_up_process(walt_drain_thread);
 
+out:
 	trace_halt_cpus(cpus, start_time, 1, ret);
 
 	return ret;
@@ -532,7 +538,7 @@ static void android_rvh_is_cpu_allowed(void *unused, struct task_struct *p, int 
 		*allowed = false;
 
 		if (is_compat_thread(task_thread_info(p)) &&
-		    current->in_execve) {
+		    p->in_execve) {
 			/*
 			 * the task is 32 bit capable and
 			 * the context is execve. allow this cpu.
