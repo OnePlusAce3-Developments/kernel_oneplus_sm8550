@@ -36,16 +36,13 @@
 #endif
 #include <linux/soc/qcom/battery_charger.h>
 
-<<<<<<< HEAD
 //#ifdef OPLUS_FEATURE_CHG_BASIC
 #undef dev_dbg
 #define dev_dbg dev_err
 //#endif
-=======
 #define CREATE_TRACE_POINTS
 #include <trace/events/qcom_haptics.h>
 
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.020
 /* status register definitions in HAPTICS_CFG module */
 #define HAP_CFG_REVISION2_REG			0x01
 #define HAP_CFG_V1				0x1
