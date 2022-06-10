@@ -38,3 +38,7 @@ obj-$(CONFIG_OPLUS_DEVICE_IFNO)  +=  oplus/device_info/
 #endif /* OPLUS_FEATURE_TP_BASIC */
 
 obj-y                           += oplus/sensor/
+
+#ifdef OPLUS_FEATURE_BOOT
+obj-y += oplus/boot/
+#endif /* OPLUS_FEATURE_BOOT */
