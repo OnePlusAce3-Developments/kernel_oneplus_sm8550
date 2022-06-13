@@ -41,6 +41,11 @@ source "drivers/soc/oplus/dft/Kconfig"
 source "drivers/soc/oplus/boot/Kconfig"
 #endif /* OPLUS_FEATURE_BOOT */
 
+#ifdef OPLUS_FEATURE_OCH
+#shenshen.Mao@Kernel.Power, 2021/09/24, add for cpufreq health
+source "kernel/oplus_cpu/cpufreq_health/Kconfig"
+#endif /* OPLUS_FEATURE_OCH */
+
 endmenu
 
 #ifdef OPLUS_FEATURE_TP_BASIC

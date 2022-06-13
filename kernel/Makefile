@@ -162,6 +162,11 @@ $(obj)/kheaders_data.tar.xz: FORCE
 
 clean-files := kheaders_data.tar.xz kheaders.md5
 
+#ifdef OPLUS_FEATURE_OCH
+#shenshen.Mao@Kernel.Power, 2021/09/24, add for cpufreq health
+obj-$(CONFIG_OPLUS_FEATURE_OCH) += oplus_cpu/cpufreq_health/
+#endif /* OPLUS_FEATURE_OCH */
+
 #
 # ANDROID: GKI: Generate headerfiles required for gki_module.o
 #
