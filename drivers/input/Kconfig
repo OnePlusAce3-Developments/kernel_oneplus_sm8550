@@ -187,6 +187,11 @@ source "drivers/input/misc/Kconfig"
 
 source "drivers/input/rmi4/Kconfig"
 
+#ifdef OPLUS_FEATURE_UFF_FINGERPRINT
+#guomingzhi@BSP.Biometrics.Fingerprint, 2022/02/12, add for uff fingerprint driver
+source "drivers/input/uff_fp_drivers/Kconfig"
+#endif /* OPLUS_FEATURE_UFF_FINGERPRINT */
+
 endif
 
 menu "Hardware I/O ports"
