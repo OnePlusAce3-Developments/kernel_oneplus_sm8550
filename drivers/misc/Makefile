@@ -62,3 +62,9 @@ obj-$(CONFIG_HI6421V600_IRQ)	+= hi6421v600-irq.o
 obj-$(CONFIG_UID_SYS_STATS)	+= uid_sys_stats.o
 obj-y	+= tri_state_key/
 obj-$(CONFIG_OPEN_DICE)		+= open-dice.o
+
+#ifdef OPLUS_FEATURE_RF_CABLE_DETECT
+#mael.ma@network.RF 2021/07/06 modify for rf_cable
+oplus_bsp_rfcablemonitor-y           := oplus_rf_cable_monitor.o
+obj-$(CONFIG_OPLUS_RF_CABLE_MONITOR)   += oplus_bsp_rfcablemonitor.o
+#endif /* OPLUS_FEATURE_RF_CABLE_DETECT */
