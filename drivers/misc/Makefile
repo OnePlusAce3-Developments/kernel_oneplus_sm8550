@@ -68,3 +68,16 @@ obj-$(CONFIG_OPEN_DICE)		+= open-dice.o
 oplus_bsp_rfcablemonitor-y           := oplus_rf_cable_monitor.o
 obj-$(CONFIG_OPLUS_RF_CABLE_MONITOR)   += oplus_bsp_rfcablemonitor.o
 #endif /* OPLUS_FEATURE_RF_CABLE_DETECT */
+
+#ifdef OPLUS_FEATURE_SIM_DETECT
+#Qicai.Gu@BSP.TP, 2020/08/10, modify for sim detect
+obj-$(CONFIG_SIM_DETECT)	+= sim_detect.o
+#endif
+
+#ifdef OPLUS_FEATURE_SIM_DETECT
+#ChenGuoyao@NETWORK.IMS, 2020/08/28, add for communicating with modem
+obj-$(CONFIG_OEM_QMI)	+= oem_qmi_client.o
+#endif
+
+#ChenGuoyao@NETWORK.IMS 2020/06/10, Add for control oplus gpio
+obj-$(CONFIG_OPLUS_GPIO) += oplus_gpio.o
