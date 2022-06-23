@@ -46,3 +46,7 @@ obj-y += oplus/dft/
 #ifdef OPLUS_FEATURE_BOOT
 obj-y += oplus/boot/
 #endif /* OPLUS_FEATURE_BOOT */
+
+#ifdef OPLUS_FEATURE_DFR
+obj-y += oplus/boot/
+#endif /* OPLUS_FEATURE_DFR */
