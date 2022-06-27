@@ -17,9 +17,14 @@
 #include <linux/spinlock.h>
 #include <linux/qcom-cpufreq-hw.h>
 
+<<<<<<< HEAD
 #if IS_ENABLED(CONFIG_OPLUS_FEATURE_OCH)
 #include <linux/cpufreq_health.h>
 #endif
+=======
+#define CREATE_TRACE_POINTS
+#include <trace/events/dcvsh.h>
+>>>>>>> origin/t/feature_update_sm8550_21131_20220608
 
 #define LUT_MAX_ENTRIES			40U
 #define LUT_SRC				GENMASK(31, 30)
@@ -376,6 +381,7 @@ static void qcom_lmh_dcvs_notify(struct qcom_cpufreq_data *data)
 		dev_pm_opp_put(opp);
 
 	throttled_freq = freq_hz / HZ_PER_KHZ;
+	trace_dcvsh_freq(cpu, qcom_cpufreq_hw_get(cpu), throttled_freq);
 
 	/* Update thermal pressure */
 
@@ -407,6 +413,7 @@ static void qcom_lmh_dcvs_notify(struct qcom_cpufreq_data *data)
 		writel_relaxed(val, data->base + soc_data->reg_intr_clear);
 
 		enable_irq(data->throttle_irq);
+		trace_dcvsh_throttle(cpu, 0);
 	} else {
 		mod_delayed_work(system_highpri_wq, &data->throttle_work,
 				 msecs_to_jiffies(10));
@@ -428,6 +435,7 @@ static irqreturn_t qcom_lmh_dcvs_handle_irq(int irq, void *data)
 {
 	struct qcom_cpufreq_data *c_data = data;
 	const struct qcom_cpufreq_soc_data *soc_data = c_data->soc_data;
+	struct cpufreq_policy *policy = c_data->policy;
 	u32 val;
 
 	val = readl_relaxed(c_data->base + soc_data->reg_intr_status);
@@ -436,6 +444,7 @@ static irqreturn_t qcom_lmh_dcvs_handle_irq(int irq, void *data)
 
 	/* Disable interrupt and enable polling */
 	disable_irq_nosync(c_data->throttle_irq);
+	trace_dcvsh_throttle(cpumask_first(policy->cpus), 1);
 	schedule_delayed_work(&c_data->throttle_work, 0);
 
 	return IRQ_HANDLED;
@@ -496,7 +505,7 @@ static int qcom_cpufreq_hw_lmh_init(struct cpufreq_policy *policy, int index)
 	data->policy = policy;
 
 	mutex_init(&data->throttle_lock);
-	INIT_DEFERRABLE_WORK(&data->throttle_work, qcom_lmh_dcvs_poll);
+	INIT_DELAYED_WORK(&data->throttle_work, qcom_lmh_dcvs_poll);
 
 	snprintf(data->irq_name, sizeof(data->irq_name), "dcvsh-irq-%u", policy->cpu);
 	ret = request_threaded_irq(data->throttle_irq, NULL, qcom_lmh_dcvs_handle_irq,
@@ -524,6 +533,7 @@ static void qcom_cpufreq_hw_lmh_exit(struct qcom_cpufreq_data *data)
 	cancel_delayed_work_sync(&data->throttle_work);
 
 	arch_set_thermal_pressure(policy->related_cpus, 0);
+	trace_dcvsh_throttle(cpumask_first(policy->related_cpus), 0);
 }
 
 static int qcom_cpufreq_hw_cpu_init(struct cpufreq_policy *policy)
@@ -574,14 +584,12 @@ static int qcom_cpufreq_hw_cpu_init(struct cpufreq_policy *policy)
 		base = devm_ioremap(dev, res->start, resource_size(res));
 		if (!base) {
 			dev_err(dev, "failed to map resource %pR\n", res);
-			ret = -ENOMEM;
-			goto release_region;
+			return -ENOMEM;
 		}
 
 		data = devm_kzalloc(dev, sizeof(*data), GFP_KERNEL);
 		if (!data) {
-			ret = -ENOMEM;
-			goto unmap_base;
+			return -ENOMEM;
 		}
 
 		data->soc_data = of_device_get_match_data(&pdev->dev);
@@ -633,12 +641,7 @@ static int qcom_cpufreq_hw_cpu_init(struct cpufreq_policy *policy)
 
 	return 0;
 error:
-	kfree(data);
 	policy->driver_data = NULL;
-unmap_base:
-	iounmap(base);
-release_region:
-	release_mem_region(res->start, resource_size(res));
 	return ret;
 }
 
