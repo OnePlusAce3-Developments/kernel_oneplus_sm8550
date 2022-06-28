@@ -17,14 +17,12 @@
 #include <linux/spinlock.h>
 #include <linux/qcom-cpufreq-hw.h>
 
-<<<<<<< HEAD
 #if IS_ENABLED(CONFIG_OPLUS_FEATURE_OCH)
 #include <linux/cpufreq_health.h>
 #endif
-=======
+
 #define CREATE_TRACE_POINTS
 #include <trace/events/dcvsh.h>
->>>>>>> origin/t/feature_update_sm8550_21131_20220608
 
 #define LUT_MAX_ENTRIES			40U
 #define LUT_SRC				GENMASK(31, 30)
