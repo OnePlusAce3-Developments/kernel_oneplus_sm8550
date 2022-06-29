@@ -2027,6 +2027,13 @@ static int spi_geni_probe(struct platform_device *pdev)
 			goto spi_geni_probe_err;
 		}
 
+		/* to remove the votes doing icc enable/disable */
+		ret = geni_icc_enable(spi_rsc);
+		if (ret) {
+			dev_err(&pdev->dev, "%s: icc enable failed ret:%d\n", __func__, ret);
+			return ret;
+		}
+
 		ret = pinctrl_select_state(geni_mas->geni_pinctrl,
 						geni_mas->geni_gpio_sleep);
 		if (ret) {
@@ -2181,6 +2188,15 @@ static int spi_geni_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Failed to register SPI master\n");
 		goto spi_geni_probe_err;
 	}
+
+	if (!geni_mas->is_le_vm) {
+		ret = geni_icc_disable(spi_rsc);
+		if (ret) {
+			dev_err(&pdev->dev, "%s: icc disable failed ret:%d\n", __func__, ret);
+			return ret;
+		}
+	}
+
 	dev_info(&pdev->dev, "%s: completed %d\n", __func__, ret);
 	return ret;
 spi_geni_probe_err:
