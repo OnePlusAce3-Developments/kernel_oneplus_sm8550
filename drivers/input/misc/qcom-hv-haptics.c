@@ -34,6 +34,8 @@
 
 #ifdef OPLUS_FEATURE_CHG_BASIC
 #include <soc/oplus/system/boot_mode.h>
+#include <linux/version.h>
+#include <linux/proc_fs.h>
 #endif
 #include <linux/soc/qcom/battery_charger.h>
 #define OPLUS_FEATURE_RICHTAP_SUPPORT
@@ -722,6 +724,9 @@ struct haptics_chip {
 	bool                            is_hv_haptics;
 #ifdef OPLUS_FEATURE_CHG_BASIC
 	bool				disable_pm_ops;
+	int				haptic_test_times;
+	int				haptic_current_test_time;
+	int				haptic_test_duration;
 #endif
 
 #ifdef OPLUS_FEATURE_RICHTAP_SUPPORT
@@ -745,6 +750,9 @@ struct haptics_reg_info {
 #ifdef OPLUS_FEATURE_RICHTAP_SUPPORT
 struct haptics_chip *g_richtap_ptr;
 #endif //OPLUS_FEATURE_RICHTAP_SUPPORT
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	struct haptics_chip *g_chip;
+#endif
 
 static inline int get_max_fifo_samples(struct haptics_chip *chip)
 {
@@ -1501,7 +1509,7 @@ static bool is_swr_play_enabled(struct haptics_chip *chip)
 	return false;
 }
 
-#define HBOOST_WAIT_READY_COUNT		100
+#define HBOOST_WAIT_READY_COUNT		5
 #define HBOOST_WAIT_READY_INTERVAL_US	200
 static int haptics_wait_hboost_ready(struct haptics_chip *chip)
 {
@@ -6432,6 +6440,209 @@ static ssize_t primitive_duration_store(struct class *c,
 }
 static CLASS_ATTR_RW(primitive_duration);
 
+static int haptic_test_duration_show(struct seq_file *seq_filp, void *v)
+{
+	if (g_chip) {
+		seq_printf(seq_filp, "%d\n", g_chip->haptic_test_duration);
+	}
+	return 0;
+}
+static int haptic_test_duration_open(struct inode *inode, struct file *file)
+{
+	int ret;
+
+	ret = single_open(file, haptic_test_duration_show, NULL);
+	return ret;
+}
+
+static ssize_t haptic_test_duration_write(struct file *filp,
+		const char __user *buff, size_t len, loff_t *data)
+{
+	char write_data[32] = {0};
+	int val = 0;
+
+	if (len > sizeof(write_data) || len < 1) {
+		return -EINVAL;
+	}
+	if (copy_from_user(&write_data, buff, len)) {
+		pr_err("haptic_test_duration write error.\n");
+		return -EFAULT;
+	}
+	/*	critical_log = atoi(write_data);*/
+	/*	sprintf(critical_log,"%d",(void *)write_data);*/
+	write_data[len] = '\0';
+	if (write_data[len - 1] == '\n') {
+		write_data[len - 1] = '\0';
+	}
+	val = (int)simple_strtoul(write_data, NULL, 10);
+	pr_err("%s:data=%s,haptic_test_duration=%d\n",__func__,write_data, val);
+	g_chip->haptic_test_duration = val;
+
+	return len;
+}
+
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0))
+static const struct file_operations haptic_test_duration_proc_fops = {
+	.proc_open = haptic_test_duration_open,
+	.write = haptic_test_duration_write,
+	.read = seq_read,
+};
+#else
+static const struct proc_ops haptic_test_duration_proc_fops = {
+	.proc_open = haptic_test_duration_open,
+	.proc_write = haptic_test_duration_write,
+	.proc_read = seq_read,
+};
+#endif
+
+static int haptic_test_times_show(struct seq_file *seq_filp, void *v)
+{
+	if (g_chip) {
+		seq_printf(seq_filp, "%d\n", g_chip->haptic_test_times);
+	}
+	return 0;
+}
+static int haptic_test_times_open(struct inode *inode, struct file *file)
+{
+	int ret;
+
+	ret = single_open(file, haptic_test_times_show, NULL);
+	return ret;
+}
+
+static ssize_t haptic_test_times_write(struct file *filp,
+		const char __user *buff, size_t len, loff_t *data)
+{
+	char write_data[32] = {0};
+	int val = 0;
+	int rc;
+	u8 val_reg = 1;
+
+	if (len > sizeof(write_data) || len < 1) {
+		return -EINVAL;
+	}
+	if (copy_from_user(&write_data, buff, len)) {
+		pr_err("haptic_test_times error.\n");
+		return -EFAULT;
+	}
+	if (!g_chip) {
+		pr_info("haptic_test_times  g_chip null.\n");
+		return -EFAULT;
+	}
+	/*	critical_log = atoi(write_data);*/
+	/*	sprintf(critical_log,"%d",(void *)write_data);*/
+	write_data[len] = '\0';
+	if (write_data[len - 1] == '\n') {
+		write_data[len - 1] = '\0';
+	}
+	val = (int)simple_strtoul(write_data, NULL, 10);
+	pr_err("%s:data=%s,critical_log=%d\n",__func__,write_data,val);
+	g_chip->haptic_test_times = val;
+	if (g_chip->haptic_test_duration > 0 && g_chip->haptic_test_times > 0) {
+		for (g_chip->haptic_current_test_time = 0;
+			g_chip->haptic_current_test_time < g_chip->haptic_test_times; g_chip->haptic_current_test_time++) {
+			val_reg |= BRAKE_EN_BIT | PLAY_EN_BIT;
+			rc = haptics_write(g_chip, g_chip->cfg_addr_base,
+					HAP_CFG_SPMI_PLAY_REG, &val_reg, 1);
+			rc = haptics_boost_vreg_enable(g_chip, true);
+
+			rc = haptics_read(g_chip, g_chip->cfg_addr_base,
+					HAP_CFG_SPMI_PLAY_REG, &val_reg, 1);
+			if (rc >= 0)
+				dev_err(g_chip->dev, "enable haptic read F04C = 0x%x\n", val_reg);
+
+			rc = haptics_read(g_chip, g_chip->hbst_addr_base,
+					HAP_BOOST_VREG_EN_REG, &val_reg, 1);
+			if (rc >= 0)
+				dev_err(g_chip->dev, "enable haptic read F246 = 0x%x\n", val_reg);
+
+			usleep_range(g_chip->haptic_test_duration,
+					g_chip->haptic_test_duration + 1);
+
+			val_reg = 1;
+			rc = haptics_write(g_chip, g_chip->cfg_addr_base,
+					HAP_CFG_SPMI_PLAY_REG, &val_reg, 1);
+			rc = haptics_boost_vreg_enable(g_chip, false);
+
+			rc = haptics_read(g_chip, g_chip->cfg_addr_base,
+					HAP_CFG_SPMI_PLAY_REG, &val_reg, 1);
+			if (rc >= 0)
+				dev_err(g_chip->dev, "disable haptic read F04C = 0x%x\n", val_reg);
+
+			rc = haptics_read(g_chip, g_chip->hbst_addr_base,
+					HAP_BOOST_VREG_EN_REG, &val_reg, 1);
+			if (rc >= 0)
+				dev_err(g_chip->dev, "disable haptic read F246 = 0x%x\n", val_reg);
+
+			usleep_range(g_chip->haptic_test_duration,
+					g_chip->haptic_test_duration + 1);
+		}
+	}
+	g_chip->haptic_current_test_time = 0;
+	return len;
+}
+
+
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0))
+static const struct file_operations haptic_test_times_proc_fops = {
+	.open = haptic_test_times_open,
+	.write = haptic_test_times_write,
+	.read = seq_read,
+};
+#else
+static const struct proc_ops haptic_test_times_proc_fops = {
+	.proc_open = haptic_test_times_open,
+	.proc_write = haptic_test_times_write,
+	.proc_read = seq_read,
+};
+#endif
+
+static int haptic_test_current_times_show(struct seq_file *seq_filp, void *v)
+{
+	if (g_chip) {
+		seq_printf(seq_filp, "%d\n", g_chip->haptic_current_test_time);
+	}
+	return 0;
+}
+static int haptic_test_current_times_open(struct inode *inode, struct file *file)
+{
+	int ret;
+
+	ret = single_open(file, haptic_test_current_times_show, NULL);
+	return ret;
+}
+
+
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0))
+static const struct file_operations haptic_test_current_times_proc_fops = {
+	.open = haptic_test_current_times_open,
+	.read = seq_read,
+};
+#else
+static const struct proc_ops haptic_test_current_times_proc_fops = {
+	.proc_open = haptic_test_current_times_open,
+	.proc_read = seq_read,
+};
+#endif
+
+static void init_proc_haptic_test(void)
+{
+	struct proc_dir_entry *p = NULL;
+
+	p = proc_create("haptic_test_times", 0664, NULL, &haptic_test_times_proc_fops);
+	if (!p) {
+		pr_err("haptic_test_times proc_create  fail!\n");
+	}
+	p = proc_create("haptic_test_duration", 0664, NULL, &haptic_test_duration_proc_fops);
+	if (!p) {
+		pr_err("haptic_test_duration proc_create  fail!\n");
+	}
+	p = proc_create("haptic_test_current_times", 0664, NULL, &haptic_test_current_times_proc_fops);
+	if (!p) {
+		pr_err("haptic_test_current_times proc_create  fail!\n");
+	}
+}
+
 static struct attribute *hap_class_attrs[] = {
 	&class_attr_lra_calibration.attr,
 	&class_attr_lra_frequency_hz.attr,
@@ -6615,6 +6826,8 @@ static int haptics_probe(struct platform_device *pdev)
 	val = 0x32;
 	rc = haptics_write(chip, chip->cfg_addr_base,
 				HAP_CFG_AUTORES_CFG_REG, &val, 1);
+
+	g_chip = chip;
 #endif
 	ff_dev = input_dev->ff;
 	ff_dev->upload = haptics_upload_effect;
@@ -6677,6 +6890,10 @@ static int haptics_probe(struct platform_device *pdev)
 	if (rc < 0)
 		dev_err(chip->dev, "Creating debugfs failed, rc=%d\n", rc);
 #endif
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	init_proc_haptic_test();
+#endif
+
 	return 0;
 
 #ifdef OPLUS_FEATURE_RICHTAP_SUPPORT
