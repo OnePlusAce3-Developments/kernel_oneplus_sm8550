@@ -66,11 +66,10 @@ static ssize_t proc_sim_detect_read(struct file *file,
 	return ret;
 }
 
-
-static const struct file_operations sim_detect_ops = {
-	.read  = proc_sim_detect_read,
-	.open  = simple_open,
-	.owner = THIS_MODULE,
+static const struct proc_ops sim_detect_ops = {
+	.proc_open  = simple_open,
+	.proc_read  = proc_sim_detect_read,
+	.proc_lseek = default_llseek,
 };
 
 static int sim_card_detect_init(struct sim_detect_data *sim_detect_data)
@@ -93,7 +92,7 @@ static int sim_card_detect_init(struct sim_detect_data *sim_detect_data)
 		}
 	}
 
-	p = proc_create_data("sim_detect", 0644, NULL, (const struct proc_ops *)&sim_detect_ops,
+	p = proc_create_data("sim_detect", 0644, NULL, &sim_detect_ops,
                          sim_detect_data);
 	if (!p) {
 		SIMDETECT_ERR("proc create sim detect failed\n");
@@ -148,6 +147,7 @@ static struct platform_driver sim_detect_platform_driver = {
 };
 
 module_platform_driver(sim_detect_platform_driver);
+
 
 MODULE_DESCRIPTION("sim_detect");
 MODULE_LICENSE("GPL v2");
