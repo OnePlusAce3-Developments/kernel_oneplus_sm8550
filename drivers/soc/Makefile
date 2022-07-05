@@ -50,3 +50,8 @@ obj-y += oplus/boot/
 #ifdef OPLUS_FEATURE_DFR
 obj-y += oplus/dfr/
 #endif /* OPLUS_FEATURE_DFR */
+
+#ifdef OPLUS_FEATURE_MDMFEATURE
+#Xueqian.Zheng@NETWORK.SIM.2500814, 2021/11/5, add for mdm feature
+obj-$(CONFIG_OPLUS_FEATURE_MDMFEATURE)     += oplus/mdmfeature/
+#endif /*OPLUS_FEATURE_MDMFEATURE*/
