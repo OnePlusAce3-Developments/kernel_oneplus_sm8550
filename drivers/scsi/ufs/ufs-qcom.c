@@ -28,6 +28,10 @@
 #include <soc/qcom/minidump.h>
 #include <linux/nvmem-consumer.h>
 
+//bsp.storage.ufs 2021.10.14 add for /proc/devinfo/ufs
+#include <soc/oplus/device_info.h>
+#include <linux/async.h>
+
 #include "ufshcd.h"
 #include "ufshcd-pltfrm.h"
 #include "unipro.h"
@@ -4927,6 +4931,38 @@ static int ufs_qcom_read_boot_config(struct platform_device *pdev)
 	return is_bootdevice_ufs;
 }
 
+extern int register_device_proc(char *name, char *version, char *manufacture);
+
+//bsp.storage.ufs 2021.10.14 add for /proc/devinfo/ufs
+static void create_devinfo_ufs(void *data, async_cookie_t cookie)
+{
+        struct device *dev = (struct device*)data;
+        struct ufs_hba *hba = NULL;
+        //struct Scsi_Host *shost = NULL;
+        //struct scsi_device *sdev = NULL;
+        static char temp_version[5] = {0};
+        static char vendor[9] = {0};
+        static char model[17] = {0};
+
+        hba = (struct ufs_hba*)dev->driver_data;
+        msleep(1000);
+        /* scsi_device debug
+        shost = hba->host;
+        shost_for_each_device(sdev, shost) {
+                pr_err("ufs vendor: %s model: %s rev: %s\n", sdev->vendor, sdev->model, sdev->rev);
+        } */
+
+        if (hba && hba->sdev_ufs_device) {
+                pr_err("get ufs device vendor/model/rev\n");
+                strncpy(temp_version, hba->sdev_ufs_device->rev, 4);
+                strncpy(vendor, hba->sdev_ufs_device->vendor, 8);
+                strncpy(model, hba->sdev_ufs_device->model, 16);
+        }
+
+	register_device_proc("ufs_version", temp_version, vendor);
+	register_device_proc("ufs", model, vendor);
+}
+
 /**
  * ufs_qcom_probe - probe routine of the driver
  * @pdev: pointer to Platform device handle
@@ -4977,6 +5013,8 @@ static int ufs_qcom_probe(struct platform_device *pdev)
 		ufs_qcom_msg(ERR, dev, "ufshcd_pltfrm_init() failed %d\n", err);
 
 	ufs_qcom_register_hooks();
+	//bsp.storage.ufs 2021.10.14 add for /proc/devinfo/ufs
+	async_schedule(create_devinfo_ufs, dev);
 	return err;
 }
 
