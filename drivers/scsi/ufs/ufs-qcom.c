@@ -22,9 +22,13 @@
 #include <linux/debugfs.h>
 #include <trace/hooks/ufshcd.h>
 #include <linux/ipc_logging.h>
+<<<<<<< HEAD
 #include <scsi/scsi.h>
 #include <scsi/scsi_ioctl.h>
 #include <scsi/scsi_cmnd.h>
+=======
+#include <soc/qcom/minidump.h>
+>>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.023
 
 #include "ufshcd.h"
 #include "ufshcd-pltfrm.h"
@@ -3272,6 +3276,40 @@ static int ufs_qcom_shared_ice_init(struct ufs_hba *hba)
 	return ufs_qcom_parse_shared_ice_config(hba);
 }
 
+static int ufs_qcom_populate_ref_clk_ctrl(struct ufs_hba *hba)
+{
+	struct device *dev = hba->dev;
+	struct platform_device *pdev = to_platform_device(dev);
+	struct ufs_qcom_host *host = ufshcd_get_variant(hba);
+	struct resource *res;
+
+	/*
+	 * for newer controllers, device reference clock control bit has
+	 * moved inside UFS controller register address space itself.
+	 */
+	if (host->hw_ver.major >= 0x02) {
+		host->dev_ref_clk_ctrl_mmio = hba->mmio_base + REG_UFS_CFG1;
+		host->dev_ref_clk_en_mask = BIT(26);
+		return 0;
+	}
+
+	/* "dev_ref_clk_ctrl_mem" is optional resource */
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM,
+						"dev_ref_clk_ctrl_mem");
+	if (res) {
+		host->dev_ref_clk_ctrl_mmio =
+			devm_ioremap_resource(dev, res);
+		if (IS_ERR(host->dev_ref_clk_ctrl_mmio)) {
+			dev_warn(dev,
+				"%s: could not map dev_ref_clk_ctrl_mmio, err %ld\n",
+				__func__, PTR_ERR(host->dev_ref_clk_ctrl_mmio));
+				host->dev_ref_clk_ctrl_mmio = NULL;
+		}
+		host->dev_ref_clk_en_mask = BIT(5);
+	}
+	return 0;
+}
+
 static void ufs_qcom_setup_max_hs_gear(struct ufs_qcom_host *host)
 {
 	u32 param0;
@@ -3293,6 +3331,7 @@ static void ufs_qcom_setup_max_hs_gear(struct ufs_qcom_host *host)
 	}
 }
 
+<<<<<<< HEAD
 //#ifdef OPLUS_UFS_SIGNAL_QUALITY
 static void recordTimeStamp(
 	struct signal_quality *record,
@@ -3538,6 +3577,30 @@ void remove_signal_quality_proc(struct unipro_signal_quality_ctrl *signalCtrl)
 	return;
 }
 //#endif /*OPLUS_UFS_SIGNAL_QUALITY*/
+=======
+static void ufs_qcom_register_minidump(uintptr_t vaddr, u64 size,
+					const char *buf_name, u64 id)
+{
+	struct md_region md_entry;
+	int ret;
+
+	if (!msm_minidump_enabled())
+		return;
+
+	scnprintf(md_entry.name, sizeof(md_entry.name), "%s_%d",
+			buf_name, id);
+	md_entry.virt_addr = vaddr;
+	md_entry.phys_addr = virt_to_phys((void *)vaddr);
+	md_entry.size = size;
+
+	ret = msm_minidump_add_region(&md_entry);
+	if (ret < 0) {
+		pr_err("Failed to register UFS buffer %s in Minidump ret %d\n",
+				buf_name, ret);
+		return;
+	}
+}
+>>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.023
 
 /**
  * ufs_qcom_init - bind phy with controller
@@ -3553,9 +3616,7 @@ static int ufs_qcom_init(struct ufs_hba *hba)
 {
 	int err;
 	struct device *dev = hba->dev;
-	struct platform_device *pdev = to_platform_device(dev);
 	struct ufs_qcom_host *host;
-	struct resource *res;
 	struct ufs_qcom_thermal *ut;
 	struct ufs_clk_info *clki;
 
@@ -3636,30 +3697,7 @@ static int ufs_qcom_init(struct ufs_hba *hba)
 	ufs_qcom_get_controller_revision(hba, &host->hw_ver.major,
 		&host->hw_ver.minor, &host->hw_ver.step);
 
-	/*
-	 * for newer controllers, device reference clock control bit has
-	 * moved inside UFS controller register address space itself.
-	 */
-	if (host->hw_ver.major >= 0x02) {
-		host->dev_ref_clk_ctrl_mmio = hba->mmio_base + REG_UFS_CFG1;
-		host->dev_ref_clk_en_mask = BIT(26);
-	} else {
-		/* "dev_ref_clk_ctrl_mem" is optional resource */
-		res = platform_get_resource_byname(pdev, IORESOURCE_MEM,
-						   "dev_ref_clk_ctrl_mem");
-		if (res) {
-			host->dev_ref_clk_ctrl_mmio =
-					devm_ioremap_resource(dev, res);
-			if (IS_ERR(host->dev_ref_clk_ctrl_mmio)) {
-				ufs_qcom_msg(WARN, dev,
-					"%s: could not map dev_ref_clk_ctrl_mmio, err %ld\n",
-					__func__,
-					PTR_ERR(host->dev_ref_clk_ctrl_mmio));
-				host->dev_ref_clk_ctrl_mmio = NULL;
-			}
-			host->dev_ref_clk_en_mask = BIT(5);
-		}
-	}
+	ufs_qcom_populate_ref_clk_ctrl(hba);
 
 	ufs_qcom_setup_max_hs_gear(host);
 
@@ -3788,6 +3826,16 @@ static int ufs_qcom_init(struct ufs_hba *hba)
 							"ufs-qcom", 0);
 	if (!host->ufs_ipc_log_ctx)
 		ufs_qcom_msg(WARN, dev, "IPC Log init - failed\n");
+
+	/* register minidump */
+	if (msm_minidump_enabled()) {
+		ufs_qcom_register_minidump((uintptr_t)host,
+					sizeof(struct ufs_qcom_host), "UFS_QHOST", 0);
+		ufs_qcom_register_minidump((uintptr_t)hba,
+					sizeof(struct ufs_hba), "UFS_HBA", 0);
+		ufs_qcom_register_minidump((uintptr_t)hba->host,
+					sizeof(struct Scsi_Host), "UFS_SHOST", 0);
+	}
 
 	goto out;
 
@@ -4299,6 +4347,8 @@ static void ufs_qcom_dump_dbg_regs(struct ufs_hba *hba)
 static void ufs_qcom_parse_limits(struct ufs_qcom_host *host)
 {
 	struct device_node *np = host->hba->dev->of_node;
+	u32 val;
+	u32 dev_major = 0, dev_minor = 0;
 
 	if (!np)
 		return;
@@ -4309,6 +4359,29 @@ static void ufs_qcom_parse_limits(struct ufs_qcom_host *host)
 	host->limit_rx_pwm_gear = UFS_QCOM_LIMIT_PWMGEAR_RX;
 	host->limit_rate = UFS_QCOM_LIMIT_HS_RATE;
 	host->limit_phy_submode = UFS_QCOM_LIMIT_PHY_SUBMODE;
+
+	/*
+	 * The bootloader passes the on board device
+	 * information to the HLOS using the UFS host controller register's
+	 * UFS_MEM_DEBUG_SPARE_CFG Bit[0:3] = device's minor revision
+	 * UFS_MEM_DEBUG_SPARE_CFG Bit[4:7] = device's major revision
+	 * For example, UFS 3.1 devices would have a 0x31, and UFS 4.0 devices
+	 * would have a 0x40 as the content of the mentioned register.
+	 * If the bootloader does not support this feature, the default
+	 * hardcoded setting would be used. The DT settings can be used to
+	 * override any other gear's and Rate's settings.
+	 */
+	if (host->hw_ver.major >= 0x5) {
+		val = ufshcd_readl(host->hba, REG_UFS_DEBUG_SPARE_CFG);
+		dev_major = (val & UFS_DEVICE_VER_MAJOR_MASK) >>
+				UFS_DEVICE_VER_MAJOR_SHFT;
+		dev_minor = val & UFS_DEVICE_VER_MINOR_MASK;
+	}
+
+	if (host->hw_ver.major == 0x5 && dev_major == 0x4 && dev_minor == 0) {
+		host->limit_rate = PA_HS_MODE_A;
+		host->limit_phy_submode = UFS_QCOM_PHY_SUBMODE_G5;
+	}
 
 	of_property_read_u32(np, "limit-tx-hs-gear", &host->limit_tx_hs_gear);
 	of_property_read_u32(np, "limit-rx-hs-gear", &host->limit_rx_hs_gear);
@@ -4765,6 +4838,11 @@ static void ufs_qcom_hook_check_int_errors(void *param, struct ufs_hba *hba,
 					hba->errors, hba->uic_error);
 }
 
+static void ufs_qcom_update_sdev(void *param, struct scsi_device *sdev)
+{
+	sdev->broken_fua = 1;
+}
+
 /*
  * Refer: common/include/trace/hooks/ufshcd.h for available hooks
  */
@@ -4780,6 +4858,7 @@ static void ufs_qcom_register_hooks(void)
 				ufs_qcom_hook_send_tm_command, NULL);
 	register_trace_android_vh_ufs_check_int_errors(
 				ufs_qcom_hook_check_int_errors, NULL);
+	register_trace_android_vh_ufs_update_sdev(ufs_qcom_update_sdev, NULL);
 }
 
 #ifdef CONFIG_ARM_QCOM_CPUFREQ_HW
@@ -4883,6 +4962,12 @@ static void ufs_qcom_shutdown(struct platform_device *pdev)
 
 	ufs_qcom_log_str(host, "0xdead\n");
 	ufshcd_pltfrm_shutdown(pdev);
+
+	/* UFS_RESET TLMM register cannot reset to POR value '1' after warm
+	 * reset, so deassert ufs device reset line after UFS device shutdown
+	 * to ensure the UFS_RESET TLMM register value is POR value
+	 */
+	ufs_qcom_device_reset_ctrl(hba, false);
 }
 
 static const struct of_device_id ufs_qcom_of_match[] = {
