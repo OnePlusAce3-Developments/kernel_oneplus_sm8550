@@ -22,11 +22,8 @@ android/abi_gki_aarch64_mtktv
 android/abi_gki_aarch64_mtk
 android/abi_gki_aarch64_qcom
 android/abi_gki_aarch64_unisoc
-<<<<<<< HEAD
 android/abi_gki_aarch64_oplus
-=======
 android/abi_gki_aarch64_xiaomi
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.023
 "
 
 FILES="${FILES}
