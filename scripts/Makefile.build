@@ -313,15 +313,11 @@ endif
 cmd_mod = echo $(call real-search, $*.o, .o, -objs -y -m) | \
 	$(AWK) -v RS='( |\n)' '!x[$$0]++ { print("$(obj)/"$$0) }' > $@
 
-<<<<<<< HEAD
 #ifdef OPLUS_FEATURE_CHG_BASIC
 	cmd_mod_lds = $(if $(KBUILD_LDS_MODULE_ATTACH), cat $(srctree)/$(src)/$(firstword $(KBUILD_LDS_MODULE_ATTACH)) > $(@:.mod=.lds))
 #endif
 
-$(obj)/%.mod: $(obj)/%$(mod-prelink-ext).o FORCE
-=======
 $(obj)/%.mod: FORCE
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.023
 	$(call if_changed,mod)
 #ifdef OPLUS_FEATURE_CHG_BASIC
 	$(call cmd,mod_lds)
