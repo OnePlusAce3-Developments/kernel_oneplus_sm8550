@@ -22,13 +22,10 @@
 #include <linux/debugfs.h>
 #include <trace/hooks/ufshcd.h>
 #include <linux/ipc_logging.h>
-<<<<<<< HEAD
 #include <scsi/scsi.h>
 #include <scsi/scsi_ioctl.h>
 #include <scsi/scsi_cmnd.h>
-=======
 #include <soc/qcom/minidump.h>
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.023
 
 #include "ufshcd.h"
 #include "ufshcd-pltfrm.h"
@@ -3331,7 +3328,6 @@ static void ufs_qcom_setup_max_hs_gear(struct ufs_qcom_host *host)
 	}
 }
 
-<<<<<<< HEAD
 //#ifdef OPLUS_UFS_SIGNAL_QUALITY
 static void recordTimeStamp(
 	struct signal_quality *record,
@@ -3577,7 +3573,6 @@ void remove_signal_quality_proc(struct unipro_signal_quality_ctrl *signalCtrl)
 	return;
 }
 //#endif /*OPLUS_UFS_SIGNAL_QUALITY*/
-=======
 static void ufs_qcom_register_minidump(uintptr_t vaddr, u64 size,
 					const char *buf_name, u64 id)
 {
@@ -3600,7 +3595,6 @@ static void ufs_qcom_register_minidump(uintptr_t vaddr, u64 size,
 		return;
 	}
 }
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.023
 
 /**
  * ufs_qcom_init - bind phy with controller
