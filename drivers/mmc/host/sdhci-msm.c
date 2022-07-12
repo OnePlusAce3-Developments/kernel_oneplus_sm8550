@@ -25,12 +25,9 @@
 #include <linux/interrupt.h>
 #include <linux/of.h>
 #include <linux/reset.h>
-<<<<<<< HEAD
 #include <linux/mmc/sdio.h>
 #include <linux/mmc/host.h>
-=======
 #include <linux/clk/qcom.h>
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.023
 
 #include "sdhci-pltfm.h"
 #include "cqhci.h"
