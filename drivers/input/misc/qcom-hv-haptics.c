@@ -1636,7 +1636,7 @@ static int haptics_open_loop_drive_config(struct haptics_chip *chip, bool en)
 
 			dev_dbg(chip->dev, "Toggle CAL_EN in open-loop-VREG playing\n");
 		}
-<<<<<<< HEAD
+#ifndef OPLUS_FEATURE_RICHTAP_SUPPORT
 	} else if (!is_haptics_external_powered(chip) &&
 			(chip->clamped_vmax_mv == MAX_HV_VMAX_MV)) {
 		/*
@@ -1647,23 +1647,16 @@ static int haptics_open_loop_drive_config(struct haptics_chip *chip, bool en)
 		if (rc < 0)
 			return rc;
 	}
-
-	return 0;
-=======
-#ifndef OPLUS_FEATURE_RICHTAP_SUPPORT
-	} else if (!is_haptics_external_powered(chip)) {
-	rc = haptics_masked_write(chip, chip->cfg_addr_base,
-				HAP_CFG_VSET_CFG_REG, mask, 0);
-	}
 #else
-     } else if (!is_haptics_external_powered(chip)) {
-                val = en ? FORCE_VREG_RDY_BIT : 0;
-			rc = haptics_masked_write(chip, chip->cfg_addr_base,
-				HAP_CFG_VSET_CFG_REG, mask, val);
+	} else if (!is_haptics_external_powered(chip) &&
+			(chip->clamped_vmax_mv == MAX_HV_VMAX_MV)) {
+		val = en ? FORCE_VREG_RDY_BIT : 0;
+		rc = haptics_force_vreg_ready(chip, val);
+		if (rc < 0)
+			return rc;
 	}
 #endif
-	return rc;
->>>>>>> origin/qcom/kernel.platform.2.0.r1/master
+	return 0;
 }
 
 #define BOOST_VREG_OFF_DELAY_SECONDS	2
