@@ -97,6 +97,7 @@ static const struct proc_ops  nfc_info_fops = {
 	.proc_open  = nfc_open,
 	.proc_read  = seq_read,
 	.proc_release = single_release,
+        .proc_lseek	= seq_lseek,
 };
 
 static int oplus_nfc_probe(struct platform_device *pdev)

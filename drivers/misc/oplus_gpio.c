@@ -174,9 +174,8 @@ static int dual_sim_det_show(struct seq_file *m, void *v)
 	struct sim_det_data *det_info = m->private;
 	int esim_status = 0;
 
-    OPLUS_GPIO_MSG("dual_sim_det_show begin");
+	OPLUS_GPIO_MSG("dual_sim_det_show begin");
 	if (det_info) {
-
 		det_info->gpio_status = -1;
 
 		/* uim2 switch to real sim */
@@ -232,14 +231,14 @@ static int dual_sim_det_show(struct seq_file *m, void *v)
         OPLUS_GPIO_MSG("dual_sim_det_show end1");
 		seq_printf(m, "%d\n", det_info->gpio_status);
 	}
-    OPLUS_GPIO_MSG("dual_sim_det_show end2");
+	OPLUS_GPIO_MSG("dual_sim_det_show end2");
 
 	return 0;
 }
 
 static int dual_sim_det_proc_open(struct inode *inode, struct file *file)
 {
-    OPLUS_GPIO_MSG("begin single_open");
+	OPLUS_GPIO_MSG("begin single_open");
 	return single_open(file, dual_sim_det_show, PDE_DATA(inode));
 }
 
