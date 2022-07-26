@@ -101,4 +101,5 @@ buildvariant.ko
 cdt_integrity.ko
 oplus_project.ko
 boot_mode.ko
+bootloader_log.ko
 cpufreq_health.ko
