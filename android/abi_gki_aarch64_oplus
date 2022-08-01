@@ -1,12 +1,10 @@
 [abi_symbol_list]
-<<<<<<< HEAD
   public_key_verify_signature
   devres_destroy
   drm_crtc_vblank_waitqueue
   drm_crtc_vblank_count
   mmc_wait_for_cmd
   sdio_writeb_readb
-=======
   address_space_init_once
   alloc_anon_inode
   __alloc_pages
@@ -210,4 +208,3 @@
   __tracepoint_android_vh_drain_all_pages_bypass
   __tracepoint_android_vh_cma_drain_all_pages_bypass
   __tracepoint_android_vh_pcplist_add_cma_pages_bypass
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.030
