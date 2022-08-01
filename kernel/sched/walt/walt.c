@@ -203,6 +203,15 @@ void walt_task_dump(struct task_struct *p)
 	SCHED_PRINT(wts->mark_start);
 	SCHED_PRINT(wts->demand);
 	SCHED_PRINT(wts->coloc_demand);
+	SCHED_PRINT(wts->enqueue_after_migration);
+	SCHED_PRINT(wts->last_sleep_ts);
+	SCHED_PRINT(wts->prev_cpu);
+	SCHED_PRINT(wts->new_cpu);
+	SCHED_PRINT(wts->misfit);
+	SCHED_PRINT(wts->prev_on_rq);
+	SCHED_PRINT(wts->prev_on_rq_cpu);
+	SCHED_PRINT(wts->mvp_prio);
+	SCHED_PRINT(wts->iowaited);
 	SCHED_PRINT(sched_ravg_window);
 	SCHED_PRINT(new_sched_ravg_window);
 
@@ -1099,6 +1108,8 @@ static void migrate_busy_time_subtraction(struct task_struct *p, int new_cpu)
 		WALT_BUG(WALT_BUG_UPSTREAM, p, "on CPU %d task %s(%d) not on src_rq %d",
 				raw_smp_processor_id(), p->comm, p->pid, src_rq->cpu);
 
+	wts->new_cpu = new_cpu;
+
 	if (!same_freq_domain(task_cpu(p), new_cpu))
 		wts->enqueue_after_migration = 2; /* 2 is intercluster */
 	else
@@ -1226,7 +1237,7 @@ static void migrate_busy_time_addition(struct task_struct *p, int new_cpu, u64 w
 	if (is_ed_enabled() && is_ed_task(p, wallclock))
 		dest_wrq->ed_task = p;
 
-	wts->enqueue_after_migration = 0;
+	wts->new_cpu = -1;
 }
 
 #define INC_STEP 8
@@ -2389,6 +2400,7 @@ static inline void __sched_fork_init(struct task_struct *p)
 	wts->boosted_task_load	= 0;
 }
 
+#define WALT_MAGIC 0x6c747761
 static void init_new_task_load(struct task_struct *p)
 {
 	int i;
@@ -2404,6 +2416,7 @@ static void init_new_task_load(struct task_struct *p)
 	INIT_LIST_HEAD(&wts->grp_list);
 
 	wts->prev_cpu = raw_smp_processor_id();
+	wts->new_cpu = -1;
 	wts->enqueue_after_migration = 0;
 	wts->mark_start = 0;
 	wts->window_start = 0;
@@ -2444,6 +2457,7 @@ static void init_new_task_load(struct task_struct *p)
 	wts->total_exec = 0;
 	wts->mvp_prio = WALT_NOT_MVP;
 	wts->cidx = 0;
+	wts->walt_task_init = WALT_MAGIC;
 	__sched_fork_init(p);
 }
 
@@ -3393,6 +3407,12 @@ static void transfer_busy_time(struct rq *rq,
 
 	new_task = is_new_task(p);
 
+	if (wts->enqueue_after_migration != 0) {
+		wallclock = walt_sched_clock();
+		migrate_busy_time_addition(p, cpu_of(rq), wallclock);
+		wts->enqueue_after_migration = 0;
+	}
+
 	cpu_time = &wrq->grp_time;
 	if (event == ADD_TASK) {
 		migrate_type = RQ_TO_GROUP;
@@ -3780,6 +3800,50 @@ static inline void irq_work_restrict_to_mig_clusters(cpumask_t *lock_cpus)
 	}
 }
 
+static void update_cpu_capacity_helper(int cpu)
+{
+	unsigned long fmax_capacity = arch_scale_cpu_capacity(cpu);
+	unsigned long thermal_pressure = arch_scale_thermal_pressure(cpu);
+	unsigned long thermal_cap, old;
+	struct walt_sched_cluster *cluster;
+	struct rq *rq = cpu_rq(cpu);
+
+	if (unlikely(walt_disabled))
+		return;
+
+	/*
+	 * thermal_pressure = cpu_scale - curr_cap_as_per_thermal.
+	 * so,
+	 * curr_cap_as_per_thermal = cpu_scale - thermal_pressure.
+	 */
+
+	thermal_cap = fmax_capacity - thermal_pressure;
+
+	cluster = cpu_cluster(cpu);
+	/* reduce the fmax_capacity under cpufreq constraints */
+	if (cluster->max_freq != cluster->max_possible_freq)
+		fmax_capacity = mult_frac(fmax_capacity, cluster->max_freq,
+					 cluster->max_possible_freq);
+
+	old = rq->cpu_capacity_orig;
+	rq->cpu_capacity_orig = min(fmax_capacity, thermal_cap);
+
+	if (old != rq->cpu_capacity_orig)
+		trace_update_cpu_capacity(cpu, 0, 0);
+}
+
+/*
+ * The intention of this hook is to update cpu_capacity_orig as well as
+ * (*capacity), otherwise we will end up capacity_of() > capacity_orig_of().
+ */
+static void android_rvh_update_cpu_capacity(void *unused, int cpu, unsigned long *capacity)
+{
+	unsigned long rt_pressure = arch_scale_cpu_capacity(cpu) - *capacity;
+
+	update_cpu_capacity_helper(cpu);
+	*capacity = max((int)(cpu_rq(cpu)->cpu_capacity_orig - rt_pressure), 0);
+}
+
 /**
  * walt_irq_work() - perform walt irq work for rollover and migration
  *
@@ -3819,6 +3883,11 @@ static void walt_irq_work(struct irq_work *irq_work)
 		else
 			raw_spin_lock_nested(&cpu_rq(cpu)->__lock, level);
 		level++;
+	}
+
+	if (!is_migration) {
+		for_each_cpu(cpu, &lock_cpus)
+			update_cpu_capacity_helper(cpu);
 	}
 
 	__walt_irq_work_locked(is_migration, &lock_cpus);
@@ -4056,45 +4125,6 @@ static void walt_cpu_frequency_limits(void *unused, struct cpufreq_policy *polic
 	cpu_cluster(policy->cpu)->max_freq = policy->max;
 }
 
-/*
- * The intention of this hook is to update cpu_capacity_orig as well as
- * (*capacity), otherwise we will end up capacity_of() > capacity_orig_of().
- */
-static void android_rvh_update_cpu_capacity(void *unused, int cpu, unsigned long *capacity)
-{
-	unsigned long fmax_capacity = arch_scale_cpu_capacity(cpu);
-	unsigned long thermal_pressure = arch_scale_thermal_pressure(cpu);
-	unsigned long thermal_cap, old;
-	unsigned long rt_pressure = fmax_capacity - *capacity;
-	struct walt_sched_cluster *cluster;
-	struct rq *rq = cpu_rq(cpu);
-
-	if (unlikely(walt_disabled))
-		return;
-
-	/*
-	 * thermal_pressure = cpu_scale - curr_cap_as_per_thermal.
-	 * so,
-	 * curr_cap_as_per_thermal = cpu_scale - thermal_pressure.
-	 */
-
-	thermal_cap = fmax_capacity - thermal_pressure;
-
-	cluster = cpu_cluster(cpu);
-	/* reduce the fmax_capacity under cpufreq constraints */
-	if (cluster->max_freq != cluster->max_possible_freq)
-		fmax_capacity = mult_frac(fmax_capacity, cluster->max_freq,
-					 cluster->max_possible_freq);
-
-	old = rq->cpu_capacity_orig;
-	rq->cpu_capacity_orig = min(fmax_capacity, thermal_cap);
-
-	if (old != rq->cpu_capacity_orig)
-		trace_update_cpu_capacity(cpu, rt_pressure, *capacity);
-
-	*capacity = max(rq->cpu_capacity_orig - rt_pressure, 1UL);
-}
-
 static void android_rvh_sched_cpu_starting(void *unused, int cpu)
 {
 	if (unlikely(walt_disabled))
@@ -4220,6 +4250,7 @@ static void android_rvh_enqueue_task(void *unused, struct rq *rq, struct task_st
 	if (wts->enqueue_after_migration != 0) {
 		wallclock = walt_sched_clock();
 		migrate_busy_time_addition(p, cpu_of(rq), wallclock);
+		wts->enqueue_after_migration = 0;
 	}
 
 	wts->prev_on_rq = 1;
@@ -4257,7 +4288,8 @@ static void android_rvh_dequeue_task(void *unused, struct rq *rq, struct task_st
 	 * therefore the check to ensure that prev_on_rq_cpu is needed to prevent
 	 * an invalid failure.
 	 */
-	if (wts->prev_on_rq_cpu >= 0 && wts->prev_on_rq_cpu != cpu_of(rq))
+	if (wts->prev_on_rq_cpu >= 0 && wts->prev_on_rq_cpu != cpu_of(rq)
+		&& wts->walt_task_init == WALT_MAGIC)
 		WALT_BUG(WALT_BUG_UPSTREAM, p, "dequeue cpu %d not same as enqueue %d\n",
 			 cpu_of(rq), wts->prev_on_rq_cpu);
 
