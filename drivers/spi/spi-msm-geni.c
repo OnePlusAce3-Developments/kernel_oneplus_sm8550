@@ -2200,12 +2200,8 @@ static int spi_geni_probe(struct platform_device *pdev)
 	if (!geni_mas->is_le_vm) {
 		ret = geni_icc_disable(spi_rsc);
 		if (ret) {
-<<<<<<< HEAD
-			dev_err(&pdev->dev, "%s: icc disable failed ret:%d\n", __func__, ret);
-=======
 			dev_err(&pdev->dev, "%s: icc disable failed ret:%d\n",
 				__func__, ret);
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.030
 			return ret;
 		}
 	}
