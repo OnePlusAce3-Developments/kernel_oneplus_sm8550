@@ -117,7 +117,9 @@
 #define DEFAULT_OLD_STEADY_VMAX		9700
 #define VIBRATOR_TYPE_SLA0815		8151
 #define VIBRATOR_TYPE_ELA0809		809
+#define VIBRATOR_TYPE_SLA9999		9999
 #define AT_TEST_VMAX_MV				3700
+#define AT_TEST_T_LRA_US			10000
 #endif
 #define HAP_CFG_DRV_WF_SEL_REG			0x49
 #define DRV_WF_FMT_BIT				BIT(4)
@@ -2206,7 +2208,20 @@ static int haptics_load_constant_effect(struct haptics_chip *chip, u8 amplitude)
 		vmax_mv = chip->hpwr_voltage_mv - hdrm_mv;
 	}
 
-
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	if (get_boot_mode() == MSM_BOOT_MODE__FACTORY ||
+			get_boot_mode() == MSM_BOOT_MODE__RF ||
+			get_boot_mode() == MSM_BOOT_MODE__WLAN) {
+		if (chip->config.vibrator_type == VIBRATOR_TYPE_SLA0815 ||
+			chip->config.vibrator_type == VIBRATOR_TYPE_ELA0809 ||
+			chip->config.vibrator_type == VIBRATOR_TYPE_SLA9999) {
+			vmax_mv = AT_TEST_VMAX_MV;
+			rc = haptics_config_openloop_lra_period(chip, AT_TEST_T_LRA_US);
+			if (rc < 0)
+				return rc;
+		}
+	}
+#endif
 
 	/* configure VMAX in case it was changed in previous effect playing */
 	rc = haptics_set_vmax_mv(chip, vmax_mv);
@@ -5418,6 +5433,13 @@ static ssize_t lra_cal_cl_t_lra_us_store(struct class *c,
 	rc = kstrtouint(buf, 0, &val);
 	if (rc < 0)
 		return rc;
+
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	if (val == 0) {
+		pr_info("store cl_t_lra_us:%d\n", val);
+		return count;
+	}
+#endif
 
 	chip->cal_data.cl_t_lra_us = val;
 	chip->config.cl_t_lra_us = val;
