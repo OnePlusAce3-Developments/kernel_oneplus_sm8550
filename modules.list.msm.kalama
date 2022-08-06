@@ -102,4 +102,5 @@ cdt_integrity.ko
 oplus_project.ko
 boot_mode.ko
 bootloader_log.ko
+oplus_phoenix.ko
 cpufreq_health.ko
