@@ -56,6 +56,24 @@ source "drivers/soc/oplus/boot/Kconfig"
 source "kernel/oplus_cpu/cpufreq_health/Kconfig"
 #endif /* OPLUS_FEATURE_OCH */
 
+#ifdef OPLUS_FEATURE_OMRG
+#Long.Gao@BSP.Power 2021/09/13, add for oplus omrg
+source "kernel/oplus_cpu/oplus_omrg/Kconfig"
+#endif /* OPLUS_FEATURE_OMRG */
+
+#ifdef OPLUS_FEATURE_ATD
+source "kernel/oplus_cpu/detection/Kconfig"
+#endif /* OPLUS_FEATURE_ATD */
+
+#ifdef OPLUS_FEATURE_SUGOV_POWER_EFFIENCY
+#chengzhangtao@bsp.power.basic, 2021/10/08, add for cpu power effiency
+source "kernel/oplus_cpu/cpufreq_effiency/Kconfig"
+#endif /* OPLUS_FEATURE_SUGOV_POWER_EFFIENCY */
+
+#ifdef OPLUS_FEATURE_GKI_CPUFREQ_BOUNCING
+source "kernel/oplus_cpu/cpufreq_bouncing/Kconfig"
+#endif /* OPLUS_FEATURE_GKI_CPUFREQ_BOUNCING */
+
 endmenu
 
 #ifdef OPLUS_FEATURE_TP_BASIC
