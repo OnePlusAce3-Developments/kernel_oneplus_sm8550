@@ -105,3 +105,4 @@ boot_mode.ko
 bootloader_log.ko
 oplus_phoenix.ko
 cpufreq_health.ko
+horae_shell_temp.ko

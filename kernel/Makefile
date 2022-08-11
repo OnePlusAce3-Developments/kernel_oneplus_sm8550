@@ -168,6 +168,10 @@ clean-files := kheaders_data.tar.xz kheaders.md5
 obj-$(CONFIG_OPLUS_FEATURE_OCH) += oplus_cpu/cpufreq_health/
 #endif /* OPLUS_FEATURE_OCH */
 
+#ifdef OPLUS_FEATURE_THERMAL_HORAE
+obj-$(CONFIG_HORAE_THERMAL_SHELL) += oplus_cpu/thermal/
+#endif /* OPLUS_FEATURE_THERMAL_HORAE */
+
 #
 # ANDROID: GKI: Generate headerfiles required for gki_module.o
 #
