@@ -39,6 +39,11 @@ obj-$(CONFIG_OPLUS_DEVICE_IFNO)  +=  oplus/device_info/
 
 obj-y                           += oplus/sensor/
 
+#ifdef CONFIG_OPLUS_SENSOR_CONSUMER_IR
+#pei.lu@BSP.SENSOR, 2022/07/29, Add for consumer ir
+obj-$(CONFIG_OPLUS_SENSOR_CONSUMER_IR_CORE) += oplus/oplus_consumer_ir/
+#endif /* CONFIG_OPLUS_SENSOR_CONSUMER_IR */
+
 #ifdef OPLUS_FEATURE_DFT
 obj-y += oplus/dft/
 #endif /* ifdef OPLUS_FEATURE_DFT */
