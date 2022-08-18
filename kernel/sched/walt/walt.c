@@ -2400,7 +2400,6 @@ static inline void __sched_fork_init(struct task_struct *p)
 	wts->boosted_task_load	= 0;
 }
 
-#define WALT_MAGIC 0x6c747761
 static void init_new_task_load(struct task_struct *p)
 {
 	int i;
@@ -2457,8 +2456,8 @@ static void init_new_task_load(struct task_struct *p)
 	wts->total_exec = 0;
 	wts->mvp_prio = WALT_NOT_MVP;
 	wts->cidx = 0;
-	wts->walt_task_init = WALT_MAGIC;
 	__sched_fork_init(p);
+	walt_flag_set(p, WALT_INIT, 1);
 }
 
 static void init_existing_task_load(struct task_struct *p)
@@ -4223,12 +4222,16 @@ static void android_rvh_enqueue_task(void *unused, struct rq *rq, struct task_st
 {
 	u64 wallclock;
 	struct walt_task_struct *wts = (struct walt_task_struct *) p->android_vendor_data1;
+	struct walt_rq *wrq = (struct walt_rq *) rq->android_vendor_data1;
 	bool double_enqueue = false;
 
 	if (unlikely(walt_disabled))
 		return;
 
 	lockdep_assert_held(&rq->__lock);
+
+	if (!is_per_cpu_kthread(p))
+		wrq->enqueue_counter++;
 
 	if (p->cpu != cpu_of(rq))
 		WALT_BUG(WALT_BUG_UPSTREAM, p, "enqueuing on rq %d when task->cpu is %d\n",
@@ -4288,8 +4291,8 @@ static void android_rvh_dequeue_task(void *unused, struct rq *rq, struct task_st
 	 * therefore the check to ensure that prev_on_rq_cpu is needed to prevent
 	 * an invalid failure.
 	 */
-	if (wts->prev_on_rq_cpu >= 0 && wts->prev_on_rq_cpu != cpu_of(rq)
-		&& wts->walt_task_init == WALT_MAGIC)
+	if (wts->prev_on_rq_cpu >= 0 && wts->prev_on_rq_cpu != cpu_of(rq) &&
+			walt_flag_test(p, WALT_INIT))
 		WALT_BUG(WALT_BUG_UPSTREAM, p, "dequeue cpu %d not same as enqueue %d\n",
 			 cpu_of(rq), wts->prev_on_rq_cpu);
 

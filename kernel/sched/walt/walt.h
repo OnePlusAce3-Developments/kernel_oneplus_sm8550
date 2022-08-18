@@ -124,6 +124,7 @@ struct walt_rq {
 	struct list_head	mvp_tasks;
 	int                     num_mvp_tasks;
 	u64			latest_clock;
+	u32			enqueue_counter;
 };
 
 struct walt_sched_cluster {
@@ -902,6 +903,23 @@ static inline bool walt_fair_task(struct task_struct *p)
 extern int sched_long_running_rt_task_ms_handler(struct ctl_table *table, int write,
 		void __user *buffer, size_t *lenp,
 		loff_t *ppos);
+
+static inline void walt_flag_set(struct task_struct *p, enum walt_flags feature, bool set)
+{
+	struct walt_task_struct *wts = (struct walt_task_struct *) p->android_vendor_data1;
+
+	if (set)
+		wts->flags |= 1 << feature;
+	else
+		wts->flags &= ~(1 << feature);
+}
+
+static inline bool walt_flag_test(struct task_struct *p, enum walt_flags feature)
+{
+	struct walt_task_struct *wts = (struct walt_task_struct *) p->android_vendor_data1;
+
+	return !!(wts->flags & (1 << feature));
+}
 
 #define WALT_MVP_SLICE		3000000U
 #define WALT_MVP_LIMIT		(4 * WALT_MVP_SLICE)

@@ -26,7 +26,6 @@
 #include <scsi/scsi_ioctl.h>
 #include <scsi/scsi_cmnd.h>
 #include <soc/qcom/minidump.h>
-#include <linux/nvmem-consumer.h>
 
 //bsp.storage.ufs 2021.10.14 add for /proc/devinfo/ufs
 #include <soc/oplus/device_info.h>
@@ -4892,7 +4891,7 @@ static int ufs_cpufreq_status(void)
 
 	policy = cpufreq_cpu_get(0);
 	if (!policy) {
-		ufs_qcom_msg(WARN, dev, "cpufreq not probed yet, defer once\n");
+		ufs_qcom_msg(WARN, NULL, "cpufreq not probed yet, defer once\n");
 		return -EPROBE_DEFER;
 	}
 
@@ -4907,29 +4906,6 @@ static int ufs_cpufreq_status(void)
 }
 #endif
 
-u32 is_bootdevice_ufs;
-
-static int ufs_qcom_read_boot_config(struct platform_device *pdev)
-{
-	u32 *buf;
-	size_t len;
-	struct nvmem_cell *cell;
-
-	cell = nvmem_cell_get(&pdev->dev, "boot_conf");
-	if (IS_ERR(cell))
-		return -EINVAL;
-
-	buf = nvmem_cell_read(cell, &len);
-	if (IS_ERR(buf))
-		return -EINVAL;
-
-	is_bootdevice_ufs = (*buf) >> 1 & 0x1f;
-	dev_info(&pdev->dev, "boot config reg val = %x is_bootdevice_ufs = %x\n", *buf, is_bootdevice_ufs);
-	kfree(buf);
-	nvmem_cell_put(cell);
-
-	return is_bootdevice_ufs;
-}
 
 extern int register_device_proc(char *name, char *version, char *manufacture);
 
@@ -4975,10 +4951,6 @@ static int ufs_qcom_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct device_node *np = dev->of_node;
 
-	if (!ufs_qcom_read_boot_config(pdev)) {
-		dev_err(dev, "UFS is not boot dev.\n");
-		return err;
-	}
 	/**
 	 * CPUFreq driver is needed for performance reasons.
 	 * Assumption - cpufreq gets probed the second time.
@@ -5026,21 +4998,11 @@ static int ufs_qcom_probe(struct platform_device *pdev)
  */
 static int ufs_qcom_remove(struct platform_device *pdev)
 {
-	struct ufs_hba *hba;
-	struct ufs_qcom_host *host;
-	struct ufs_qcom_qos_req *r;
-	struct qos_cpu_group *qcg;
+	struct ufs_hba *hba =  platform_get_drvdata(pdev);
+	struct ufs_qcom_host *host = ufshcd_get_variant(hba);
+	struct ufs_qcom_qos_req *r = host->ufs_qos;
+	struct qos_cpu_group *qcg = r->qcg;
 	int i;
-
-	if (!is_bootdevice_ufs) {
-		dev_info(&pdev->dev, "UFS is not boot dev.\n");
-		return 0;
-	}
-
-	hba =  platform_get_drvdata(pdev);
-	host = ufshcd_get_variant(hba);
-	r = host->ufs_qos;
-	qcg = r->qcg;
 
 	pm_runtime_get_sync(&(pdev)->dev);
 	for (i = 0; i < r->num_groups; i++, qcg++)
@@ -5052,16 +5014,8 @@ static int ufs_qcom_remove(struct platform_device *pdev)
 
 static void ufs_qcom_shutdown(struct platform_device *pdev)
 {
-	struct ufs_hba *hba;
-	struct ufs_qcom_host *host;
-
-	if (!is_bootdevice_ufs) {
-		dev_info(&pdev->dev, "UFS is not boot dev.\n");
-		return;
-	}
-
-	hba =  platform_get_drvdata(pdev);
-	host = ufshcd_get_variant(hba);
+	struct ufs_hba *hba =  platform_get_drvdata(pdev);
+	struct ufs_qcom_host *host = ufshcd_get_variant(hba);
 
 	ufs_qcom_log_str(host, "0xdead\n");
 	ufshcd_pltfrm_shutdown(pdev);

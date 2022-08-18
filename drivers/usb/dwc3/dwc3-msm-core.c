@@ -84,6 +84,7 @@
 /* XHCI registers */
 #define USB3_HCSPARAMS1		(0x4)
 #define USB3_PORTSC		(0x420)
+#define USB3_PORTPMSC_20	(0x424)
 
 #ifdef OPLUS_FEATURE_CHG_BASIC
 #define USB3_PORTPMSC_20	(0x424)
@@ -5071,10 +5072,16 @@ static ssize_t dynamic_disable_store(struct device *dev, struct device_attribute
 }
 static DEVICE_ATTR_WO(dynamic_disable);
 
+<<<<<<< HEAD
 #ifdef OPLUS_FEATURE_CHG_BASIC
 static ssize_t xhci_test_store(struct device *dev,
 	struct device_attribute *attr, const char *buf,
 	size_t count)
+=======
+static ssize_t xhci_test_store(struct device *dev,
+		struct device_attribute *attr, const char *buf,
+		size_t count)
+>>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.034
 {
 	struct dwc3_msm *mdwc = dev_get_drvdata(dev);
 	struct dwc3 *dwc;
@@ -5082,13 +5089,22 @@ static ssize_t xhci_test_store(struct device *dev,
 	u32 reg;
 
 	if (mdwc->dwc3 == NULL)
+<<<<<<< HEAD
 	return count;
+=======
+		return count;
+>>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.034
 
 	dwc = platform_get_drvdata(mdwc->dwc3);
 	cur_role = dwc3_msm_get_role(mdwc);
 	if (cur_role != USB_ROLE_HOST) {
+<<<<<<< HEAD
 	dev_err(dev, "USB is not in host mode\n");
 	return count;
+=======
+		dev_err(dev, "USB is not in host mode\n");
+		return count;
+>>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.034
 	}
 
 	pm_runtime_resume(&dwc->xhci->dev);
@@ -5101,7 +5117,10 @@ static ssize_t xhci_test_store(struct device *dev,
 	return count;
 }
 static DEVICE_ATTR_WO(xhci_test);
+<<<<<<< HEAD
 #endif
+=======
+>>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.034
 
 static struct attribute *dwc3_msm_attrs[] = {
 	&dev_attr_orientation.attr,
@@ -5109,9 +5128,13 @@ static struct attribute *dwc3_msm_attrs[] = {
 	&dev_attr_speed.attr,
 	&dev_attr_bus_vote.attr,
 	&dev_attr_dynamic_disable.attr,
+<<<<<<< HEAD
 #ifdef OPLUS_FEATURE_CHG_BASIC
 	&dev_attr_xhci_test.attr,
 #endif
+=======
+	&dev_attr_xhci_test.attr,
+>>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.034
 	NULL
 };
 ATTRIBUTE_GROUPS(dwc3_msm);
@@ -5310,6 +5333,7 @@ int dwc3_msm_set_dp_mode(struct device *dev, bool dp_connected, int lanes)
 		pm_runtime_get_sync(&mdwc->dwc3->dev);
 		mdwc->ss_phy->flags |= PHY_USB_DP_CONCURRENT_MODE;
 		pm_runtime_put_sync(&mdwc->dwc3->dev);
+		dbg_log_string("Set DP 2 lanes: success, refcnt:%d\n", mdwc->refcnt_dp_usb);
 		return 0;
 	}
 
@@ -5319,10 +5343,6 @@ int dwc3_msm_set_dp_mode(struct device *dev, bool dp_connected, int lanes)
 
 	mutex_lock(&mdwc->role_switch_mutex);
 	/* 4 lanes handling */
-	if (mdwc->dp_state != DP_2_LANE)
-		mdwc->refcnt_dp_usb++;
-
-	mdwc->dp_state = DP_4_LANE;
 	if (mdwc->id_state == DWC3_ID_GROUND) {
 		/* stop USB host mode */
 		ret = dwc3_start_stop_host(mdwc, false);
@@ -5340,16 +5360,20 @@ int dwc3_msm_set_dp_mode(struct device *dev, bool dp_connected, int lanes)
 		dwc3_msm_set_dp_only_params(mdwc);
 		dwc3_start_stop_device(mdwc, true);
 	} else {
-		if (mdwc->in_host_mode || mdwc->in_device_mode) {
-			ret = -EBUSY;
-			goto exit;
-		}
+		while (test_bit(WAIT_FOR_LPM, &mdwc->inputs))
+			msleep(20);
 
 		dbg_log_string("USB is not active.\n");
 		dwc3_msm_set_dp_only_params(mdwc);
 	}
 
+	if (mdwc->dp_state != DP_2_LANE)
+		mdwc->refcnt_dp_usb++;
+
+	mdwc->dp_state = DP_4_LANE;
+
 exit:
+	dbg_log_string("Set DP 4 lanes: %d refcnt:%d\n", ret, mdwc->refcnt_dp_usb);
 	mutex_unlock(&mdwc->role_switch_mutex);
 	return ret;
 }
@@ -6025,7 +6049,8 @@ static int dwc3_msm_host_ss_powerup(struct dwc3_msm *mdwc)
 	u32 reg;
 
 	dbg_log_string("start: speed:%d\n", dwc3_msm_get_max_speed(mdwc));
-	if (mdwc->disable_host_ssphy_powerdown ||
+	if (!mdwc->in_host_mode ||
+		mdwc->disable_host_ssphy_powerdown ||
 		dwc3_msm_get_max_speed(mdwc) < USB_SPEED_SUPER)
 		return 0;
 
@@ -6277,6 +6302,8 @@ static int dwc3_otg_start_host(struct dwc3_msm *mdwc, int on)
 		 * reset before dwc3_gadget_init() is called.  Otherwise, USB
 		 * gadget will be set to HS only.
 		 */
+		mdwc->in_host_mode = false;
+
 		if (!mdwc->ss_release_called) {
 			dwc3_msm_host_ss_powerup(mdwc);
 			dwc3_msm_clear_dp_only_params(mdwc);
@@ -6299,7 +6326,6 @@ static int dwc3_otg_start_host(struct dwc3_msm *mdwc, int on)
 
 		dwc3_msm_write_reg_field(mdwc->base, DWC3_GUSB3PIPECTL(0),
 				DWC3_GUSB3PIPECTL_SUSPHY, 0);
-		mdwc->in_host_mode = false;
 
 		/* wait for LPM, to ensure h/w is reset after stop_host */
 		set_bit(WAIT_FOR_LPM, &mdwc->inputs);
