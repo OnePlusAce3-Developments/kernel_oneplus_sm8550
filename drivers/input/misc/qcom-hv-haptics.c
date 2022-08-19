@@ -2582,20 +2582,13 @@ static int haptics_load_periodic_effect(struct haptics_chip *chip,
 		return -EINVAL;
 	}
 
-<<<<<<< HEAD
-	mutex_lock(&chip->play.lock);
-
 #ifndef OPLUS_FEATURE_CHG_BASIC
-	dev_dbg(chip->dev, "upload effect %d, vmax_mv=%d\n",
-			chip->effects[i].id, play->vmax_mv);
+	dev_dbg(chip->dev, "upload %s effect %d, vmax=%d\n", primitive ? "primitive" : "predefined",
+			effects[i].id, play->vmax_mv);
 #else
 	dev_dbg(chip->dev, "upload effect %d,vmax_mv=%d,magnitude=%d,effect.vmax_mv=%d\n",
 			chip->effects[i].id, play->vmax_mv, magnitude, chip->effects[i].vmax_mv);
 #endif
-=======
-	dev_dbg(chip->dev, "upload %s effect %d, vmax=%d\n", primitive ? "primitive" : "predefined",
-			effects[i].id, play->vmax_mv);
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.034
 
 	mutex_lock(&chip->play.lock);
 	if (chip->play.in_calibration) {
@@ -4858,19 +4851,16 @@ static int haptics_parse_dt(struct haptics_chip *chip)
 		goto free_pbs;
 	}
 
-<<<<<<< HEAD
 #ifdef OPLUS_FEATURE_CHG_BASIC
 	chip->disable_pm_ops = false;
 	chip->disable_pm_ops = of_property_read_bool(node, "qcom,disable-pm-ops");
 #endif
-=======
 	rc = haptics_parse_primitives_dt(chip);
 	if (rc < 0) {
 		dev_err(chip->dev, "Parse device-tree for primitives failed, rc=%d\n",
 				rc);
 		goto free_pbs;
 	}
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.034
 
 	return 0;
 free_pbs:
@@ -5675,33 +5665,21 @@ static ssize_t lra_impedance_show(struct class *c,
 }
 static CLASS_ATTR_RO(lra_impedance);
 
-<<<<<<< HEAD
 #ifdef OPLUS_FEATURE_CHG_BASIC
 static ssize_t vmax_show(struct class *c,
-=======
-static ssize_t primitive_duration_show(struct class *c,
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.034
 		struct class_attribute *attr, char *buf)
 {
 	struct haptics_chip *chip = container_of(c,
 			struct haptics_chip, hap_class);
 
-<<<<<<< HEAD
 	return scnprintf(buf, PAGE_SIZE, "%u\n", chip->config.vmax_mv);
 }
 
 static ssize_t vmax_store(struct class *c,
-=======
-	return scnprintf(buf, PAGE_SIZE, "%d\n", chip->primitive_duration);
-}
-
-static ssize_t primitive_duration_store(struct class *c,
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.034
 		struct class_attribute *attr, const char *buf, size_t count)
 {
 	struct haptics_chip *chip = container_of(c,
 			struct haptics_chip, hap_class);
-<<<<<<< HEAD
 	u32 val;
 
 	if (kstrtouint(buf, 0, &val))
@@ -6345,7 +6323,28 @@ static ssize_t vibrator_type_store(struct class *c,
 	if (val) {
 		chip->config.vibrator_type = val;
 	}
-=======
+
+	return count;
+}
+
+static CLASS_ATTR_RW(vibrator_type);
+#endif
+
+static ssize_t primitive_duration_show(struct class *c,
+		struct class_attribute *attr, char *buf)
+{
+	struct haptics_chip *chip = container_of(c,
+			struct haptics_chip, hap_class);
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n", chip->primitive_duration);
+}
+
+static ssize_t primitive_duration_store(struct class *c,
+		struct class_attribute *attr, const char *buf, size_t count)
+{
+	struct haptics_chip *chip = container_of(c,
+			struct haptics_chip, hap_class);
+
 	u16 primitive_id = 0;
 	int i = 0;
 
@@ -6363,23 +6362,15 @@ static ssize_t vibrator_type_store(struct class *c,
 	}
 
 	chip->primitive_duration = get_play_length_effect_us(&chip->primitives[i]);
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.034
 
 	return count;
 }
-
-<<<<<<< HEAD
-static CLASS_ATTR_RW(vibrator_type);
-#endif
-=======
 static CLASS_ATTR_RW(primitive_duration);
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.034
 
 static struct attribute *hap_class_attrs[] = {
 	&class_attr_lra_calibration.attr,
 	&class_attr_lra_frequency_hz.attr,
 	&class_attr_lra_impedance.attr,
-<<<<<<< HEAD
 #ifdef OPLUS_FEATURE_CHG_BASIC
 	&class_attr_vmax.attr,
 	&class_attr_cl_vmax.attr,
@@ -6391,9 +6382,7 @@ static struct attribute *hap_class_attrs[] = {
 	&class_attr_lra_cal_rc_clk_cal_count.attr,
 	&class_attr_vibrator_type.attr,
 #endif
-=======
 	&class_attr_primitive_duration.attr,
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.034
 	NULL,
 };
 ATTRIBUTE_GROUPS(hap_class);
@@ -6767,12 +6756,11 @@ static int haptics_resume(struct device *dev)
 {
 	struct haptics_chip *chip = dev_get_drvdata(dev);
 
-<<<<<<< HEAD
 #ifdef OPLUS_FEATURE_CHG_BASIC
 	if (chip->disable_pm_ops)
 		return 0;
 #endif
-=======
+
 #ifdef CONFIG_DEEPSLEEP
 	if (mem_sleep_current == PM_SUSPEND_MEM) {
 		int rc = 0;
@@ -6783,7 +6771,6 @@ static int haptics_resume(struct device *dev)
 	}
 #endif
 
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.034
 	return haptics_module_enable(chip, true);
 }
 #endif

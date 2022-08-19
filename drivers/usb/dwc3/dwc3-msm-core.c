@@ -86,10 +86,6 @@
 #define USB3_PORTSC		(0x420)
 #define USB3_PORTPMSC_20	(0x424)
 
-#ifdef OPLUS_FEATURE_CHG_BASIC
-#define USB3_PORTPMSC_20	(0x424)
-#endif
-
 /**
  *  USB QSCRATCH Hardware registers
  *
@@ -5072,16 +5068,9 @@ static ssize_t dynamic_disable_store(struct device *dev, struct device_attribute
 }
 static DEVICE_ATTR_WO(dynamic_disable);
 
-<<<<<<< HEAD
-#ifdef OPLUS_FEATURE_CHG_BASIC
-static ssize_t xhci_test_store(struct device *dev,
-	struct device_attribute *attr, const char *buf,
-	size_t count)
-=======
 static ssize_t xhci_test_store(struct device *dev,
 		struct device_attribute *attr, const char *buf,
 		size_t count)
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.034
 {
 	struct dwc3_msm *mdwc = dev_get_drvdata(dev);
 	struct dwc3 *dwc;
@@ -5089,22 +5078,13 @@ static ssize_t xhci_test_store(struct device *dev,
 	u32 reg;
 
 	if (mdwc->dwc3 == NULL)
-<<<<<<< HEAD
-	return count;
-=======
 		return count;
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.034
 
 	dwc = platform_get_drvdata(mdwc->dwc3);
 	cur_role = dwc3_msm_get_role(mdwc);
 	if (cur_role != USB_ROLE_HOST) {
-<<<<<<< HEAD
-	dev_err(dev, "USB is not in host mode\n");
-	return count;
-=======
 		dev_err(dev, "USB is not in host mode\n");
 		return count;
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.034
 	}
 
 	pm_runtime_resume(&dwc->xhci->dev);
@@ -5117,10 +5097,6 @@ static ssize_t xhci_test_store(struct device *dev,
 	return count;
 }
 static DEVICE_ATTR_WO(xhci_test);
-<<<<<<< HEAD
-#endif
-=======
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.034
 
 static struct attribute *dwc3_msm_attrs[] = {
 	&dev_attr_orientation.attr,
@@ -5128,13 +5104,7 @@ static struct attribute *dwc3_msm_attrs[] = {
 	&dev_attr_speed.attr,
 	&dev_attr_bus_vote.attr,
 	&dev_attr_dynamic_disable.attr,
-<<<<<<< HEAD
-#ifdef OPLUS_FEATURE_CHG_BASIC
 	&dev_attr_xhci_test.attr,
-#endif
-=======
-	&dev_attr_xhci_test.attr,
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.034
 	NULL
 };
 ATTRIBUTE_GROUPS(dwc3_msm);
