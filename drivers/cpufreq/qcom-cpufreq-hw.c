@@ -17,8 +17,20 @@
 #include <linux/spinlock.h>
 #include <linux/qcom-cpufreq-hw.h>
 
+#if IS_ENABLED(CONFIG_OPLUS_OMRG)
+#include <linux/oplus_omrg.h>
+#endif
+
 #if IS_ENABLED(CONFIG_OPLUS_FEATURE_OCH)
 #include <linux/cpufreq_health.h>
+#endif
+
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_SUGOV_POWER_EFFIENCY)
+#include <linux/cpufreq_effiency.h>
+#endif
+
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_GKI_CPUFREQ_BOUNCING)
+#include <linux/cpufreq_bouncing.h>
 #endif
 
 #define CREATE_TRACE_POINTS
@@ -177,7 +189,9 @@ static int qcom_cpufreq_hw_target_index(struct cpufreq_policy *policy,
 	unsigned long freq = policy->freq_table[index].frequency;
 
 	writel_relaxed(index, data->base + soc_data->reg_perf_state);
-
+#if IS_ENABLED(CONFIG_OPLUS_OMRG)
+	omrg_cpufreq_check_limit(policy, policy->freq_table[index].frequency);
+#endif
 	if (icc_scaling_enabled)
 		qcom_cpufreq_set_bw(policy, freq);
 
@@ -198,6 +212,18 @@ static unsigned int qcom_cpufreq_hw_get(unsigned int cpu)
 #if IS_ENABLED(CONFIG_OPLUS_FEATURE_OCH)
 	if(cpufreq_health_register(policy))
 		pr_err("cpufreq health init failed!\n");
+#endif
+
+#if IS_ENABLED(CONFIG_OPLUS_OMRG)
+        omrg_cpufreq_register(policy);
+#endif
+
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_SUGOV_POWER_EFFIENCY)
+        frequence_opp_init(policy);
+#endif
+
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_GKI_CPUFREQ_BOUNCING)
+        cb_stuff_init(policy);
 #endif
 
 	data = policy->driver_data;
@@ -684,6 +710,9 @@ static int qcom_cpufreq_hw_cpu_exit(struct cpufreq_policy *policy)
 {
 	struct device *cpu_dev = get_cpu_device(policy->cpu);
 
+#if IS_ENABLED(CONFIG_OPLUS_OMRG)
+	omrg_cpufreq_unregister(policy);
+#endif
 	qcom_cpufreq_hw_lmh_exit(policy->driver_data);
 	dev_pm_opp_remove_all_dynamic(cpu_dev);
 	dev_pm_opp_of_cpumask_remove_table(policy->related_cpus);

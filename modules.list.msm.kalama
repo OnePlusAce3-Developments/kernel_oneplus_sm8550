@@ -106,3 +106,12 @@ bootloader_log.ko
 oplus_phoenix.ko
 cpufreq_health.ko
 horae_shell_temp.ko
+oplus_bsp_atd.ko
+horae_shell_temp.ko
+oplus_bsp_sched_assist.ko
+oplus_bsp_frame_boost.ko
+cpu_jankinfo.ko
+cpufreq_bouncing.ko
+oplus_omrg.ko
+cpufreq_effiency.ko
+oplus_bsp_task_sched.ko

@@ -228,6 +228,10 @@ extern unsigned int sysctl_panic_on_walt_bug;
 extern int sched_dynamic_tp_handler(struct ctl_table *table, int write,
 			void __user *buffer, size_t *lenp, loff_t *ppos);
 
+#ifdef CONFIG_OPLUS_FEATURE_SUGOV_TL
+extern unsigned int get_targetload(struct cpufreq_policy *policy);
+#endif /* CONFIG_OPLUS_FEATURE_SUGOV_TL */
+
 extern struct list_head cluster_head;
 #define for_each_sched_cluster(cluster) \
 	list_for_each_entry_rcu(cluster, &cluster_head, list)

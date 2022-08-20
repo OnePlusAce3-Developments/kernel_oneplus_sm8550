@@ -22,6 +22,14 @@
 #include "walt.h"
 #include "trace.h"
 
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_GKI_CPUFREQ_BOUNCING)
+#include <linux/cpufreq_bouncing.h>
+#endif
+
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_OCH)
+#include <linux/cpufreq_health.h>
+#endif
+
 const char *task_event_names[] = {
 	"PUT_PREV_TASK",
 	"PICK_NEXT_TASK",
@@ -649,7 +657,11 @@ should_apply_suh_freq_boost(struct walt_sched_cluster *cluster)
 	return is_cluster_hosting_top_app(cluster);
 }
 
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_OCH)
+static inline u64 freq_policy_load(struct rq *rq, unsigned int *reason, int *edtask_flag)
+#else
 static inline u64 freq_policy_load(struct rq *rq, unsigned int *reason)
+#endif
 {
 	struct walt_rq *wrq = (struct walt_rq *) rq->android_vendor_data1;
 	struct walt_sched_cluster *cluster = wrq->cluster;
@@ -659,6 +671,9 @@ static inline u64 freq_policy_load(struct rq *rq, unsigned int *reason)
 
 	if (wrq->ed_task != NULL) {
 		load = sched_ravg_window;
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_OCH)
+		*edtask_flag = 1;
+#endif
 		*reason = CPUFREQ_REASON_EARLY_DET;
 		goto done;
 	}
@@ -711,8 +726,14 @@ __cpu_util_freq_walt(int cpu, struct walt_cpu_load *walt_load, unsigned int *rea
 	unsigned long capacity = capacity_orig_of(cpu);
 	struct walt_rq *wrq = (struct walt_rq *) rq->android_vendor_data1;
 
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_OCH)
+	int edtask_flag = 0;
+	util = div64_u64(freq_policy_load(rq, reason, &edtask_flag),
+				sched_ravg_window >> SCHED_CAPACITY_SHIFT);
+	cpufreq_health_get_edtask_state(cpu, edtask_flag);
+#else
 	util = scale_time_to_util(freq_policy_load(rq, reason));
-
+#endif
 	/*
 	 * util is on a scale of 0 to 1024.  this is the utilization
 	 * of the cpu in the last window
@@ -3859,6 +3880,17 @@ static void walt_irq_work(struct irq_work *irq_work)
 	int cpu;
 	bool is_migration = false;
 
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_GKI_CPUFREQ_BOUNCING)
+	struct walt_sched_cluster *cluster;
+	for_each_sched_cluster(cluster) {
+		int cpu = cpumask_first(&cluster->cpus);
+		struct cpufreq_policy *pol = cpufreq_cpu_get_raw(cpu);
+
+		if (pol)
+			cb_update(pol, walt_sched_clock());
+	}
+#endif
+
 	if (irq_work == &walt_migration_irq_work)
 		is_migration = true;
 
@@ -4121,6 +4153,9 @@ static void walt_cpu_frequency_limits(void *unused, struct cpufreq_policy *polic
 	if (unlikely(walt_disabled))
 		return;
 
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_OCH)
+	cpufreq_health_get_state(policy);
+#endif
 	cpu_cluster(policy->cpu)->max_freq = policy->max;
 }
 
