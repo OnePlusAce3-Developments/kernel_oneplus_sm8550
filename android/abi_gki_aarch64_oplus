@@ -234,7 +234,6 @@
   tcf_exts_validate
   tcf_queue_work
   tcp_hashinfo
-<<<<<<< HEAD
   __traceiter_sched_stat_blocked
   __traceiter_sched_stat_iowait
   __traceiter_sched_stat_sleep
@@ -247,8 +246,6 @@
   __tracepoint_sched_stat_wait
   __tracepoint_sched_waking
   __tracepoint_task_rename
-=======
->>>>>>> eb41dad84c459f524d6371eb87c3fd42aa89ba2d
   __ubsan_handle_cfi_check_fail_abort
   unlock_page
   unregister_blkdev
