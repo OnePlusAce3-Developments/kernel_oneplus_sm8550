@@ -186,9 +186,6 @@ static int qcom_cpufreq_hw_target_index(struct cpufreq_policy *policy,
 	unsigned long freq = policy->freq_table[index].frequency;
 
 	writel_relaxed(index, data->base + soc_data->reg_perf_state);
-#if IS_ENABLED(CONFIG_OPLUS_OMRG)
-	omrg_cpufreq_check_limit(policy, policy->freq_table[index].frequency);
-#endif
 	if (icc_scaling_enabled)
 		qcom_cpufreq_set_bw(policy, freq);
 
@@ -241,6 +238,10 @@ static unsigned int qcom_cpufreq_hw_fast_switch(struct cpufreq_policy *policy,
 
 	index = policy->cached_resolved_idx;
 	writel_relaxed(index, data->base + soc_data->reg_perf_state);
+
+#if IS_ENABLED(CONFIG_OPLUS_OMRG)
+	omrg_cpufreq_check_limit(policy, policy->freq_table[index].frequency);
+#endif
 
 	return policy->freq_table[index].frequency;
 }
