@@ -402,7 +402,10 @@ EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_binder_thread_release);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_binder_has_work_ilocked);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_binder_read_done);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_gic_v2_resume);
+<<<<<<< HEAD
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_exit_signal);
+=======
+>>>>>>> 1185150d9eb3ce451966cc3bdc5068c0a779e50d
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_binder_alloc_new_buf_locked);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_binder_reply);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_binder_trans);

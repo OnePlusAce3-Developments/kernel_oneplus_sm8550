@@ -115,3 +115,4 @@ cpufreq_bouncing.ko
 oplus_omrg.ko
 cpufreq_effiency.ko
 oplus_bsp_task_sched.ko
+oplus_mdmfeature.ko

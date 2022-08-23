@@ -74,6 +74,10 @@ source "kernel/oplus_cpu/cpufreq_effiency/Kconfig"
 source "kernel/oplus_cpu/cpufreq_bouncing/Kconfig"
 #endif /* OPLUS_FEATURE_GKI_CPUFREQ_BOUNCING */
 
+#ifdef OPLUS_FEATURE_MDMFEATURE
+#Xueqian.Zheng@NETWORK.SIM.2500814, 2021/11/5, add for mdm feature
+source "drivers/soc/oplus/mdmfeature/Kconfig"
+#endif /*OPLUS_FEATURE_MDMFEATURE*/
 endmenu
 
 #ifdef OPLUS_FEATURE_TP_BASIC
