@@ -912,11 +912,9 @@ static ssize_t target_loads_store(struct gov_attr_set *attr_set, const char *buf
 	unsigned int *new_target_loads = NULL;
 	unsigned long flags;
 	struct waltgov_tunables *tunables = to_waltgov_tunables(attr_set);
-
 	new_target_loads = get_tokenized_data(buf, &ntokens);
 	if (IS_ERR(new_target_loads))
 		return PTR_ERR(new_target_loads);
-
 	spin_lock_irqsave(&tunables->target_loads_lock, flags);
 	if (tunables->target_loads != default_target_loads)
 		kfree(tunables->target_loads);
@@ -967,7 +965,8 @@ static struct governor_attr rtg_boost_freq = __ATTR_RW(rtg_boost_freq);
 static struct governor_attr pl = __ATTR_RW(pl);
 static struct governor_attr boost = __ATTR_RW(boost);
 #ifdef CONFIG_OPLUS_FEATURE_SUGOV_TL
-static struct governor_attr target_loads = __ATTR_RW(target_loads);
+static struct governor_attr target_loads =
+	__ATTR(target_loads, 0664, target_loads_show, target_loads_store);
 #endif /* CONFIG_OPLUS_FEATURE_SUGOV_TL */
 WALTGOV_ATTR_RW(adaptive_low_freq);
 WALTGOV_ATTR_RW(adaptive_high_freq);
@@ -1135,17 +1134,14 @@ static int waltgov_init(struct cpufreq_policy *policy)
 	cpufreq_enable_fast_switch(policy);
 
 #if IS_ENABLED(CONFIG_OPLUS_OMRG)
-	printk("mei:waltgov_init:init omrg\n");
         omrg_cpufreq_register(policy);
 #endif
 
 #if IS_ENABLED(CONFIG_OPLUS_FEATURE_SUGOV_POWER_EFFIENCY)
-	printk("mei:waltgov_init:init effiencu\n");
         frequence_opp_init(policy);
 #endif
 
 #if IS_ENABLED(CONFIG_OPLUS_FEATURE_GKI_CPUFREQ_BOUNCING)
-	printk("mei:waltgov_init:init cb\n");
         cb_stuff_init(policy);
 #endif
 
