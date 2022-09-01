@@ -669,18 +669,11 @@ static inline u64 freq_policy_load(struct rq *rq, unsigned int *reason)
 	u64 load, tt_load = 0, kload = 0;
 	struct task_struct *cpu_ksoftirqd = per_cpu(ksoftirqd, cpu_of(rq));
 
-<<<<<<< HEAD
-	if (wrq->ed_task != NULL) {
-		load = sched_ravg_window;
 #if IS_ENABLED(CONFIG_OPLUS_FEATURE_OCH)
+	if (wrq->ed_task != NULL) {
 		*edtask_flag = 1;
-#endif
-		*reason = CPUFREQ_REASON_EARLY_DET;
-		goto done;
 	}
-
-=======
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.040
+#endif
 	if (sched_freq_aggr_en) {
 		load = wrq->prev_runnable_sum + aggr_grp_load;
 		*reason = CPUFREQ_REASON_FREQ_AGR;
