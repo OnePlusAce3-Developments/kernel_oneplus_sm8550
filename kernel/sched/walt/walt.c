@@ -669,6 +669,7 @@ static inline u64 freq_policy_load(struct rq *rq, unsigned int *reason)
 	u64 load, tt_load = 0, kload = 0;
 	struct task_struct *cpu_ksoftirqd = per_cpu(ksoftirqd, cpu_of(rq));
 
+<<<<<<< HEAD
 	if (wrq->ed_task != NULL) {
 		load = sched_ravg_window;
 #if IS_ENABLED(CONFIG_OPLUS_FEATURE_OCH)
@@ -678,6 +679,8 @@ static inline u64 freq_policy_load(struct rq *rq, unsigned int *reason)
 		goto done;
 	}
 
+=======
+>>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.040
 	if (sched_freq_aggr_en) {
 		load = wrq->prev_runnable_sum + aggr_grp_load;
 		*reason = CPUFREQ_REASON_FREQ_AGR;
@@ -709,7 +712,6 @@ static inline u64 freq_policy_load(struct rq *rq, unsigned int *reason)
 		*reason = CPUFREQ_REASON_SUH;
 	}
 
-done:
 	trace_sched_load_to_gov(rq, aggr_grp_load, tt_load, sched_freq_aggr_en,
 				load, 0, walt_rotation_enabled,
 				sysctl_sched_user_hint, wrq, *reason);
@@ -753,6 +755,10 @@ __cpu_util_freq_walt(int cpu, struct walt_cpu_load *walt_load, unsigned int *rea
 		walt_load->pl = pl;
 		walt_load->ws = walt_load_reported_window;
 		walt_load->rtgb_active = rtgb_active;
+		if (wrq->ed_task)
+			walt_load->ed_active = true;
+		else
+			walt_load->ed_active = false;
 	}
 
 	return (util >= capacity) ? capacity : util;

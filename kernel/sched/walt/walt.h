@@ -59,6 +59,7 @@ struct walt_cpu_load {
 	unsigned long	pl;
 	bool		rtgb_active;
 	u64		ws;
+	bool		ed_active;
 };
 
 #define DECLARE_BITMAP_ARRAY(name, nr, bits) \
@@ -217,6 +218,7 @@ extern unsigned int sysctl_sched_user_hint;
 extern unsigned int sysctl_sched_conservative_pl;
 extern unsigned int sysctl_sched_hyst_min_coloc_ns;
 extern unsigned int sysctl_sched_long_running_rt_task_ms;
+extern unsigned int sysctl_ed_boost_pct;
 
 #define WALT_MANY_WAKEUP_DEFAULT 1000
 extern unsigned int sysctl_sched_many_wakeup_threshold;
@@ -742,6 +744,15 @@ static inline unsigned int walt_nr_rtg_high_prio(int cpu)
 	return wrq->walt_stats.nr_rtg_high_prio_tasks;
 }
 
+static inline bool task_in_related_thread_group(struct task_struct *p)
+{
+	struct walt_task_struct *wts = (struct walt_task_struct *) p->android_vendor_data1;
+
+	return (rcu_access_pointer(wts->grp) != NULL);
+}
+
+extern unsigned int sysctl_sched_early_up[MAX_MARGIN_LEVELS];
+extern unsigned int sysctl_sched_early_down[MAX_MARGIN_LEVELS];
 static inline bool task_fits_capacity(struct task_struct *p,
 					long capacity,
 					int cpu)
@@ -753,19 +764,25 @@ static inline bool task_fits_capacity(struct task_struct *p,
 	/*
 	 * Derive upmigration/downmigrate margin wrt the src/dest CPU.
 	 */
-	if (src_wrq->cluster->id > dst_wrq->cluster->id)
+	if (src_wrq->cluster->id > dst_wrq->cluster->id) {
 		margin = sched_capacity_margin_down[cpu];
-	else
+		if (task_in_related_thread_group(p)) {
+			if (is_min_cluster_cpu(cpu))
+				margin = sysctl_sched_early_down[0];
+			else if (!is_max_cluster_cpu(cpu))
+				margin = sysctl_sched_early_down[1];
+		}
+	} else {
 		margin = sched_capacity_margin_up[task_cpu(p)];
+		if (task_in_related_thread_group(p)) {
+			if (is_min_cluster_cpu(task_cpu(p)))
+				margin = sysctl_sched_early_up[0];
+			else if (!is_max_cluster_cpu(task_cpu(p)))
+				margin = sysctl_sched_early_up[1];
+		}
+	}
 
 	return capacity * 1024 > uclamp_task_util(p) * margin;
-}
-
-static inline bool task_in_related_thread_group(struct task_struct *p)
-{
-	struct walt_task_struct *wts = (struct walt_task_struct *) p->android_vendor_data1;
-
-	return (rcu_access_pointer(wts->grp) != NULL);
 }
 
 static inline bool task_fits_max(struct task_struct *p, int cpu)
@@ -928,9 +945,11 @@ static inline bool walt_flag_test(struct task_struct *p, enum walt_flags feature
 #define WALT_MVP_SLICE		3000000U
 #define WALT_MVP_LIMIT		(4 * WALT_MVP_SLICE)
 
+/* higher number, better priority */
 #define WALT_RTG_MVP		0
 #define WALT_BINDER_MVP		1
 #define WALT_TASK_BOOST_MVP	2
+#define WALT_LL_PIPE_MVP	3
 
 #define WALT_NOT_MVP		-1
 
