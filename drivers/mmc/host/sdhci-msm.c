@@ -4667,7 +4667,8 @@ static void get_filter_enable(struct mmc_host *host)
 	struct device *dev = host->parent;
 	if (device_property_read_bool(dev, "filter-enable"))
 		filter_enable = 1;
-=======
+}
+
 static u32 is_bootdevice_sdhci = SDHCI_BOOT_DEVICE;
 
 static int sdhci_qcom_read_boot_config(struct platform_device *pdev)
@@ -4691,7 +4692,6 @@ static int sdhci_qcom_read_boot_config(struct platform_device *pdev)
 	nvmem_cell_put(cell);
 
 	return is_bootdevice_sdhci;
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.040
 }
 
 static int sdhci_msm_probe(struct platform_device *pdev)
