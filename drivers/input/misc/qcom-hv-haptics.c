@@ -120,6 +120,7 @@
 #define VIBRATOR_TYPE_ELA0809		809
 #define VIBRATOR_TYPE_SLA9999		9999
 #define AT_TEST_VMAX_MV				3700
+#define AT_TEST_LUX_VMAX_MV			3000
 #define AT_TEST_T_LRA_US			10000
 #endif
 #define HAP_CFG_DRV_WF_SEL_REG			0x49
@@ -2220,7 +2221,10 @@ static int haptics_load_constant_effect(struct haptics_chip *chip, u8 amplitude)
 		if (chip->config.vibrator_type == VIBRATOR_TYPE_SLA0815 ||
 			chip->config.vibrator_type == VIBRATOR_TYPE_ELA0809 ||
 			chip->config.vibrator_type == VIBRATOR_TYPE_SLA9999) {
-			vmax_mv = AT_TEST_VMAX_MV;
+			if (chip->config.vibrator_type == VIBRATOR_TYPE_SLA9999)
+				vmax_mv = AT_TEST_LUX_VMAX_MV;
+			else
+				vmax_mv = AT_TEST_VMAX_MV;
 			rc = haptics_config_openloop_lra_period(chip, AT_TEST_T_LRA_US);
 			if (rc < 0)
 				return rc;
