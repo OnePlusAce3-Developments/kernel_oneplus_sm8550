@@ -1114,14 +1114,11 @@ static void binder_restore_priority_hook(void *data,
  */
 int walt_get_mvp_task_prio(struct task_struct *p)
 {
-<<<<<<< HEAD
+#if (!IS_ENABLED(CONFIG_OPLUS_FEATURE_SCHED_ASSIST))
 	if (walt_procfs_low_latency_task(p) ||
 			walt_pipeline_low_latency_task(p))
 		return WALT_LL_PIPE_MVP;
 
-=======
-#if (!IS_ENABLED(CONFIG_OPLUS_FEATURE_SCHED_ASSIST))
->>>>>>> 73f3eb81006d57bcbc52fbcf514c98cf725c44ec
 	if (per_task_boost(p) == TASK_BOOST_STRICT_MAX)
 		return WALT_TASK_BOOST_MVP;
 
