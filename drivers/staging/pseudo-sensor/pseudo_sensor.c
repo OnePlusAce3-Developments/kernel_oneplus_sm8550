@@ -71,6 +71,9 @@
 #define SZ_6K                               0x1800
 #define MIN(a, b)                           ((a) <= (b) ? (a) : (b))
 
+#define SMEM_PSEUDO_SENSOR_MEM_TYPE     490
+#define SMEM_PSEUDO_SENSOR_SMEM_SIZE    0x10000
+
 // 设置默认的数据大小, 以 32KB 为计量, 注意需要减去 smem_head 所占的空间
 // 所有分配的空间大小需以 64Byte 对齐，因为数据序列发生器以 0x40 对齐
 // 最终默认内存分配为 64KB
@@ -89,12 +92,24 @@ static char *g_chn_type[CFG_MAX_SENSORS] = {
 	"n/a",     "n/a",      "n/a",      "halla"
 };
 
+#ifdef OPLUS_FEATURE_SENSOR_DEBUG_KIT
+typedef struct _sensor_debug_kit_data_t{
+	int32_t fault_code;
+	int32_t frequency;
+	int32_t repeat;
+	int32_t test_type;
+}sensor_debug_kit_data_t;
+#endif
+
 struct psensor_data {
 	uint64_t phy_address;
 	uint64_t vir_address;
 	uint32_t size;
 	int16_t enable;                             // 功能是否启用
 	int16_t cur_chn;                            // 当前使用的通道[0,15]
+#ifdef OPLUS_FEATURE_SENSOR_DEBUG_KIT
+	sensor_debug_kit_data_t debug_kit_data;
+#endif
 	int32_t time_left[CFG_MAX_SENSORS];         // timeleft
 	struct proc_dir_entry   *proc;
 };
@@ -1142,6 +1157,193 @@ static ssize_t proc_bind_w(struct file *file, const char __user *buf, size_t cou
 	return count;
 }
 
+#ifdef OPLUS_FEATURE_SENSOR_DEBUG_KIT
+#define DATA_BUFFER_SIZE    16
+#define SMEM_PSEUDO_SENSOR_DEBUG_KIT_CH 14
+static size_t sensor_debug_kit_update_data()
+{
+	char *p;
+	size_t count = sizeof(g_data->debug_kit_data);
+	smem_head *smem = (smem_head*)g_data->vir_address;
+
+	if(g_data->vir_address == 0) {
+		ERR("vir_address not bind yet, do bind first!\n");
+		return -1;
+	}
+	p = (char*)g_data->vir_address;
+	p += smem->bp[SMEM_PSEUDO_SENSOR_DEBUG_KIT_CH] << 2;
+
+	memcpy((void *)p, (void *)&(g_data->debug_kit_data), count);
+	smem->start[SMEM_PSEUDO_SENSOR_DEBUG_KIT_CH] = 1;
+	INF("smem ready, test_type=%d, fault_code=%d, frequency=%d, repeat=%d!\n",
+		g_data->debug_kit_data.test_type, g_data->debug_kit_data.fault_code,
+		g_data->debug_kit_data.frequency, g_data->debug_kit_data.repeat);
+	return count;
+}
+
+static ssize_t proc_fault_code_r(struct file *file, char __user *buf, size_t count, loff_t *ppos)
+{
+	char data[DATA_BUFFER_SIZE] = {0};
+	int len = 0;
+
+	if (*ppos > 0 || count < DATA_BUFFER_SIZE)
+		return 0;
+
+	len = snprintf(data, DATA_BUFFER_SIZE, "%d\n", g_data->debug_kit_data.fault_code);
+	if(copy_to_user(buf, data, len))
+		return -EFAULT;
+
+	*ppos = len;
+	return len;
+}
+
+static ssize_t proc_fault_code_w(struct file *file, const char __user *buf, size_t count, loff_t *lo)
+{
+	int len = 0;
+	int cur_fault_code = 0;
+	char data[DATA_BUFFER_SIZE] = {0};
+
+	memset(data, 0, sizeof(data));
+	len = MIN(count, DATA_BUFFER_SIZE);
+	if (copy_from_user(data, buf, len)) {
+		ERR("fault code val copy from user error\n");
+		return -EIO;
+	}
+
+	if (1 == sscanf(data, "%d", &cur_fault_code)) {
+		INF("fault code val input: %d\n", cur_fault_code);
+	} else {
+		ERR("fault code val input invalid\n");
+		return -EINVAL;
+	}
+
+	if (cur_fault_code < 0 || cur_fault_code > 10002) {
+		ERR("fault code val out range\n");
+		return -EINVAL;
+	}
+
+	g_data->debug_kit_data.fault_code = cur_fault_code;
+	sensor_debug_kit_update_data();
+	return count;
+}
+static ssize_t proc_frequency_r(struct file *file, char __user *buf, size_t count, loff_t *ppos)
+{
+	char data[DATA_BUFFER_SIZE] = {0};
+	int len = 0;
+
+	if (*ppos > 0 || count < DATA_BUFFER_SIZE)
+		return 0;
+
+	len = snprintf(data, DATA_BUFFER_SIZE, "%d\n", g_data->debug_kit_data.frequency);
+	if(copy_to_user(buf, data, len))
+		return -EFAULT;
+
+	*ppos = len;
+	return len;
+}
+static ssize_t proc_frequency_w(struct file *file, const char __user *buf, size_t count, loff_t *lo)
+{
+	int len = 0;
+	int cur_frequency = 0;
+	char data[DATA_BUFFER_SIZE] = {0};
+
+	memset(data, 0, sizeof(data));
+	len = MIN(count, DATA_BUFFER_SIZE);
+	if (copy_from_user(data, buf, len)) {
+		ERR("frequency val copy from user error\n");
+		return -EIO;
+	}
+
+	if (1 == sscanf(data, "%d", &cur_frequency)) {
+		INF("frequency val input: %d\n", cur_frequency);
+	} else {
+		ERR("frequency val input invalid\n");
+		return -EINVAL;
+	}
+
+	g_data->debug_kit_data.frequency = cur_frequency;
+	sensor_debug_kit_update_data();
+	return count;
+}
+static ssize_t proc_repeat_r(struct file *file, char __user *buf, size_t count, loff_t *ppos)
+{
+	char data[DATA_BUFFER_SIZE] = {0};
+	int len = 0;
+
+	if (*ppos > 0 || count < DATA_BUFFER_SIZE)
+		return 0;
+
+	len = snprintf(data, DATA_BUFFER_SIZE, "%d\n", g_data->debug_kit_data.repeat);
+	if(copy_to_user(buf, data, len))
+		return -EFAULT;
+
+	*ppos = len;
+	return len;
+}
+static ssize_t proc_repeat_w(struct file *file, const char __user *buf, size_t count, loff_t *lo)
+{
+	int len = 0;
+	int cur_repeat = 0;
+	char data[DATA_BUFFER_SIZE] = {0};
+
+	memset(data, 0, sizeof(data));
+	len = MIN(count, DATA_BUFFER_SIZE);
+	if (copy_from_user(data, buf, len)) {
+		ERR("repeat val copy from user error\n");
+		return -EIO;
+	}
+
+	if (1 == sscanf(data, "%d", &cur_repeat)) {
+		INF("repeat val input: %d\n", cur_repeat);
+	} else {
+		ERR("repeat val input invalid\n");
+		return -EINVAL;
+	}
+
+	g_data->debug_kit_data.repeat = cur_repeat;
+	sensor_debug_kit_update_data();
+	return count;
+}
+static ssize_t proc_test_type_r(struct file *file, char __user *buf, size_t count, loff_t *ppos)
+{
+	char data[DATA_BUFFER_SIZE] = {0};
+	int len = 0;
+
+	if (*ppos > 0 || count < DATA_BUFFER_SIZE)
+		return 0;
+
+	len = snprintf(data, DATA_BUFFER_SIZE, "%d\n", g_data->debug_kit_data.test_type);
+	if(copy_to_user(buf, data, len))
+		return -EFAULT;
+
+	*ppos = len;
+	return len;
+}
+static ssize_t proc_test_type_w(struct file *file, const char __user *buf, size_t count, loff_t *lo)
+{
+	int len = 0;
+	int cur_test_type = 0;
+	char data[DATA_BUFFER_SIZE] = {0};
+
+	memset(data, 0, sizeof(data));
+	len = MIN(count, DATA_BUFFER_SIZE);
+	if (copy_from_user(data, buf, len)) {
+		ERR("test type val copy from user error\n");
+		return -EIO;
+	}
+
+	if (1 == sscanf(data, "%d", &cur_test_type)) {
+		INF("test type val input: %d\n", cur_test_type);
+	} else {
+		ERR("test type val input invalid\n");
+		return -EINVAL;
+	}
+
+	g_data->debug_kit_data.test_type = cur_test_type;
+	sensor_debug_kit_update_data();
+	return count;
+}
+#endif
 
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 6, 0))
 
@@ -1247,7 +1449,36 @@ static const struct file_operations proc_bind_fops =
 	.open = simple_open,
 	.owner = THIS_MODULE,
 };
-
+#ifdef OPLUS_FEATURE_SENSOR_DEBUG_KIT
+static const struct file_operations proc_fault_code_fops =
+{
+	.read       = proc_fault_code_r,
+	.write      = proc_fault_code_w,
+	.open       = simple_open,
+	.owner      = THIS_MODULE,
+};
+static const struct file_operations proc_frequency_fops =
+{
+	.read       = proc_frequency_r,
+	.write      = proc_frequency_w,
+	.open       = simple_open,
+	.owner      = THIS_MODULE,
+};
+static const struct file_operations proc_repeat_fops =
+{
+	.read       = proc_repeat_r,
+	.write      = proc_repeat_w,
+	.open       = simple_open,
+	.owner      = THIS_MODULE,
+};
+static const struct file_operations proc_test_type_fops =
+{
+	.read       = proc_test_type_r,
+	.write      = proc_test_type_w,
+	.open       = simple_open,
+	.owner      = THIS_MODULE,
+};
+#endif
 #else
 
 static const struct proc_ops proc_data_fops =
@@ -1338,14 +1569,62 @@ static const struct proc_ops proc_bind_fops =
 	.proc_write = proc_bind_w,
 	.proc_open = simple_open,
 };
+#ifdef OPLUS_FEATURE_SENSOR_DEBUG_KIT
+static const struct proc_ops proc_fault_code_fops =
+{
+	.proc_read       = proc_fault_code_r,
+	.proc_write      = proc_fault_code_w,
+	.proc_open       = simple_open,
+};
+static const struct proc_ops proc_frequency_fops =
+{
+	.proc_read       = proc_frequency_r,
+	.proc_write      = proc_frequency_w,
+	.proc_open       = simple_open,
+};
+static const struct proc_ops proc_repeat_fops =
+{
+	.proc_read       = proc_repeat_r,
+	.proc_write      = proc_repeat_w,
+	.proc_open       = simple_open,
+};
+static const struct proc_ops proc_test_type_fops =
+{
+	.proc_read       = proc_test_type_r,
+	.proc_write      = proc_test_type_w,
+	.proc_open       = simple_open,
+};
+#endif
 #endif
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0))
+static int reserve_pseudo_sensor_share_mem()
+{
+	int rc = 0;
+	rc = qcom_smem_alloc(QCOM_SMEM_HOST_ANY, SMEM_PSEUDO_SENSOR_MEM_TYPE, SMEM_PSEUDO_SENSOR_SMEM_SIZE);
+	if (rc < 0 && rc != -EEXIST) {
+		pr_err("%s smem_alloc fail\n", __func__);
+		rc = -EFAULT;
+		return rc;
+	}
+	return 0;
+}
+#endif
 
 static int __init pseduo_sensor_init(void)
 {
 	struct proc_dir_entry *dir;
 
-	if (g_data != NULL)   {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0))
+	int err = 0;
+	err = reserve_pseudo_sensor_share_mem();
+	if(err) {
+		pr_info("reserve_pseudo_sensor_share_mem failed\n");
+		return -ENOMEM;
+	}
+#endif
+
+	if (g_data != NULL) {
 		ERR("driver already exist\n");
 		return -EBUSY;
 	} else {
@@ -1379,7 +1658,12 @@ static int __init pseduo_sensor_init(void)
 	proc_create_data("timeleft", 0664, dir,  &proc_timeleft_fops, NULL);
 	proc_create_data("sst", 0664, dir,  &proc_sst_fops, NULL);
 	proc_create_data("ecode", 0664, dir,  &proc_ecode_fops, NULL);
-
+#ifdef OPLUS_FEATURE_SENSOR_DEBUG_KIT
+	proc_create_data("fault_code", 0664, dir, &proc_fault_code_fops, NULL);
+	proc_create_data("frequency", 0664, dir, &proc_frequency_fops, NULL);
+	proc_create_data("repeat", 0664, dir, &proc_repeat_fops, NULL);
+	proc_create_data("test_type", 0664, dir, &proc_test_type_fops, NULL);
+#endif
 	// 初始化定时器
 	g_timer.expires = 0;
 	// 添加定时器，定时器开始生效
