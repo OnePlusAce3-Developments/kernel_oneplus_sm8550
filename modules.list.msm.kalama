@@ -114,6 +114,7 @@ horae_shell_temp.ko
 oplus_secure_harden.ko
 oplus_security_guard.ko
 oplus_security_keventupload.ko
+oplus_secure_common.ko
 oplus_bsp_sched_assist.ko
 oplus_bsp_frame_boost.ko
 cpu_jankinfo.ko
