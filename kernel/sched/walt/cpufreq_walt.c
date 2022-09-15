@@ -271,7 +271,6 @@ static inline unsigned long walt_map_util_freq(unsigned long util,
 	return (fmax + (fmax >> 2)) * util / cap;
 }
 
-<<<<<<< HEAD
 #ifdef CONFIG_OPLUS_FEATURE_SUGOV_TL
 static unsigned int freq_to_targetload(
 	struct waltgov_tunables *tunables, unsigned int freq)
@@ -404,7 +403,7 @@ static unsigned int choose_freq(struct waltgov_policy *wg_policy,
 	return freq;
 }
 #endif /* CONFIG_OPLUS_FEATURE_SUGOV_TL */
-=======
+
 static inline unsigned int get_adaptive_low_freq(struct waltgov_policy *wg_policy)
 {
 	return(max(wg_policy->tunables->adaptive_low_freq,
@@ -416,7 +415,6 @@ static inline unsigned int get_adaptive_high_freq(struct waltgov_policy *wg_poli
 	return(max(wg_policy->tunables->adaptive_high_freq,
 		   wg_policy->tunables->adaptive_high_freq_kernel));
 }
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.042
 
 static unsigned int get_next_freq(struct waltgov_policy *wg_policy,
 				  unsigned long util, unsigned long max,
@@ -904,7 +902,6 @@ static ssize_t boost_store(struct gov_attr_set *attr_set, const char *buf,
 	return count;
 }
 
-<<<<<<< HEAD
 #ifdef CONFIG_OPLUS_FEATURE_SUGOV_TL
 static ssize_t target_loads_show(struct gov_attr_set *attr_set, char *buf)
 {
@@ -989,7 +986,7 @@ static ssize_t target_loads_store(struct gov_attr_set *attr_set, const char *buf
 	return count;
 }
 #endif /* CONFIG_OPLUS_FEATURE_SUGOV_TL */
-=======
+
 /**
  * cpufreq_walt_set_adaptive_freq() - set the waltgov adaptive freq for cpu
  * @cpu:               the cpu for which the values should be set
@@ -1074,7 +1071,6 @@ int cpufreq_walt_reset_adaptive_freq(unsigned int cpu)
 	return 0;
 }
 EXPORT_SYMBOL(cpufreq_walt_reset_adaptive_freq);
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.042
 
 #define WALTGOV_ATTR_RW(_name)						\
 static struct governor_attr _name =					\
