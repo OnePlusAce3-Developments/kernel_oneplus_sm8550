@@ -171,19 +171,16 @@
 
 #define HAP_CFG_DRV_DUTY_CFG_REG		0x60
 #define ADT_DRV_DUTY_EN_BIT			BIT(7)
-<<<<<<< HEAD
+
 #define ADT_BRK_DUTY_75				0x6
 #define ADT_DRV_DUTY_62_5			0x10
-#define ADT_BRK_DUTY_EN_BIT			BIT(6)
 
-=======
 #define ADT_BRK_DUTY_EN_BIT			BIT(6)
 #define DRV_DUTY_MASK				GENMASK(5, 3)
 #define DRV_DUTY_62P5_PCT			2
 #define DRV_DUTY_SHIFT				3
 #define BRK_DUTY_MASK				GENMASK(2, 0)
 #define BRK_DUTY_75_PCT			6
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.042
 
 #define HAP_CFG_ADT_DRV_DUTY_CFG_REG		0x61
 #define HAP_CFG_ZX_WIND_CFG_REG			0x62
@@ -2596,7 +2593,6 @@ static int haptics_load_periodic_effect(struct haptics_chip *chip,
 		return -EINVAL;
 	}
 
-<<<<<<< HEAD
 #ifndef OPLUS_FEATURE_CHG_BASIC
 	dev_dbg(chip->dev, "upload %s effect %d, vmax=%d\n", primitive ? "primitive" : "predefined",
 			effects[i].id, play->vmax_mv);
@@ -2605,8 +2601,6 @@ static int haptics_load_periodic_effect(struct haptics_chip *chip,
 			chip->effects[i].id, play->vmax_mv, magnitude, chip->effects[i].vmax_mv);
 #endif
 
-=======
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.042
 	mutex_lock(&chip->play.lock);
 	if (chip->play.in_calibration) {
 		dev_err(chip->dev, "calibration in progress, ignore playing predefined effect\n");
