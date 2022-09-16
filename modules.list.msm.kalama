@@ -104,6 +104,7 @@ oplus_project.ko
 boot_mode.ko
 bootloader_log.ko
 oplus_phoenix.ko
+oplus_kmsg_wb.ko
 cpufreq_health.ko
 horae_shell_temp.ko
 oplus_bsp_atd.ko
