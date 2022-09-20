@@ -629,7 +629,7 @@ static int syna_dev_create_input_device(struct syna_tcm *tcm)
 	struct tcm_dev *tcm_dev = tcm->tcm_dev;
 	struct input_dev *input_dev = NULL;
 
-	LOGI("zhangle-->%s is called.\n", __func__);
+	LOGI("%s is called.\n", __func__);
 #ifdef DEV_MANAGED_API
 	struct device *dev = syna_request_managed_device();
 
@@ -739,7 +739,7 @@ static int syna_dev_check_input_params(struct syna_tcm *tcm)
 	struct tcm_dev *tcm_dev = tcm->tcm_dev;
 
 	if (tcm_dev->max_x == 0 && tcm_dev->max_y == 0) {
-		LOGE("zhangle-->max_x == 0 && max_y == 0\n");
+		LOGE("max_x == 0 && max_y == 0\n");
 		return 0;
 	}
 
@@ -780,7 +780,7 @@ static int syna_dev_set_up_input_device(struct syna_tcm *tcm)
 	int retval = 0;
 #if 0//del by zhangle
 	if (IS_NOT_APP_FW_MODE(tcm->tcm_dev->dev_mode)) {
-		LOGI("zhangle-->Application firmware not running, current mode: %02x\n",
+		LOGI("Application firmware not running, current mode: %02x\n",
 			tcm->tcm_dev->dev_mode);
 		return 0;
 	}
@@ -791,7 +791,7 @@ static int syna_dev_set_up_input_device(struct syna_tcm *tcm)
 
 	retval = syna_dev_check_input_params(tcm);
 	if (retval == 0) {
-		LOGI("zhangle-->Failed to check input params, exit.\n");
+		LOGI("Failed to check input params, exit.\n");
 //		goto exit;//del by zhangle
 	}
 
@@ -1257,7 +1257,7 @@ void syna_send_signal(struct syna_tcm *tcm, int signal_num)
 static int syna_dev_resume(struct device *dev)
 {
 	struct syna_tcm *tcm = dev_get_drvdata(dev);
-	LOGI("%s is called\n", __func__);
+	LOGI("[TP]touchpanel: tp_resume start.\n");
 	queue_work(tcm->speedup_resume_wq, &tcm->speed_up_work);
 	return 0;
 }
@@ -1395,7 +1395,7 @@ static int syna_dev_suspend(struct device *dev)
 	}
 	mutex_lock(&tcm->mutex);
 	tcm->sub_pwr_state = SUB_PWR_SUSPENDING;
-	LOGI("Prepare to suspend device\n");
+	LOGI("[TP]touchpanel: tp_suspend: start.\n");
 
 	/*syna_send_signal(tcm, SIG_DISPLAY_OFF);*/
 
@@ -1563,7 +1563,7 @@ static void ts_panel_notifier_callback(enum panel_event_notifier_tag tag,
 		}
 		break;
 	case DRM_PANEL_EVENT_BLANK_LP:
-		LOGE("received lp event\n");
+		LOGI("received lp event\n");
 		if (!notification->notif_data.early_trigger) {
 			syna_dev_suspend(&tcm->pdev->dev);
 		}
@@ -1577,8 +1577,10 @@ static void ts_panel_notifier_callback(enum panel_event_notifier_tag tag,
 		/*lcd_other_event(notification->notif_data.lcd_ctl_blank, ts);*/
 		break;
 	default:
-		LOGI("notification serviced :%d\n",
-				notification->notif_type);
+		if (notification->notif_type <= DRM_PANEL_EVENT_FOR_TOUCH) {
+			LOGI("notification serviced :%d\n",
+				   notification->notif_type);
+		}
 		break;
 	}
 }
@@ -1861,7 +1863,7 @@ static int syna_dev_connect(struct syna_tcm *tcm)
 				LOGE("Fail to set up input device\n");
 				goto err_setup_input_dev;
 			}
-			LOGI("zhangle-->Success to set up input device\n");
+			LOGI("Success to set up input device\n");
 		}
 
 		break;
@@ -2021,6 +2023,8 @@ static int syna_dev_probe(struct platform_device *pdev)
 #endif
 	u64 time_counter = 0;
 
+	LOGI("%s is called.\n", __func__);
+
 	reset_healthinfo_time_counter(&time_counter);
 
 	hw_if = pdev->dev.platform_data;
@@ -2155,6 +2159,27 @@ static int syna_dev_probe(struct platform_device *pdev)
 	}
 #endif
 
+/* ts check panel dt */
+#if IS_ENABLED(CONFIG_DRM_OPLUS_PANEL_NOTIFY) || IS_ENABLED(CONFIG_QCOM_PANEL_EVENT_NOTIFIER)
+	/* get spi of_node from spi_register_driver */
+	syna_spi_pdev = syna_spi_device->dev.parent;
+
+	for(retry = 0; retry < 10; retry++) {
+		tcm->active_panel = syna_dev_get_panel(syna_spi_pdev->of_node);
+		if (tcm->active_panel) {
+			LOGI("Success to get panel info\n");
+			break;
+		}
+		msleep(500);
+	}
+
+	if (retry == 10) {
+		LOGE("ts check panel dt failed\n");
+		retval = -EPROBE_DEFER; /* retry */
+		goto err_create_cdev;
+	}
+#endif
+
 #ifdef HAS_SYSFS_INTERFACE
 	/* create the device file and register to char device classes */
 	retval = syna_cdev_create_sysfs(tcm, pdev);
@@ -2172,26 +2197,6 @@ static int syna_dev_probe(struct platform_device *pdev)
 		syna_pal_mutex_free(&tcm->tp_event_mutex);
 		goto err_create_cdev;
 	}
-
-/* ts check panel dt */
-#if IS_ENABLED(CONFIG_DRM_OPLUS_PANEL_NOTIFY) || IS_ENABLED(CONFIG_QCOM_PANEL_EVENT_NOTIFIER)
-	/* get spi of_node from spi_register_driver */
-	syna_spi_pdev = syna_spi_device->dev.parent;
-
-	for(retry = 0; retry < 10; retry++) {
-		tcm->active_panel = syna_dev_get_panel(syna_spi_pdev->of_node);
-		if (tcm->active_panel) {
-			LOGI("zhangle-->Success to get panel info\n");
-			break;
-		}
-		msleep(500);
-	}
-
-	if (retry == 10) {
-		LOGE("zhangle-->ts check panel dt failed\n");
-		goto err_create_cdev;
-	}
-#endif
 
 /*step15 : suspend && resume fuction register*/
 
@@ -2212,7 +2217,7 @@ static int syna_dev_probe(struct platform_device *pdev)
 			goto err_create_cdev;
 		}
 		tcm->notifier_cookie = cookie;
-		LOGI("zhangle-->Success to register fb_notifier\n");
+		LOGI("Success to register fb_notifier\n");
 	}
 
 #elif IS_ENABLED(CONFIG_OPLUS_MTK_DRM_GKI_NOTIFY)
