@@ -1018,8 +1018,8 @@ static int syna_dev_set_up_app_fw(struct syna_tcm *tcm)
 		return -EIO;
 	}
 
-	memset(tcm->manufacture_info.version, 0, MAX_DEVICE_VERSION_LENGTH);
-	strncpy(tcm->manufacture_info.version, tcm_dev->config_id, MAX_DEVICE_VERSION_LENGTH);
+	memset(tcm->panel_data.manufacture_info.version, 0, MAX_DEVICE_VERSION_LENGTH);
+	strncpy(tcm->panel_data.manufacture_info.version, tcm_dev->config_id, MAX_DEVICE_VERSION_LENGTH);
 
 	/* set up the format of touch report */
 #ifdef USE_CUSTOM_TOUCH_REPORT_CONFIG
@@ -1574,7 +1574,7 @@ static void ts_panel_notifier_callback(enum panel_event_notifier_tag tag,
 				notification->notif_data.new_fps);
 		break;
 	case DRM_PANEL_EVENT_FOR_TOUCH:
-		/*lcd_other_event(notification->notif_data.lcd_ctl_blank, ts);*/
+		/*lcd_other_event(notification->notif_data.lcd_ctl_blank, tcm);*/
 		break;
 	default:
 		if (notification->notif_type <= DRM_PANEL_EVENT_FOR_TOUCH) {
@@ -1993,9 +1993,286 @@ static struct syna_auto_test_operations syna_tcm_test_ops = {
 	/*.syna_auto_test_endoperation  =  synaptics_auto_test_endoperation,*/
 };
 
-static struct engineer_test_operations syna_tcm_engineer_test_ops = {
+static struct tcm_engineer_test_operations syna_tcm_engineer_test_ops = {
 	.auto_test                  = synaptics_auto_test,
 };
+
+
+static int init_chip_dts(struct device *dev, void *chip_data)
+{
+	int rc = 0;
+	struct device_node *np;
+	struct syna_tcm *tcm = (struct syna_tcm *)chip_data;
+	int tx_rx_num[2];
+	int i = 0;
+	np = dev->of_node;
+
+
+	rc = of_property_read_u32(np, "project_id", &tcm->panel_data.project_id);
+
+	if (rc) {
+		TP_INFO(tcm->tp_index, "project_id not specified\n");
+	}
+
+	rc = of_property_count_u32_elems(np, "platform_support_project");
+	tcm->panel_data.project_num = rc;
+
+	if (!rc) {
+		TP_INFO(tcm->tp_index, "project not specified\n");
+	}
+
+	if (tcm->panel_data.project_num > 0) {
+		rc = of_property_read_u32_array(np, "platform_support_project",
+						tcm->panel_data.platform_support_project, tcm->panel_data.project_num);
+
+		if (rc) {
+			TP_INFO(tcm->tp_index, "platform_support_project not specified");
+			return -1;
+		}
+
+		rc = of_property_read_u32_array(np, "platform_support_project_dir",
+						tcm->panel_data.platform_support_project_dir, tcm->panel_data.project_num);
+
+		if (rc) {
+			TP_INFO(tcm->tp_index, "platform_support_project_dir not specified");
+			return -1;
+		}
+
+	} else {
+		TP_INFO(tcm->tp_index, "project and project not specified in dts, please update dts");
+	}
+
+	/*parse chip name*/
+	rc = of_property_read_u32(np, "chip-num", &tcm->panel_data.chip_num);
+
+	if (rc)  {
+		TP_INFO(tcm->tp_index, "panel_type not specified, need to default 1");
+		tcm->panel_data.chip_num = 1;
+	}
+
+	TP_INFO(tcm->tp_index, "find %d num chip in dts", tcm->panel_data.chip_num);
+
+	for (i = 0; i < tcm->panel_data.chip_num; i++) {
+		/*tcm->panel_data.chip_name[i] = devm_kzalloc(dev, 100, GFP_KERNEL);
+
+		if (tcm->panel_data.chip_name[i] == NULL) {
+			TPD_INFO("panel_data.chip_name kzalloc error\n");
+			devm_kfree(dev, tcm->panel_data.chip_name[i]);
+			goto dts_match_error;
+		}*/
+
+		rc = of_property_read_string_index(np, "chip-name", i,
+						   (const char **)&tcm->panel_data.chip_name[i]);
+		TP_INFO(tcm->tp_index, "panel_data.chip_name = %s\n", tcm->panel_data.chip_name[i]);
+
+		if (rc) {
+			TP_INFO(tcm->tp_index, "chip-name not specified");
+		}
+	}
+
+	/*parse panel type and commandline*/
+	rc = of_property_count_u32_elems(np, "panel_type");
+
+	if (!rc) {
+		TP_INFO(tcm->tp_index, "panel_type not specified\n");
+
+	} else if (rc) {
+		TP_INFO(tcm->tp_index, "now has %d num panel in dts\n", rc);
+		tcm->panel_data.panel_num = rc;
+	}
+
+	if (tcm->panel_data.panel_num > 0) {
+		rc = of_property_read_u32_array(np, "panel_type", tcm->panel_data.panel_type,
+						tcm->panel_data.panel_num);
+
+		if (rc) {
+			TP_INFO(tcm->tp_index, "panel_type not specified");
+			goto dts_match_error;
+		}
+	}
+
+	for (i = 0; i < tcm->panel_data.panel_num; i++) {
+		/*tcm->panel_data.platform_support_commandline[i] = devm_kzalloc(dev, 100,
+				GFP_KERNEL);
+
+		if (tcm->panel_data.platform_support_commandline[i] == NULL) {
+			TPD_INFO("panel_data.platform_support_commandline kzalloc error\n");
+			devm_kfree(dev, tcm->panel_data.platform_support_commandline[i]);
+			goto dts_match_error;
+		}*/
+
+		rc = of_property_read_string_index(np, "platform_support_project_commandline",
+						   i,
+						   (const char **)&tcm->panel_data.platform_support_commandline[i]);
+
+		if (rc) {
+			TP_INFO(tcm->tp_index, "platform_support_project_commandline not specified");
+			goto dts_match_error;
+		}
+
+		//tcm->panel_data.firmware_name[i] = devm_kzalloc(dev, 25, GFP_KERNEL);
+		rc = of_property_read_string_index(np, "firmware_name", i,
+						   (const char **)&tcm->panel_data.firmware_name[i]);
+
+		if (rc) {
+			TP_INFO(tcm->tp_index, "firmware_name not specified");
+			//devm_kfree(dev, tcm->panel_data.firmware_name[i]);
+		}
+	}
+
+	rc = tp_judge_ic_match_commandline(&tcm->panel_data);
+
+	if (rc < 0) {
+		TP_INFO(tcm->tp_index, "commandline not match, please update dts");
+		goto dts_match_error;
+	}
+
+	rc = of_property_read_u32(np, "tp_type", &tcm->panel_data.tp_type);
+
+	if (rc) {
+		TP_INFO(tcm->tp_index, "tp_type not specified\n");
+	}
+
+	/* resolution info*/
+	rc = of_property_read_u32_array(np, "touchpanel,tx-rx-num", tx_rx_num, 2);
+
+	if (rc) {
+		TP_INFO(tcm->tp_index, "tx-rx-num not set\n");
+		tcm->tx_num = TX_NUM;
+		tcm->rx_num = RX_NUM;
+
+	} else {
+		tcm->tx_num = tx_rx_num[0];
+		tcm->rx_num = tx_rx_num[1];
+	}
+
+	TP_INFO(tcm->tp_index, "tx_num = %d, rx_num = %d \n", tcm->tx_num, tcm->rx_num);
+
+	return 0;
+
+dts_match_error:
+	return -1;
+}
+
+static int tp_paneldata_init(struct syna_tcm *pdata)
+{
+	struct syna_tcm *tcm = pdata;
+	int ret = -1;
+	char *p_node = NULL;
+	char *fw_name_tmp = NULL;
+	char *hbp_postfix = "_HBP";
+	char *fae_postfix = "_FAE";
+	uint8_t copy_len = 0;
+
+	if (!tcm) {
+		return ret;
+	}
+
+	/*step7 : Alloc fw_name/devinfo memory space*/
+	tcm->panel_data.fw_name = devm_kzalloc(&tcm->pdev->dev, MAX_FW_NAME_LENGTH,
+				 GFP_KERNEL);
+
+	if (tcm->panel_data.fw_name == NULL) {
+		ret = -ENOMEM;
+		TP_INFO(tcm->tp_index, "panel_data.fw_name kzalloc error\n");
+		return ret;
+	}
+
+#ifndef CONFIG_REMOVE_OPLUS_FUNCTION
+	tcm->panel_data.manufacture_info.version = devm_kzalloc(&tcm->pdev->dev,
+			MAX_DEVICE_VERSION_LENGTH, GFP_KERNEL);
+
+	if (tcm->panel_data.manufacture_info.version == NULL) {
+		ret = -ENOMEM;
+		TP_INFO(tcm->tp_index, "manufacture_info.version kzalloc error\n");
+		return ret;
+	}
+
+	tcm->panel_data.manufacture_info.manufacture = devm_kzalloc(&tcm->pdev->dev,
+			MAX_DEVICE_MANU_LENGTH, GFP_KERNEL);
+
+	if (tcm->panel_data.manufacture_info.manufacture == NULL) {
+		ret = -ENOMEM;
+		TP_INFO(tcm->tp_index, "panel_data.fw_name kzalloc error\n");
+		return ret;
+	}
+
+	tcm->fw_name_fae = devm_kzalloc(&tcm->pdev->dev, MAX_FW_NAME_LENGTH,
+				 GFP_KERNEL);
+
+	if (tcm->fw_name_fae == NULL) {
+		ret = -ENOMEM;
+		TP_INFO(tcm->tp_index, "fw_name_fae kzalloc error\n");
+		return ret;
+	}
+
+	/*step8 : touchpanel vendor*/
+	tp_util_get_vendor(&tcm->hw_res, &tcm->panel_data);
+
+	/*strncpy(tcm->panel_data.manufacture_info.fw_path, FW_IMAGE_NAME, MAX_FW_NAME_LENGTH - 1);
+	strncpy(tcm->panel_data.manufacture_info.manufacture, "BOE_HBP", 8);*/
+	strlcat(tcm->panel_data.manufacture_info.manufacture, hbp_postfix, MAX_DEVICE_MANU_LENGTH);
+	tcm->monitor_data.vendor = tcm->panel_data.manufacture_info.manufacture;
+
+	fw_name_tmp = devm_kzalloc(&tcm->pdev->dev, MAX_FW_NAME_LENGTH, GFP_KERNEL);
+
+	if (fw_name_tmp == NULL) {
+		TP_INFO(tcm->tp_index, "fw_name_tmp kzalloc error!\n");
+		goto EXIT;
+	}
+
+	p_node  = strstr(tcm->panel_data.fw_name, ".");
+
+	if (p_node == NULL) {
+		TP_INFO(tcm->tp_index, "p_node strstr error!\n");
+		goto EXIT;
+	}
+
+	memset(fw_name_tmp, 0, MAX_FW_NAME_LENGTH);
+	copy_len = p_node - tcm->panel_data.fw_name;
+	memcpy(fw_name_tmp, tcm->panel_data.fw_name, copy_len);
+	strlcat(fw_name_tmp, hbp_postfix, MAX_FW_NAME_LENGTH);
+	strlcat(fw_name_tmp, p_node, MAX_FW_NAME_LENGTH);
+	memcpy(tcm->panel_data.fw_name, fw_name_tmp, MAX_FW_NAME_LENGTH);
+	TP_INFO(tcm->tp_index, "fw_name is %s\n", tcm->panel_data.fw_name);
+
+	p_node  = strstr(tcm->panel_data.fw_name, ".");
+
+	if (p_node == NULL) {
+		TP_INFO(tcm->tp_index, "p_node strstr error!\n");
+		goto EXIT;
+	}
+
+	memset(fw_name_tmp, 0, MAX_FW_NAME_LENGTH);
+	copy_len = p_node - tcm->panel_data.fw_name;
+	memcpy(fw_name_tmp, tcm->panel_data.fw_name, copy_len);
+	strlcat(fw_name_tmp, fae_postfix, MAX_FW_NAME_LENGTH);
+	strlcat(fw_name_tmp, p_node, MAX_FW_NAME_LENGTH);
+	memcpy(tcm->fw_name_fae, fw_name_tmp, MAX_FW_NAME_LENGTH);
+	TP_INFO(tcm->tp_index, "fw_name_fae is %s\n", tcm->fw_name_fae);
+
+	p_node  = strstr(tcm->panel_data.test_limit_name, ".");
+
+	if (p_node == NULL) {
+		TP_INFO(tcm->tp_index, "p_node strstr error!\n");
+		goto EXIT;
+	}
+
+	memset(fw_name_tmp, 0, MAX_FW_NAME_LENGTH);
+	copy_len = p_node - tcm->panel_data.test_limit_name;
+	memcpy(fw_name_tmp, tcm->panel_data.test_limit_name, copy_len);
+	strlcat(fw_name_tmp, hbp_postfix, MAX_FW_NAME_LENGTH);
+	strlcat(fw_name_tmp, p_node, MAX_FW_NAME_LENGTH);
+	memcpy(tcm->panel_data.test_limit_name, fw_name_tmp, MAX_FW_NAME_LENGTH);
+	TP_INFO(tcm->tp_index, "test_limit_name is %s\n", tcm->panel_data.test_limit_name);
+#endif
+EXIT:
+	if (fw_name_tmp) {
+		devm_kfree(&tcm->pdev->dev, fw_name_tmp);
+	}
+	return 0;
+}
+
 
 /**
  * syna_dev_probe()
@@ -2063,36 +2340,21 @@ static int syna_dev_probe(struct platform_device *pdev)
 	tcm->pdev = pdev;
 	tcm->hw_if = hw_if;
 
-	/* create manufacture_info */
-	tcm->manufacture_info.fw_path = devm_kzalloc(&pdev->dev,
-			MAX_FW_NAME_LENGTH, GFP_KERNEL);
+	syna_spi_pdev = syna_spi_device->dev.parent;
 
-	if (tcm->manufacture_info.fw_path == NULL) {
-		retval = -ENOMEM;
-		LOGE("panel_data.fw_path kzalloc error\n");
+	retval = init_chip_dts(syna_spi_pdev, tcm);
+
+	if (retval < 0) {
+		TP_INFO(tcm->tp_index, "%s: dts init failed.\n", __func__);
 		goto err_manufacture_info;
 	}
 
-	tcm->manufacture_info.version = devm_kzalloc(&pdev->dev,
-			MAX_DEVICE_VERSION_LENGTH, GFP_KERNEL);
+	/*step9 : panel data init*/
+	retval = tp_paneldata_init(tcm);
 
-	if (tcm->manufacture_info.version == NULL) {
-		retval = -ENOMEM;
-		LOGE("manufacture_info.version kzalloc error\n");
+	if (retval < 0) {
 		goto err_manufacture_info;
 	}
-
-	tcm->manufacture_info.manufacture = devm_kzalloc(&pdev->dev,
-			MAX_DEVICE_MANU_LENGTH, GFP_KERNEL);
-
-	if (tcm->manufacture_info.manufacture == NULL) {
-		retval = -ENOMEM;
-		LOGE("panel_data.manufacture kzalloc error\n");
-		goto err_manufacture_info;
-	}
-
-	strncpy(tcm->manufacture_info.fw_path, FW_IMAGE_NAME, MAX_FW_NAME_LENGTH - 1);
-	strncpy(tcm->manufacture_info.manufacture, "BOE_HBP", 8);
 
 	syna_tcm_buf_init(&tcm->event_data);
 
@@ -2159,11 +2421,9 @@ static int syna_dev_probe(struct platform_device *pdev)
 	}
 #endif
 
-/* ts check panel dt */
+/* tcm check panel dt */
 #if IS_ENABLED(CONFIG_DRM_OPLUS_PANEL_NOTIFY) || IS_ENABLED(CONFIG_QCOM_PANEL_EVENT_NOTIFIER)
 	/* get spi of_node from spi_register_driver */
-	syna_spi_pdev = syna_spi_device->dev.parent;
-
 	for(retry = 0; retry < 10; retry++) {
 		tcm->active_panel = syna_dev_get_panel(syna_spi_pdev->of_node);
 		if (tcm->active_panel) {
@@ -2452,9 +2712,17 @@ static int __init syna_dev_module_init(void)
 {
 	int retval;
 
+	TPD_INFO("%s is called\n", __func__);
+	if (!tp_judge_ic_match("synaptics-s3910")) {
+		TPD_INFO("tp_judge_ic_match fail\n");
+		return 0;
+	}
+	TPD_INFO("spi_register_driver\n");
 	retval = syna_hw_interface_init();
 	if (retval < 0)
 		return retval;
+
+	TPD_INFO("platform_register_driver\n");
 
 	return platform_driver_register(&syna_dev_driver);
 }

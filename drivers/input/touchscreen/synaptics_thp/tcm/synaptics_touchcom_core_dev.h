@@ -524,11 +524,12 @@ struct tcm_features_info {
 struct tcm_grip_info_blob {
 	unsigned char data[MAX_SIZE_GRIP_INFO];
 };
-
+/*
 struct Coordinate {
 	int x;
 	int y;
 };
+*/
 struct tcm_objects_data_blob {
 	unsigned char status;
 	unsigned int x_pos;

@@ -392,8 +392,8 @@ static int tp_health_monitor_read_func(struct seq_file *s, void *v)
 
 	if (monitor_data->fw_version) {
 		memset(monitor_data->fw_version, 0, MAX_DEVICE_VERSION_LENGTH);
-		strncpy(monitor_data->fw_version, tcm->manufacture_info.version,
-			strlen(tcm->manufacture_info.version));
+		strncpy(monitor_data->fw_version, tcm->panel_data.manufacture_info.version,
+			strlen(tcm->panel_data.manufacture_info.version));
 	}
 
 	tp_healthinfo_read(s, monitor_data);
@@ -551,7 +551,7 @@ int init_touchpanel_proc(struct syna_tcm *tcm,
 		snprintf(name, TP_NAME_SIZE_MAX, "%s%d", "tp", tcm->tp_index);
 	}*/
 
-	register_devinfo(name, &tcm->manufacture_info);
+	register_devinfo(name, &tcm->panel_data.manufacture_info);
 
 #endif
 

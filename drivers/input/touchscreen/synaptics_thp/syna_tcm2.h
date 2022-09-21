@@ -44,6 +44,8 @@
 #include "syna_tcm2_platform.h"
 #include "synaptics_touchcom_core_dev.h"
 #include "synaptics_touchcom_func_touch.h"
+#include "../oplus_touchscreen_v2/tp_devices.h"
+#include "../oplus_touchscreen_v2/touchpanel_common.h"
 
 #define PLATFORM_DRIVER_NAME "synaptics_tcm"
 
@@ -56,11 +58,12 @@
 #define SIG_DISPLAY_ON  44
 #define SIG_DISPLAY_OFF 45
 
-#define TP_NAME_SIZE_MAX 25
+/*#define TP_NAME_SIZE_MAX 25*/
+/*
 #define MAX_FW_NAME_LENGTH        60
 #define MAX_DEVICE_VERSION_LENGTH 16
 #define MAX_DEVICE_MANU_LENGTH    16
-
+*/
 #define SYNAPTICS_TCM_DRIVER_ID (1 << 0)
 #define SYNAPTICS_TCM_DRIVER_VERSION 1
 #define SYNAPTICS_TCM_DRIVER_SUBVER "4.0"
@@ -278,13 +281,13 @@
 /* #define ENABLE_HELPER */
 
 #define TOUCH_BIT_CHECK           0x3FF  /*max support 10 point report.using for detect non-valid points*/
-
+/*
 typedef enum debug_level {
-	LEVEL_BASIC,    /*printk basic tp debug info*/
-	LEVEL_DETAIL,   /*printk tp detail log for stress test*/
-	LEVEL_DEBUG,    /*printk all tp debug info*/
+	LEVEL_BASIC,    /printk basic tp debug info/
+	LEVEL_DETAIL,   /printk tp detail log for stress test/
+	LEVEL_DEBUG,    /printk all tp debug info/
 } tp_debug_level;
-
+*/
 /**
  * @brief: Power States
  *
@@ -337,7 +340,7 @@ struct syna_tcm_helper {
 	struct workqueue_struct *workqueue;
 };
 #endif
-
+/*
 struct fp_underscreen_info {
 	uint8_t touch_state;
 	uint8_t area_rate;
@@ -351,27 +354,27 @@ struct com_api_data {
 };
 
 struct com_test_data {
-	const struct firmware *limit_fw;      /*test limit fw*/
-	const struct firmware *black_test_fw;      /*test limit fw*/
+	const struct firmware *limit_fw;      /test limit fw/
+	const struct firmware *black_test_fw;      /test limit fw/
 	void *chip_test_ops;
-	/*save auto test result data*/
+	/save auto test result data/
 	void *result_data;
 	size_t result_max_len;
 	size_t result_flag;
 	size_t result_cur_len;
-	/*save black screen test result data*/
+	/save black screen test result data/
 	void *bs_result_data;
 	size_t bs_result_max_len;
 	size_t bs_result_flag;
 	size_t bs_result_cur_len;
 };
-
-struct engineer_test_operations {
+*/
+struct tcm_engineer_test_operations {
 	/*int (*black_screen_test)(struct black_gesture_test *p,
 				 struct syna_tcm *tcm);                 //message of black gesture test*/
 	int (*auto_test)(struct seq_file *s,  struct device *dev);         /*message of auto test*/
 };
-
+/*
 typedef enum {
 	TP_RATE_START,
 	TP_RATE_CALC,
@@ -403,7 +406,7 @@ struct swipes_record {
 };
 
 struct monitor_data {
-	/*struct debug_info_proc_operations  *debug_info_ops; //debug info data*/
+	struct debug_info_proc_operations  *debug_info_ops; /debug info data
 
 	u64 boot_time;
 	u64 stat_time;
@@ -450,7 +453,7 @@ struct monitor_data {
 
 	int click_count;
 	int swipe_count;
-	/*int32_t *click_count_array;*/
+	/int32_t *click_count_array;/
 
 	u64 touch_timer;
 	u64 holding_touch_time;
@@ -501,13 +504,13 @@ struct monitor_data {
 
 #define MAX_BUS_ERROR_COUNT 30
 struct exception_data {
-	void  *chip_data; /*debug info data*/
+	void  *chip_data; /debug info data/
 	bool exception_upload_support;
 	u32 exception_upload_count;
 	u32 bus_error_count;
 	u32 bus_error_upload_count;
 };
-
+*/
 /**
  * @brief: context of the synaptics linux-based driver
  *
@@ -537,6 +540,7 @@ struct syna_tcm {
 
 	/* Hardware interface layer */
 	struct syna_hw_interface *hw_if;
+	struct hw_resource hw_res;      /*hw resourc information*/
 
 	/* ISR-related variables */
 	pid_t isr_pid;
@@ -564,7 +568,10 @@ struct syna_tcm {
 		unsigned int max_objects;
 	} input_dev_params;
 
-	struct manufacture_info manufacture_info;       /*touchpanel device info*/
+	int tx_num;
+	int rx_num;
+	struct panel_info panel_data;	/*GPIO control(id && pinctrl && tp_type)*/
+	char *fw_name_fae;                 /*fw name fae*/
 
 	/* Workqueue used for fw update */
 	struct delayed_work reflash_work;
@@ -609,7 +616,7 @@ struct syna_tcm {
 
 	struct com_api_data com_api_data;
 	struct com_test_data com_test_data;	/*test comon data*/
-	struct engineer_test_operations   *engineer_ops;     /*call_back function*/
+	struct tcm_engineer_test_operations   *engineer_ops;     /*call_back function*/
 	bool in_test_process;
 
 	bool health_monitor_support;                        /*health_monitor is used*/
