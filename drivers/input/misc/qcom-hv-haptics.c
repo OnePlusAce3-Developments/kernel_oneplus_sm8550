@@ -823,6 +823,9 @@ static bool is_haptics_external_powered(struct haptics_chip *chip)
 	return false;
 }
 
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_FAULT_INJECT_VIBRATOR)
+noinline
+#endif
 static int haptics_read(struct haptics_chip *chip,
 		u16 base, u8 offset, u8 *val, u32 length)
 {
@@ -836,6 +839,9 @@ static int haptics_read(struct haptics_chip *chip,
 	return rc;
 }
 
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_FAULT_INJECT_VIBRATOR)
+noinline
+#endif
 static int haptics_write(struct haptics_chip *chip,
 		u16 base, u8 offset, u8 *val, u32 length)
 {
@@ -1154,6 +1160,10 @@ static int haptics_adjust_lra_period(struct haptics_chip *chip, u32 *t_lra_us)
 	((chip->wa_flags & SLEEP_CLK_32K_SCALE) ? 813850 : 833333)
 #define SLEEP_CLK_CAL_DIVIDER			\
 	((chip->wa_flags & SLEEP_CLK_32K_SCALE) ? 600 : 586)
+
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_FAULT_INJECT_VIBRATOR)
+noinline
+#endif
 static int haptics_get_closeloop_lra_period(
 		struct haptics_chip *chip, bool in_boot)
 {
@@ -1303,6 +1313,9 @@ static int haptics_get_closeloop_lra_period(
 	return 0;
 }
 
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_FAULT_INJECT_VIBRATOR)
+noinline
+#endif
 static int haptics_set_vmax_mv(struct haptics_chip *chip, u32 vmax_mv)
 {
 	int rc = 0;
@@ -2018,6 +2031,9 @@ static int haptics_get_fifo_fill_status(struct haptics_chip *chip, u32 *fill)
 	return 0;
 }
 
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_FAULT_INJECT_VIBRATOR)
+noinline
+#endif
 static int haptics_get_available_fifo_memory(struct haptics_chip *chip)
 {
 	int rc;
@@ -2192,10 +2208,16 @@ static int haptics_set_fifo(struct haptics_chip *chip, struct fifo_cfg *fifo)
 }
 
 #ifdef OPLUS_FEATURE_CHG_BASIC
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_FAULT_INJECT_VIBRATOR)
+noinline
+#endif
 static int haptics_config_openloop_lra_period(struct haptics_chip *chip,
 							u32 t_lra_us);
 #endif
 
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_FAULT_INJECT_VIBRATOR)
+noinline
+#endif
 static int haptics_load_constant_effect(struct haptics_chip *chip, u8 amplitude)
 {
 	struct haptics_play_info *play = &chip->play;
@@ -2433,6 +2455,9 @@ static int haptics_convert_sample_period(struct haptics_chip *chip,
 	return period;
 }
 
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_FAULT_INJECT_VIBRATOR)
+noinline
+#endif
 static int haptics_load_custom_effect(struct haptics_chip *chip,
 			s16 __user *data, u32 length, s16 magnitude)
 {
@@ -2894,6 +2919,9 @@ static int haptics_store_cl_brake_settings(struct haptics_chip *chip)
 	return rc;
 }
 
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_FAULT_INJECT_VIBRATOR)
+noinline
+#endif
 static int haptics_config_openloop_lra_period(struct haptics_chip *chip,
 							u32 t_lra_us)
 {
