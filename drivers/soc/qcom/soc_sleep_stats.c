@@ -126,8 +126,7 @@ struct ddr_stats_g_data {
 struct ddr_stats_g_data *ddr_gdata;
 #endif
 
-bool ddr_freq_update;
-ktime_t send_msg_time;
+static bool ddr_freq_update;
 
 static void print_sleep_stats(struct seq_file *s, struct sleep_stats *stat)
 {
@@ -283,6 +282,8 @@ static int ddr_stats_show(struct seq_file *s, void *d)
 DEFINE_SHOW_ATTRIBUTE(ddr_stats);
 
 #if IS_ENABLED(CONFIG_MSM_QMP)
+static ktime_t send_msg_time;
+
 int ddr_stats_freq_sync_send_msg(void)
 {
 	char buf[MAX_MSG_LEN] = {};
@@ -387,8 +388,8 @@ int ddr_stats_get_ss_vote_info(int ss_count,
 	u32 vote_offset, *val;
 	int ret, i;
 
-	if (!vote_info || (ddr_gdata->drv_max == -EINVAL) ||
-			!(ss_count == ddr_gdata->drv_max) || !ddr_gdata)
+	if (!vote_info || !ddr_gdata || (ddr_gdata->drv_max == -EINVAL) ||
+			!(ss_count == ddr_gdata->drv_max))
 		return -ENODEV;
 
 	if (!ddr_gdata->read_vote_info)
