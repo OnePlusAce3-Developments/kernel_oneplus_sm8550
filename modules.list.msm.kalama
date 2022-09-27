@@ -127,3 +127,4 @@ ua_cpu_ioctl.ko
 oplus_mdmfeature.ko
 oplus_pmicwd.ko
 qpnp-power-on.ko
+oplus_fdleak_check.ko
