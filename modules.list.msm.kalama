@@ -125,3 +125,5 @@ oplus_bsp_task_sched.ko
 cpufreq_uag.ko
 ua_cpu_ioctl.ko
 oplus_mdmfeature.ko
+oplus_pmicwd.ko
+qpnp-power-on.ko
