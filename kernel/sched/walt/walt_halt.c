@@ -501,17 +501,10 @@ unlock:
 }
 
 static void android_rvh_set_cpus_allowed_by_task(void *unused,
-<<<<<<< HEAD
 						    const struct cpumask *cpu_valid_mask,
 						    const struct cpumask *new_mask,
 						    struct task_struct *p,
 						    unsigned int *dest_cpu)
-=======
-						 const struct cpumask *cpu_valid_mask,
-						 const struct cpumask *new_mask,
-						 struct task_struct *p,
-						 unsigned int *dest_cpu)
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.048
 {
 	cpumask_t allowed_cpus;
 
