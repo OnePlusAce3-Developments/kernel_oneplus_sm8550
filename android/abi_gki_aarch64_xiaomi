@@ -172,10 +172,7 @@
   __tracepoint_android_vh_binder_trans
   __tracepoint_android_vh_binder_reply
   __tracepoint_android_vh_binder_alloc_new_buf_locked
-<<<<<<< HEAD
-=======
 
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.048
 
 #required by mi_sched.ko
   __traceiter_android_vh_free_task
