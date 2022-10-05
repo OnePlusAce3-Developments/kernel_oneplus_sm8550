@@ -10,6 +10,7 @@
 
 #include "walt.h"
 #include "trace.h"
+#include <linux/energy_model.h>
 #include <../../../drivers/android/binder_internal.h>
 #include "../../../drivers/android/binder_trace.h"
 #if IS_ENABLED(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
@@ -648,10 +649,10 @@ static inline unsigned long walt_em_cpu_energy(struct em_perf_domain *pd,
 	unsigned long scale_cpu, cost;
 	int cpu;
 
-#ifdef CONFIG_OPLUS_FEATURE_SUGOV_TL
-	unsigned int tl = 80;
-	struct cpufreq_policy *policy;
-#endif /* CONFIG_OPLUS_FEATURE_SUGOV_TL */
+#if defined(CONFIG_OPLUS_FEATURE_SUGOV_TL) || defined(CONFIG_OPLUS_UAG_USE_TL)
+	struct cpufreq_policy policy;
+	unsigned long raw_util = max_util;
+#endif
 
 	if (!sum_util)
 		return 0;
@@ -664,15 +665,12 @@ static inline unsigned long walt_em_cpu_energy(struct em_perf_domain *pd,
 	cpu = cpumask_first(to_cpumask(pd->cpus));
 	scale_cpu = arch_scale_cpu_capacity(cpu);
 
-#ifdef CONFIG_OPLUS_FEATURE_SUGOV_TL
-	policy = cpufreq_cpu_get(cpu);
+#if defined(CONFIG_OPLUS_FEATURE_SUGOV_TL) || defined(CONFIG_OPLUS_UAG_USE_TL)
+	cpufreq_get_policy(&policy, cpu);
+	trace_android_vh_map_util_freq_new(max_util, max_util, max_util, &max_util, &policy, NULL);
 
-	if (policy) {
-		tl = get_targetload(policy);
-		cpufreq_cpu_put(policy);
-	}
-
-	max_util = max_util * 100 / tl;
+	if (max_util == raw_util)
+		max_util = max_util + (max_util >> 2); /* account  for TARGET_LOAD usually 80 */
 #else /* !CONFIG_OPLUS_FEATURE_SUGOV_TL */
 	max_util = max_util + (max_util >> 2); /* account  for TARGET_LOAD usually 80 */
 #endif /* CONFIG_OPLUS_FEATURE_SUGOV_TL */

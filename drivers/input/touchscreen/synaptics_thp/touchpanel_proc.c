@@ -199,38 +199,40 @@ static ssize_t proc_coordinate_read(struct file *file, char __user *buffer,
 	}
 
 	if (gesture_type != UNKOWN_GESTURE) {
-		Point_start.x = (touch_data->data_point[0] | (touch_data->data_point[1]
-					  << 8));
-		Point_start.y = (touch_data->data_point[2] | (touch_data->data_point[3]
-					  << 8));
+		Point_start.x = (touch_data->data_point[0] |
+					   (touch_data->data_point[1] << 8)) / 10;
+		Point_start.y = (touch_data->data_point[2] |
+					   (touch_data->data_point[3] << 8)) / 10;
 		Point_end.x    = (touch_data->data_point[4] |
-					   (touch_data->data_point[5] << 8));
+					   (touch_data->data_point[5] << 8)) / 10;
 		Point_end.y    = (touch_data->data_point[6] |
-					   (touch_data->data_point[7] << 8));
+					   (touch_data->data_point[7] << 8)) / 10;
 		Point_1st.x    = (touch_data->data_point[8] |
-					   (touch_data->data_point[9] << 8));
+					   (touch_data->data_point[9] << 8)) / 10;
 		Point_1st.y    = (touch_data->data_point[10] |
-					   (touch_data->data_point[11] << 8));
+					   (touch_data->data_point[11] << 8)) / 10;
 		Point_2nd.x    = (touch_data->data_point[12] |
-					   (touch_data->data_point[13] << 8));
+					   (touch_data->data_point[13] << 8)) / 10;
 		Point_2nd.y    = (touch_data->data_point[14] |
-					   (touch_data->data_point[15] << 8));
+					   (touch_data->data_point[15] << 8)) / 10;
 		Point_3rd.x    = (touch_data->data_point[16] |
-					   (touch_data->data_point[17] << 8));
+					   (touch_data->data_point[17] << 8)) / 10;
 		Point_3rd.y    = (touch_data->data_point[18] |
-					   (touch_data->data_point[19] << 8));
+					   (touch_data->data_point[19] << 8)) / 10;
 		Point_4th.x    = (touch_data->data_point[20] |
-					   (touch_data->data_point[21] << 8));
+					   (touch_data->data_point[21] << 8)) / 10;
 		Point_4th.y    = (touch_data->data_point[22] |
-					   (touch_data->data_point[23] << 8));
+					   (touch_data->data_point[23] << 8)) / 10;
 	}
 
-	if (gesture_type == SINGLE_TAP) {
-		Point_start.x = (touch_data->extra_gesture_info[0] | (touch_data->extra_gesture_info[1] << 8));
-		Point_start.y = (touch_data->extra_gesture_info[2] | (touch_data->extra_gesture_info[3] << 8));
+	if (gesture_type == SINGLE_TAP || gesture_type == DOU_TAP) {
+		Point_start.x = (touch_data->extra_gesture_info[0] |
+					   (touch_data->extra_gesture_info[1] << 8)) / 10;
+		Point_start.y = (touch_data->extra_gesture_info[2] |
+					   (touch_data->extra_gesture_info[3] << 8)) / 10;
 	}
 
-	LOGE("lpwg:0x%x, type:%d, clockwise: %d, points: (%d, %d)(%d, %d)(%d, %d)(%d, %d)(%d, %d)(%d, %d)\n",
+	TPD_INFO("lpwg:0x%x, type:%d, clockwise: %d, points: (%d, %d)(%d, %d)(%d, %d)(%d, %d)(%d, %d)(%d, %d)\n",
 		 touch_data->gesture_id, gesture_type, clockwise, \
 		 Point_start.x, Point_start.y, \
 		 Point_end.x, Point_end.y, \

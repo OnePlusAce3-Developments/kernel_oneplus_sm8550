@@ -12,6 +12,7 @@
 
 #include <linux/kthread.h>
 #include <trace/events/power.h>
+#include <trace/hooks/sched.h>
 
 #include "walt.h"
 #include "trace.h"
@@ -116,6 +117,7 @@ struct waltgov_cpu {
 };
 
 DEFINE_PER_CPU(struct waltgov_callback *, waltgov_cb_data);
+EXPORT_PER_CPU_SYMBOL_GPL(waltgov_cb_data);
 static DEFINE_PER_CPU(struct waltgov_cpu, waltgov_cpu);
 static DEFINE_PER_CPU(struct waltgov_tunables *, cached_tunables);
 
@@ -401,6 +403,15 @@ static unsigned int choose_freq(struct waltgov_policy *wg_policy,
 #endif /* CONFIG_OPLUS_FEATURE_SUGOV_POWER_EFFIENCY */
 
 	return freq;
+}
+
+void update_util_tl(void *data, unsigned long util, unsigned long freq,
+		unsigned long cap, unsigned long *max_util, struct cpufreq_policy *policy,
+		bool *need_freq_update)
+{
+	unsigned int tl = get_targetload(policy);
+
+	*max_util = *max_util * 100 / tl;
 }
 #endif /* CONFIG_OPLUS_FEATURE_SUGOV_TL */
 
@@ -1418,6 +1429,10 @@ static int waltgov_start(struct cpufreq_policy *policy)
 		wg_cpu->wg_policy		= wg_policy;
 	}
 
+#ifdef CONFIG_OPLUS_FEATURE_SUGOV_TL
+	register_trace_android_vh_map_util_freq_new(update_util_tl, NULL);
+#endif
+
 	for_each_cpu(cpu, policy->cpus) {
 		struct waltgov_cpu *wg_cpu = &per_cpu(waltgov_cpu, cpu);
 
@@ -1437,6 +1452,10 @@ static void waltgov_stop(struct cpufreq_policy *policy)
 
 	for_each_cpu(cpu, policy->cpus)
 		waltgov_remove_callback(cpu);
+
+#ifdef CONFIG_OPLUS_FEATURE_SUGOV_TL
+	unregister_trace_android_vh_map_util_freq_new(update_util_tl, NULL);
+#endif
 
 	synchronize_rcu();
 

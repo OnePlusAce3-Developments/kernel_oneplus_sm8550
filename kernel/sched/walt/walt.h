@@ -150,6 +150,7 @@ extern struct walt_sched_cluster *sched_cluster[WALT_NR_CPUS];
 
 /*END SCHED.H PORT*/
 
+extern u64 walt_sched_clock(void);
 extern int num_sched_clusters;
 extern unsigned int sched_capacity_margin_up[WALT_NR_CPUS];
 extern unsigned int sched_capacity_margin_down[WALT_NR_CPUS];

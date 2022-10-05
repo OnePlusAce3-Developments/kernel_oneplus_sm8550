@@ -6259,6 +6259,7 @@ static long richtap_file_unlocked_ioctl(struct file *file, unsigned int cmd, uns
 		schedule_work(&chip->richtap_stream_work);
 		break;
 	case RICHTAP_STOP_MODE:
+		cancel_work_sync(&chip->richtap_stream_work);
 		mutex_lock(&play->lock);
 		atomic_set(&chip->play.fifo_status.written_done, 1);
 		haptics_set_fifo_empty_threshold(chip, 0);
