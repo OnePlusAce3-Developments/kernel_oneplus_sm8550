@@ -28,6 +28,10 @@
 #include <linux/uaccess.h>
 #include <linux/qpnp/qpnp-pbs.h>
 
+#ifdef CONFIG_HAPTIC_FEEDBACK_MODULE
+#include "../../misc/aw8697_haptic/haptic_feedback.h"
+#endif
+
 #ifndef OPLUS_FEATURE_CHG_BASIC
 #define OPLUS_FEATURE_CHG_BASIC
 #endif
@@ -841,8 +845,12 @@ static int haptics_read(struct haptics_chip *chip,
 	u16 addr = base + offset;
 
 	rc = regmap_bulk_read(chip->regmap, addr, val, length);
-	if (rc < 0)
+	if (rc < 0) {
 		dev_err(chip->dev, "read addr %#x failed, rc=%d\n", addr, rc);
+#ifdef CONFIG_HAPTIC_FEEDBACK_MODULE
+		(void)oplus_haptic_track_dev_err(HAPTIC_SPMI_READ_TRACK_ERR, addr, rc);
+#endif
+	}
 
 	return rc;
 }
@@ -857,8 +865,12 @@ static int haptics_write(struct haptics_chip *chip,
 	u16 addr = base + offset;
 
 	rc = regmap_bulk_write(chip->regmap, addr, val, length);
-	if (rc < 0)
+	if (rc < 0) {
 		dev_err(chip->dev, "write addr %#x failed, rc=%d\n", addr, rc);
+#ifdef CONFIG_HAPTIC_FEEDBACK_MODULE
+		(void)oplus_haptic_track_dev_err(HAPTIC_SPMI_WRITE_TRACK_ERR, addr, rc);
+#endif
+	}
 
 	return rc;
 }
@@ -913,8 +925,12 @@ static void __dump_effects(struct haptics_chip *chip,
 			size = effect->fifo->num_s * CHAR_PER_SAMPLE
 							+ CHAR_MSG_HEADER;
 			str = kzalloc(size, GFP_KERNEL);
-			if (str == NULL)
+			if (str == NULL) {
+#ifdef CONFIG_HAPTIC_FEEDBACK_MODULE
+				(void)oplus_haptic_track_mem_alloc_err(HAPTIC_MEM_ALLOC_TRACK, size, __func__);
+#endif
 				return;
+			}
 
 			pos = 0;
 			pos += scnprintf(str, size, "%s", "FIFO data: ");
@@ -934,8 +950,12 @@ static void __dump_effects(struct haptics_chip *chip,
 			size = BRAKE_SAMPLE_COUNT * CHAR_PER_SAMPLE
 						+ CHAR_MSG_HEADER;
 			str = kzalloc(size, GFP_KERNEL);
-			if (str == NULL)
+			if (str == NULL) {
+#ifdef CONFIG_HAPTIC_FEEDBACK_MODULE
+				(void)oplus_haptic_track_mem_alloc_err(HAPTIC_MEM_ALLOC_TRACK, size, __func__);
+#endif
 				return;
+			}
 
 			pos = 0;
 			pos += scnprintf(str, size, "%s", "brake pattern: ");
@@ -2514,6 +2534,9 @@ static int haptics_load_custom_effect(struct haptics_chip *chip,
 		fifo->samples = vmalloc(custom_data.length);
 		if (!fifo->samples) {
 			rc = -ENOMEM;
+#ifdef CONFIG_HAPTIC_FEEDBACK_MODULE
+			(void)oplus_haptic_track_mem_alloc_err(HAPTIC_MEM_ALLOC_TRACK, custom_data.length, __func__);
+#endif
 			goto unlock;
 		}
 	}
@@ -5527,6 +5550,9 @@ restore:
 static int haptics_start_lra_calibrate(struct haptics_chip *chip)
 {
 	int rc;
+#ifdef CONFIG_HAPTIC_FEEDBACK_MODULE
+	u32 cl_f_lra;
+#endif
 
 	mutex_lock(&chip->play.lock);
 	/*
@@ -5551,6 +5577,15 @@ static int haptics_start_lra_calibrate(struct haptics_chip *chip)
 	rc = haptics_detect_lra_frequency(chip);
 	if (rc < 0) {
 		dev_err(chip->dev, "Detect LRA frequency failed, rc=%d\n", rc);
+#ifdef CONFIG_HAPTIC_FEEDBACK_MODULE
+		if (chip->cal_data.cl_t_lra_us != 0) {
+			cl_f_lra = USEC_PER_SEC / chip->cal_data.cl_t_lra_us;
+		} else {
+			cl_f_lra = 0;
+		}
+		(void)oplus_haptic_track_fre_cail(HAPTIC_F0_CALI_TRACK, cl_f_lra, rc,
+						  "haptics_detect_lra_frequency err");
+#endif
 		goto unlock;
 	}
 
@@ -6064,6 +6099,9 @@ static int richtap_load_prebake(struct haptics_chip *chip, u8 *data, u32 length)
 	fifo->samples = kcalloc(custom_data.length, sizeof(u8), GFP_KERNEL);
 	if (!fifo->samples) {
 		rc = -ENOMEM;
+#ifdef CONFIG_HAPTIC_FEEDBACK_MODULE
+		(void)oplus_haptic_track_mem_alloc_err(HAPTIC_MEM_ALLOC_TRACK, custom_data.length, __func__);
+#endif
 		goto unlock;
 	}
 
