@@ -323,6 +323,28 @@ enum driver_req_mode {
 	DRIVER_REQ_MODE_SUSPEND = 1,
 };
 
+enum daemon_states {
+	STATE_NONE = 0,
+
+	/* setup the application */
+	STATE_START = 1,
+
+	/* initialize the connected device */
+	STATE_INIT_DEV = 2,
+
+	/* configure the device to active mode */
+	STATE_SCREEN_ON = 3,
+
+	/* configure the device to low power mode */
+	STATE_SCREEN_OFF = 4,
+
+	/* execute and process the finger data */
+	STATE_RUN = 5,
+
+	/* terminate and exit the application */
+	STATE_TERMINATE,
+};
+
 #if defined(ENABLE_HELPER)
 /**
  * @brief: Tasks for helper
@@ -597,6 +619,7 @@ struct syna_tcm {
 	bool startup_reflash_enabled;
 	bool rst_on_resume_enabled;
 	bool hbp_enabled; /* report data to report_to_queue[] */
+	int daemon_state;
 
 	unsigned short gesture_type;
 	unsigned short touch_and_hold;

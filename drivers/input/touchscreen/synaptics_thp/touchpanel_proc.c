@@ -307,7 +307,7 @@ static ssize_t proc_coordinate_read(struct file *file, char __user *buffer,
 
 	case TRIANGLE_DETECT:
 	default:
-		LOGW("not support\n");
+		TPD_INFO("not support\n");
 		break;
 	}
 
@@ -393,13 +393,13 @@ static ssize_t proc_fingerprint_trigger_write(struct file *file,
 	char buf[64] = {0};
 
 	if (!tcm) {
-		LOGE("tcm not exist!\n");
+		TPD_INFO("tcm not exist!\n");
 		return count;
 	}
 
 	mutex_lock(&tcm->mutex);
 	if (copy_from_user(buf, buffer, count)) {
-		LOGE("%s: read proc input error.\n", __func__);
+		TPD_INFO("%s: read proc input error.\n", __func__);
 		goto EXIT;
 	}
 
@@ -411,15 +411,15 @@ static ssize_t proc_fingerprint_trigger_write(struct file *file,
 			tcm->fp_info.touch_state = 1;
 			tcm->is_fp_down = true;
 			touch_call_notifier_fp(&tcm->fp_info);
-			LOGI("screen on fingerprint down : (%d, %d)\n", tcm->fp_info.x, tcm->fp_info.y);
+			TPD_INFO("screen on fingerprint down : (%d, %d)\n", tcm->fp_info.x, tcm->fp_info.y);
 		} else {
 			tcm->fp_info.touch_state = 0;
 			tcm->is_fp_down = false;
 			touch_call_notifier_fp(&tcm->fp_info);
-			LOGI("screen on fingerprint up : (%d, %d)\n", tcm->fp_info.x, tcm->fp_info.y);
+			TPD_INFO("screen on fingerprint up : (%d, %d)\n", tcm->fp_info.x, tcm->fp_info.y);
 		}
 	} else {
-		LOGE("invalid content: '%s', length = %zd\n", buf, count);
+		TPD_INFO("invalid content: '%s', length = %zd\n", buf, count);
 	}
 
 EXIT:
@@ -428,6 +428,40 @@ EXIT:
 }
 
 DECLARE_PROC_OPS(proc_fingerprint_trigger_fops, simple_open, NULL, proc_fingerprint_trigger_write, NULL);
+
+
+static ssize_t proc_daemon_state_write(struct file *file,
+					const char __user *buffer, size_t count, loff_t *ppos)
+{
+	struct syna_tcm *tcm = PDE_DATA(file_inode(file));
+	int pre_state, state = 0;
+	char buf[64] = {0};
+
+	if (!tcm) {
+		TPD_INFO("ts not exist!\n");
+		return count;
+	}
+
+	mutex_lock(&tcm->mutex);
+	if (copy_from_user(buf, buffer, count)) {
+		TPD_INFO("%s: read proc input error.\n", __func__);
+		goto EXIT;
+	}
+
+	if (sscanf(buf, "%d", &state)) {
+		pre_state = tcm->daemon_state;
+		tcm->daemon_state = state;
+		TPD_INFO("%s: daemon state switch: %d --> %d.\n", __func__, pre_state, tcm->daemon_state);
+	} else {
+		TPD_INFO("%s: invalid content: '%s', length = %zd\n", __func__, buf, count);
+	}
+
+EXIT:
+	mutex_unlock(&tcm->mutex);
+	return count;
+}
+
+DECLARE_PROC_OPS(proc_daemon_state_fops, simple_open, NULL, proc_daemon_state_write, NULL);
 
 /*proc/touchpanel/debug_info/health_monitor*/
 #ifndef CONFIG_REMOVE_OPLUS_FUNCTION
@@ -589,9 +623,12 @@ int init_touchpanel_proc(struct syna_tcm *tcm,
 		{
 			"fingerprint_trigger", 0666, NULL, &proc_fingerprint_trigger_fops, tcm, false, true
 		},
+		{
+			"daemon_state", 0666, NULL, &proc_daemon_state_fops, tcm, false, true
+		},
 	};
 
-	LOGE("%s entry\n", __func__);
+	TPD_INFO("%s entry\n", __func__);
 
 	/*proc files-step1:/proc/devinfo/tp  (touchpanel device info)*/
 #ifndef REMOVE_OPLUS_FUNCTION
@@ -617,7 +654,7 @@ int init_touchpanel_proc(struct syna_tcm *tcm,
 
 	if (prEntry_tp == NULL) {
 		ret = -ENOMEM;
-		LOGE("%s: Couldn't create TP proc entry\n", __func__);
+		TPD_INFO("%s: Couldn't create TP proc entry\n", __func__);
 	}
 
 	tcm->prEntry_tp = prEntry_tp;
@@ -630,7 +667,7 @@ int init_touchpanel_proc(struct syna_tcm *tcm,
 
 			if (tp_proc_node[i].node == NULL) {
 				tp_proc_node[i].is_created = false;
-				LOGE("%s: Couldn't create proc/debug_info/%s\n", __func__,
+				TPD_INFO("%s: Couldn't create proc/debug_info/%s\n", __func__,
 					tp_proc_node[i].name);
 				ret = -ENODEV;
 

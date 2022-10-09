@@ -71,6 +71,9 @@
 #include <linux/mtk_disp_notify.h>
 #endif
 
+#include <linux/wait.h>
+static DECLARE_WAIT_QUEUE_HEAD(state_waiter);
+
 extern struct platform_device *syna_spi_device;
 /**
  * @section: USE_CUSTOM_TOUCH_REPORT_CONFIG
@@ -1501,9 +1504,18 @@ static int syna_dev_early_suspend(struct device *dev)
 	struct syna_tcm *tcm = dev_get_drvdata(dev);
 
 	/* exit directly if device is already in suspend state */
-	if (tcm->pwr_state != PWR_ON)
+	if (tcm->pwr_state != PWR_ON || tcm->sub_pwr_state > SUB_PWR_RESUME_DONE)
 		return 0;
 
+	if (tcm->daemon_state != STATE_RUN) {
+		LOGE("daemon state in %d, wait for exit...\n", tcm->daemon_state);
+		wait_event_interruptible_timeout(state_waiter,
+				             (tcm->daemon_state == STATE_RUN),
+				             msecs_to_jiffies(200));
+		if (tcm->daemon_state != STATE_RUN) {
+			LOGE("wait daemon state %d exit timeout...\n", tcm->daemon_state);
+		}
+	}
 	mutex_lock(&tcm->mutex);
 	tcm->sub_pwr_state = SUB_PWR_EARLY_SUSPENDING;
 	LOGI("Prepare to early suspend device\n");

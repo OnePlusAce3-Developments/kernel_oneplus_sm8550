@@ -201,6 +201,7 @@ static int g_sysfs_extra_bytes_read;
 #define SYSFS_DISABLED_INTERRUPT		(0)
 #define SYSFS_ENABLED_INTERRUPT			(1)
 
+#define SYNA_RETRY_CNT 60
 /* Define a data structure that contains a list_head */
 struct fifo_queue {
 	struct list_head next;
@@ -1597,7 +1598,6 @@ static int syna_sysfs_set_fingerprint_prepare(struct syna_tcm *tcm)
 	int retval = 0;
 	struct syna_hw_interface *hw_if = tcm->hw_if;
 	int retryCnt = 0;
-	#define SYNA_RETRY_CNT 60
 
 	/* update tcm->lpwg_enabled */
 	syna_dev_update_lpwg_status(tcm);
@@ -1686,6 +1686,9 @@ static int syna_sysfs_set_fingerprint_post(struct syna_tcm *tcm)
 
 	if((tcm->sub_pwr_state == SUB_PWR_RESUME_DONE) && (tcm->pwr_state == PWR_ON)) {
 		//screen on, nothing to do
+		LOGI("Enable all Report and Response to report_to_queue\n");
+		syna_pal_mem_set(tcm->report_to_queue, EFP_ENABLE, REPORT_TYPES);
+		tcm->hbp_enabled = true;
 		goto exit;
 	} else if (tcm->sub_pwr_state == SUB_PWR_SUSPEND_DONE){
 		/* do not fill any report/response to queue */
@@ -1750,6 +1753,7 @@ static int syna_cdev_ioctl_send_message(struct syna_tcm *tcm,
 		unsigned int *msg_size)
 {
 	int retval = 0;
+	int retryCnt = 0;
 	unsigned char *data = NULL;
 	unsigned char resp_code = 0;
 	unsigned int payload_length = 0;
@@ -1769,6 +1773,23 @@ static int syna_cdev_ioctl_send_message(struct syna_tcm *tcm,
 	if (*msg_size == 0) {
 		LOGE("Invalid message length, msg size: 0\n");
 		return -EINVAL;
+	}
+
+	if (tcm->sub_pwr_state >= SUB_PWR_EARLY_SUSPENDING) {
+		//screen off
+		if(tcm->sub_pwr_state < SUB_PWR_SUSPEND_DONE) {
+			/* wait the early suspend and suspend */
+			retryCnt = SYNA_RETRY_CNT;
+retry:
+			syna_pal_sleep_ms(5);
+			retryCnt--;
+			if ((tcm->sub_pwr_state < SUB_PWR_SUSPEND_DONE) && (retryCnt > 0))
+				goto retry;
+
+			if(retryCnt <= 0) {
+				LOGE("retryCnt is too small, Please Incress the retryCnt\n");
+			}
+		}
 	}
 
 	mutex_lock(&tcm->mutex);
@@ -1833,6 +1854,7 @@ static int syna_cdev_ioctl_send_message(struct syna_tcm *tcm,
 
 	if ((data[0] == CMD_SET_DYNAMIC_CONFIG) && (payload_length == 3)) {
 		if ((data[3] == DC_GESTURE_TYPE_ENABLE) || (data[3] == DC_TOUCH_AND_HOLD)) {
+			syna_pal_sleep_ms(50);
 			syna_sysfs_set_fingerprint_post(tcm);
 		}
 	}
