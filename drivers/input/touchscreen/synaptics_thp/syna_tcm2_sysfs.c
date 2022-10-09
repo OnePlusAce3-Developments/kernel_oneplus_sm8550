@@ -2999,6 +2999,7 @@ static int syna_cdev_open(struct inode *inp, struct file *filp)
 	if (tcm->char_dev_ref_count != 0) {
 		LOGN("cdev already open, %d\n",
 			tcm->char_dev_ref_count);
+		syna_pal_mutex_unlock(&g_extif_mutex);
 		return -EBUSY;
 	}
 
@@ -3045,6 +3046,7 @@ static int syna_cdev_release(struct inode *inp, struct file *filp)
 	if (tcm->char_dev_ref_count <= 0) {
 		LOGN("cdev already closed, %d\n",
 			tcm->char_dev_ref_count);
+		syna_pal_mutex_unlock(&g_extif_mutex);
 		return 0;
 	}
 

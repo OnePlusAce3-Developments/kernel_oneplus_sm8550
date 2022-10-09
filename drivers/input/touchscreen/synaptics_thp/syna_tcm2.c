@@ -1233,7 +1233,7 @@ static int syna_dev_enter_lowpwr_sensing(struct syna_tcm *tcm)
 
 void syna_send_signal(struct syna_tcm *tcm, int signal_num)
 {
-	if(tcm->proc_task != NULL) {
+	if(tcm->proc_task != NULL && tcm->char_dev_ref_count) {
 		LOGI("Sending signal[%d] to app\n", signal_num);
 		if (send_sig(signal_num, tcm->proc_task, 0) < 0) {
 			LOGE("Unable to send signal\n");
