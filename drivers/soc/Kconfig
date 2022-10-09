@@ -88,6 +88,12 @@ source "kernel/oplus_cpu/uad/Kconfig"
 #Xueqian.Zheng@NETWORK.SIM.2500814, 2021/11/5, add for mdm feature
 source "drivers/soc/oplus/mdmfeature/Kconfig"
 #endif /*OPLUS_FEATURE_MDMFEATURE*/
+
+#ifdef OPLUS_FEATURE_MODEM_MINIDUMP
+#xiaoyu.wu@NETWORK.ARCH.3830854, 2022/07/14, add for mdmrst
+source "drivers/soc/oplus/mdmrst/Kconfig"
+#endif /*OPLUS_FEATURE_MODEM_MINIDUMP*/
+
 endmenu
 
 #ifdef OPLUS_FEATURE_TP_BASIC

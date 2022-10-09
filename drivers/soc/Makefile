@@ -64,3 +64,8 @@ obj-y += oplus/dfr/
 #Xueqian.Zheng@NETWORK.SIM.2500814, 2021/11/5, add for mdm feature
 obj-$(CONFIG_OPLUS_FEATURE_MDMFEATURE)     += oplus/mdmfeature/
 #endif /*OPLUS_FEATURE_MDMFEATURE*/
+
+#ifdef OPLUS_FEATURE_MODEM_MINIDUMP
+#xiaoyu.wu@NETWORK.ARCH.3830854, 2022/07/14, add for mdmrst
+obj-$(CONFIG_OPLUS_FEATURE_RECORD_MDMRST)     += oplus/mdmrst/
+#endif /*OPLUS_FEATURE_MODEM_MINIDUMP*/
