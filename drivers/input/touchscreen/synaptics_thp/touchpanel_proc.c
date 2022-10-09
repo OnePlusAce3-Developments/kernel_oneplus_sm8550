@@ -21,6 +21,71 @@
 #include "touchpanel_autotest/touchpanel_autotest.h"
 #include "touch_comon_api/touch_comon_api.h"
 
+/*irq_depth - For enable or disable irq
+ * Output:
+ * irq depth;
+ * irq gpio state;
+ */
+static ssize_t proc_get_irq_depth_read(struct file *file, char __user *buffer,
+				       size_t count, loff_t *ppos)
+{
+	int ret = 0;
+	char page[PAGE_SIZE] = {0};
+	struct syna_tcm *tcm = PDE_DATA(file_inode(file));
+	struct irq_desc *desc = NULL;
+
+	if (!tcm) {
+		return 0;
+	}
+
+	desc = irq_to_desc(tcm->hw_if->bdata_attn.irq_id);
+
+	if (!desc) {
+		return 0;
+	}
+
+	snprintf(page, PAGE_SIZE - 1, "depth:%u, state:%d\n", desc->depth,
+		 gpio_get_value(tcm->hw_if->bdata_attn.irq_gpio));
+	ret = simple_read_from_buffer(buffer, count, ppos, page, strlen(page));
+	return ret;
+}
+/*irq_depth - For enable or disable irq
+ * Input:
+ * value:1, enable_irq;
+ * value:other, disable_irq_nosync;
+ */
+static ssize_t proc_irq_status_write(struct file *file,
+				     const char __user *buffer, size_t count, loff_t *ppos)
+{
+	int value = 0;
+	char buf[4] = {0};
+	struct syna_tcm *tcm = PDE_DATA(file_inode(file));
+
+	if (!tcm) {
+		return count;
+	}
+
+	tp_copy_from_user(buf, sizeof(buf), buffer, count, 2);
+
+	if (kstrtoint(buf, 10, &value)) {
+		TP_INFO(tcm->tp_index, "%s: kstrtoint error\n", __func__);
+		return count;
+	}
+
+	TP_INFO(tcm->tp_index, "%s %d, %s ts->irq=%d\n", __func__, value,
+		value ? "enable" : "disable", tcm->hw_if->bdata_attn.irq_id);
+
+	if (value == 1) {
+		enable_irq(tcm->hw_if->bdata_attn.irq_id);
+	} else {
+		disable_irq_nosync(tcm->hw_if->bdata_attn.irq_id);
+	}
+
+	return count;
+}
+
+DECLARE_PROC_OPS(proc_get_irq_depth_fops, simple_open, proc_get_irq_depth_read, proc_irq_status_write, NULL);
+
 /*proc/touchpanel/baseline_test*/
 static int tp_auto_test_read_func(struct seq_file *s, void *v)
 {
@@ -455,6 +520,9 @@ int init_touchpanel_proc(struct syna_tcm *tcm,
 	char name[TP_NAME_SIZE_MAX];
 
 	tp_proc_node tp_proc_node[] = {
+		{
+			"irq_depth", 0666, NULL, &proc_get_irq_depth_fops, tcm, false, true
+		},
 		{
 			"baseline_test", 0666, NULL, &tp_auto_test_proc_fops, tcm, false, true
 		},
