@@ -1071,6 +1071,7 @@ static void syna_dev_reflash_startup_work(struct work_struct *work)
 	struct delayed_work *delayed_work;
 	struct syna_tcm *tcm;
 	struct tcm_dev *tcm_dev;
+	struct syna_hw_interface *hw_if;
 	const struct firmware *fw_entry;
 	const unsigned char *fw_image = NULL;
 	unsigned int fw_image_size;
@@ -1080,17 +1081,36 @@ static void syna_dev_reflash_startup_work(struct work_struct *work)
 	tcm = container_of(delayed_work, struct syna_tcm, reflash_work);
 
 	tcm_dev = tcm->tcm_dev;
+	hw_if = tcm->hw_if;
 
 	if (tcm->health_monitor_support) {
 		reset_healthinfo_time_counter(&start_time);
 	}
 
 	/* get firmware image */
-	retval = request_firmware(&fw_entry,
-			FW_IMAGE_NAME,
-			tcm->pdev->dev.parent);
+	if (tcm->firmware_update_type == 1) {
+		if (tcm->fw_name_fae) {
+			retval = request_firmware(&fw_entry,
+				   tcm->fw_name_fae,
+				   tcm->pdev->dev.parent);
+		} else {
+			LOGE("fw_name_fae is NULL\n");
+			retval = -1;
+		}
+	} else {
+		if (tcm->panel_data.fw_name) {
+			retval = request_firmware_select(&fw_entry,
+				   tcm->panel_data.fw_name,
+				   tcm->pdev->dev.parent);
+		} else {
+			LOGE("panel_data.fw_name is NULL\n");
+			retval = -1;
+		}
+	}
 	if (retval < 0) {
-		LOGE("Fail to request %s\n", FW_IMAGE_NAME);
+		LOGE("Fail to request %s\n", (tcm->firmware_update_type == 1) ?
+				   tcm->fw_name_fae : tcm->panel_data.fw_name);
+		complete(&tcm->fw_complete);
 		return;
 	}
 
@@ -1115,7 +1135,7 @@ static void syna_dev_reflash_startup_work(struct work_struct *work)
 			fw_image,
 			fw_image_size,
 			RESP_IN_ATTN,
-			false);
+			(tcm->firmware_update_type == 1));
 #endif
 	if (retval < 0) {
 		LOGE("Fail to do reflash\n");
@@ -1132,10 +1152,23 @@ static void syna_dev_reflash_startup_work(struct work_struct *work)
 	/* ensure the settings of input device
 	 * if needed, re-create a new input device
 	 */
-	retval = syna_dev_set_up_input_device(tcm);
-	if (retval < 0) {
-		LOGE("Fail to register input device\n");
-		goto exit;
+	if (!tcm->input_dev || !tcm->char_dev_ref_count) {
+		retval = syna_dev_set_up_input_device(tcm);
+		if (retval < 0) {
+			LOGE("Fail to register input device\n");
+			goto exit;
+		}
+	}
+
+	LOGI("Do reset after fw update\n");
+	if (hw_if->ops_hw_reset) {
+		hw_if->ops_hw_reset(hw_if);
+	} else {
+		retval = syna_tcm_reset(tcm->tcm_dev);
+		if (retval < 0) {
+			LOGE("Fail to do sw reset\n");
+			goto exit;
+		}
 	}
 exit:
 	pm_relax(&tcm->pdev->dev);
@@ -1143,6 +1176,8 @@ exit:
 	if (tcm->health_monitor_support) {
 		tp_healthinfo_report(&tcm->monitor_data, HEALTH_FW_UPDATE_COST, &start_time);
 	}
+
+	complete(&tcm->fw_complete);
 }
 #endif
 /*#if defined(POWER_ALIVE_AT_SUSPEND) && !defined(RESET_ON_RESUME)*/
@@ -1887,8 +1922,8 @@ static int syna_dev_connect(struct syna_tcm *tcm)
 	tcm->reflash_workqueue =
 			create_singlethread_workqueue("syna_reflash");
 	INIT_DELAYED_WORK(&tcm->reflash_work, syna_dev_reflash_startup_work);
-	queue_delayed_work(tcm->reflash_workqueue, &tcm->reflash_work,
-			msecs_to_jiffies(STARTUP_REFLASH_DELAY_TIME_MS));
+	/*queue_delayed_work(tcm->reflash_workqueue, &tcm->reflash_work,
+			msecs_to_jiffies(STARTUP_REFLASH_DELAY_TIME_MS));*/
 #endif
 
 	tcm->pwr_state = PWR_ON;
@@ -2361,6 +2396,7 @@ static int syna_dev_probe(struct platform_device *pdev)
 	syna_pal_mutex_alloc(&tcm->tp_event_mutex);
 
 	mutex_init(&tcm->mutex);
+	init_completion(&tcm->fw_complete);
 
 #ifdef USE_CUSTOM_TOUCH_REPORT_CONFIG
 	tcm->has_custom_tp_config = true;

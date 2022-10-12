@@ -49,6 +49,7 @@ static ssize_t proc_get_irq_depth_read(struct file *file, char __user *buffer,
 	ret = simple_read_from_buffer(buffer, count, ppos, page, strlen(page));
 	return ret;
 }
+
 /*irq_depth - For enable or disable irq
  * Input:
  * value:1, enable_irq;
@@ -85,6 +86,53 @@ static ssize_t proc_irq_status_write(struct file *file,
 }
 
 DECLARE_PROC_OPS(proc_get_irq_depth_fops, simple_open, proc_get_irq_depth_read, proc_irq_status_write, NULL);
+
+
+/*tp_fw_update - For touch panel fw update
+ * Input:
+ * firmware_update_type:0, fw update;
+ * firmware_update_type:1, fore fw update;
+ * firmware_update_type:2, app fw update;
+ */
+static ssize_t proc_fw_update_write(struct file *file,
+				    const char __user *buffer, size_t count, loff_t *ppos)
+{
+	struct syna_tcm *tcm = PDE_DATA(file_inode(file));
+	int val = 0;
+	int ret = 0;
+	char buf[4] = {0};
+
+	if (!tcm) {
+		return count;
+	}
+
+	if (copy_from_user(buf, buffer, count)) {
+		LOGE("%s: read proc input error.\n", __func__);
+		return count;
+	}
+
+	if (kstrtoint(buf, 10, &val)) {
+		TP_INFO(tcm->tp_index, "%s: kstrtoint error\n", __func__);
+		return count;
+	}
+
+	tcm->firmware_update_type = val;
+
+	queue_delayed_work(tcm->reflash_workqueue, &tcm->reflash_work, 0);
+
+	ret = wait_for_completion_killable_timeout(&tcm->fw_complete,
+			FW_UPDATE_COMPLETE_TIMEOUT);
+
+	if (ret < 0) {
+		TP_INFO(tcm->tp_index, "kill signal interrupt\n");
+	}
+
+	TP_INFO(tcm->tp_index, "fw update finished\n");
+	return count;
+}
+
+DECLARE_PROC_OPS(proc_fw_update_ops, simple_open, NULL, proc_fw_update_write, NULL);
+
 
 /*proc/touchpanel/baseline_test*/
 static int tp_auto_test_read_func(struct seq_file *s, void *v)
@@ -345,7 +393,7 @@ static ssize_t proc_fingerprint_trigger_write(struct file *file,
 	char buf[64] = {0};
 
 	if (!tcm) {
-		LOGE("ts not exist!\n");
+		LOGE("tcm not exist!\n");
 		return count;
 	}
 
@@ -522,6 +570,9 @@ int init_touchpanel_proc(struct syna_tcm *tcm,
 	tp_proc_node tp_proc_node[] = {
 		{
 			"irq_depth", 0666, NULL, &proc_get_irq_depth_fops, tcm, false, true
+		},
+		{
+			"tp_fw_update", 0666, NULL, &proc_fw_update_ops, tcm, false, true
 		},
 		{
 			"baseline_test", 0666, NULL, &tp_auto_test_proc_fops, tcm, false, true

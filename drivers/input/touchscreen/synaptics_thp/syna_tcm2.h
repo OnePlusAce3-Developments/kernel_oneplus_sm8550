@@ -69,10 +69,10 @@
 #define SYNAPTICS_TCM_DRIVER_SUBVER "4.0"
 
 
-#define FW_IMAGE_NAME "tp/21131/FW_S3910_SAMSUNG_HBP.img"
-#define LIMIT_IMAGE_NAME "tp/21131/LIMIT_S3910_SAMSUNG_HBP.img"
 #define TX_NUM 17
 #define RX_NUM 38
+
+#define FW_UPDATE_COMPLETE_TIMEOUT  msecs_to_jiffies(40*1000)
 /**
  * @section: Driver Configurations
  *
@@ -572,6 +572,9 @@ struct syna_tcm {
 	int rx_num;
 	struct panel_info panel_data;	/*GPIO control(id && pinctrl && tp_type)*/
 	char *fw_name_fae;                 /*fw name fae*/
+
+	int firmware_update_type;
+	struct completion      fw_complete;                 /*completion for control fw update*/
 
 	/* Workqueue used for fw update */
 	struct delayed_work reflash_work;

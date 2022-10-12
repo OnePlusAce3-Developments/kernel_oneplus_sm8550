@@ -199,14 +199,14 @@ static int tp_test_limit_switch(struct syna_tcm *tcm)
 	}
 
 	**change **.img to **_AGING.img*
-	p_node	= strstr(LIMIT_IMAGE_NAME, ".");
+	p_node	= strstr(tcm->panel_data.test_limit_name, ".");
 	if (p_node == NULL) {
 		TP_INFO(tcm->tp_index, "p_node strstr error!\n");
 		goto EXIT;
 	}
 
-	copy_len = p_node - LIMIT_IMAGE_NAME;
-	memcpy(tcm->panel_data.aging_test_limit_name, LIMIT_IMAGE_NAME, copy_len);
+	copy_len = p_node - tcm->panel_data.test_limit_name;
+	memcpy(tcm->panel_data.aging_test_limit_name, tcm->panel_data.test_limit_name, copy_len);
 	strlcat(tcm->panel_data.aging_test_limit_name, postfix, MAX_LIMIT_DATA_LENGTH_COM);
 	strlcat(tcm->panel_data.aging_test_limit_name, p_node, MAX_LIMIT_DATA_LENGTH_COM);
 	TP_INFO(tcm->tp_index, "aging_test_limit_name is %s\n", tcm->panel_data.aging_test_limit_name);
@@ -254,7 +254,7 @@ static int request_real_test_limit(struct syna_tcm *tcm,
 		}
 		ret = request_test_limit(fw, tcm->panel_data.aging_test_limit_name, device);
 		if (ret < 0) {
-			ret = request_test_limit(fw, LIMIT_IMAGE_NAME, device);
+			ret = request_test_limit(fw, tcm->panel_data.test_limit_name, device);
 		}
 		tp_devm_kfree(tcm->device, (void **)&tcm->panel_data.aging_test_limit_name, MAX_FW_NAME_LENGTH);
 	} else {*/
@@ -274,13 +274,13 @@ void tp_limit_read(struct seq_file *s, struct syna_tcm *tcm)
 	uint32_t *p_item_offset = NULL;
 	int32_t *p_data32 = NULL;
 
-	ret =  request_real_test_limit(tcm, &fw, LIMIT_IMAGE_NAME, tcm->device);
+	ret =  request_real_test_limit(tcm, &fw, tcm->panel_data.test_limit_name, tcm->device);
 
 	if (ret < 0) {
-		TPD_INFO("Request firmware failed - %s (%d)\n", LIMIT_IMAGE_NAME,
+		TPD_INFO("Request firmware failed - %s (%d)\n", tcm->panel_data.test_limit_name,
 			 ret);
 		seq_printf(s, "Request failed, Check the path %s\n",
-			   LIMIT_IMAGE_NAME);
+			   tcm->panel_data.test_limit_name);
 		return;
 	}
 
@@ -530,11 +530,11 @@ int tp_auto_test(struct seq_file *s, void *v)
 
 	/*step3:request test limit data from userspace*/
 	ret =  request_real_test_limit(tcm, &tcm->com_test_data.limit_fw,
-		LIMIT_IMAGE_NAME, tcm->device);
+		tcm->panel_data.test_limit_name, tcm->device);
 
 	if (ret < 0) {
 		TP_INFO(tcm->tp_index, "Request firmware failed - %s (%d)\n",
-			LIMIT_IMAGE_NAME, ret);
+			tcm->panel_data.test_limit_name, ret);
 		seq_printf(s, "No limit IMG\n");
 		mutex_unlock(&tcm->mutex);
 
