@@ -542,3 +542,4 @@
   __wake_up
   wake_up_process
   wq_worker_comm
+  rtc_read_alarm
