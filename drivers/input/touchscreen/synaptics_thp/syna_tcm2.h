@@ -47,7 +47,7 @@
 #include "../oplus_touchscreen_v2/tp_devices.h"
 #include "../oplus_touchscreen_v2/touchpanel_common.h"
 
-#define PLATFORM_DRIVER_NAME "synaptics_tcm"
+#define PLATFORM_DRIVER_NAME "synaptics_tcm_hbp"
 
 #define TOUCH_INPUT_NAME "synaptics_tcm_touch"
 #define TOUCH_INPUT_PHYS_PATH "synaptics_tcm/touch_input"
