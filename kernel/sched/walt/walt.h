@@ -274,7 +274,7 @@ static inline unsigned int sched_cpu_legacy_freq(int cpu)
 extern __read_mostly bool sched_freq_aggr_en;
 static inline void walt_enable_frequency_aggregation(bool enable)
 {
-	sched_freq_aggr_en = enable;
+/* disable frequency_aggregation since we have already enable frameboost */
 }
 
 #ifndef CONFIG_IRQ_TIME_ACCOUNTING
