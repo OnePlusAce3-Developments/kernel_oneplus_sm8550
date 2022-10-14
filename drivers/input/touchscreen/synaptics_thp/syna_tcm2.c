@@ -318,6 +318,35 @@ exit:
 	return retval;
 }
 
+
+/**
+ * syna_dev_set_fingerprint_enable()
+ *
+ * set gesture type
+ *
+ * @param
+ *    [ in] tcm: tcm driver handle
+ *    [ in] value: fingerprint enable
+ *
+ * @return
+ *    on success, 0; otherwise, negative value on error.
+ */
+static int syna_dev_set_fingerprint_enable(struct syna_tcm *tcm, unsigned short value)
+{
+	int retval = 0;
+
+	retval = syna_tcm_set_dynamic_config(tcm->tcm_dev,
+			DC_TOUCH_AND_HOLD,
+			value,
+			RESP_IN_ATTN);
+	if (retval < 0) {
+		LOGE("Fail to set gesture type\n");
+		goto exit;
+	}
+
+exit:
+	return retval;
+}
 /**
  * syna_dev_disable_hbp_mode()
  *
@@ -1517,6 +1546,11 @@ static int syna_dev_early_suspend(struct device *dev)
 		}
 	}
 	mutex_lock(&tcm->mutex);
+
+	tcm->touch_and_hold = 1;
+	syna_dev_update_lpwg_status(tcm);
+	syna_dev_set_fingerprint_enable(tcm, tcm->touch_and_hold);
+
 	tcm->sub_pwr_state = SUB_PWR_EARLY_SUSPENDING;
 	LOGI("Prepare to early suspend device\n");
 
