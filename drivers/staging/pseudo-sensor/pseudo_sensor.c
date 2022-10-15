@@ -1597,7 +1597,7 @@ static const struct proc_ops proc_test_type_fops =
 #endif
 #endif
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)) && defined(OPLUS_FEATURE_SENSOR_DEBUG_KIT)
 static int reserve_pseudo_sensor_share_mem()
 {
 	int rc = 0;
@@ -1615,7 +1615,7 @@ static int __init pseduo_sensor_init(void)
 {
 	struct proc_dir_entry *dir;
 
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)) && defined(OPLUS_FEATURE_SENSOR_DEBUG_KIT)
 	int err = 0;
 	err = reserve_pseudo_sensor_share_mem();
 	if(err) {

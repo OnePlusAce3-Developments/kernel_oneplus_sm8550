@@ -1487,7 +1487,7 @@ MODULE_DEVICE_TABLE(spi, syna_spi_id_table);
 #ifdef CONFIG_OF
 static const struct of_device_id syna_spi_of_match_table[] = {
 	{
-		.compatible = "synaptics,tcm-spi",
+		.compatible = "synaptics,tcm-spi-hbp",
 	},
 	{},
 };
