@@ -749,7 +749,7 @@ static void syna_dev_release_input_device(struct syna_tcm *tcm)
 		return;
 
 	input_unregister_device(tcm->input_dev);
-	input_free_device(tcm->input_dev);
+	/*input_free_device(tcm->input_dev);*/
 
 	tcm->input_dev = NULL;
 }
@@ -824,7 +824,7 @@ static int syna_dev_set_up_input_device(struct syna_tcm *tcm)
 	retval = syna_dev_check_input_params(tcm);
 	if (retval == 0) {
 		LOGI("Failed to check input params, exit.\n");
-//		goto exit;//del by zhangle
+		goto exit;
 	}
 
 	if (tcm->input_dev != NULL)
@@ -1104,7 +1104,7 @@ static void syna_dev_reflash_startup_work(struct work_struct *work)
 	struct syna_tcm *tcm;
 	struct tcm_dev *tcm_dev;
 	struct syna_hw_interface *hw_if;
-	const struct firmware *fw_entry;
+	const struct firmware *fw_entry = NULL;
 	const unsigned char *fw_image = NULL;
 	unsigned int fw_image_size;
 	u64 start_time = 0;
@@ -1203,6 +1203,13 @@ static void syna_dev_reflash_startup_work(struct work_struct *work)
 		}
 	}
 exit:
+	fw_image = NULL;
+
+	if (fw_entry) {
+		release_firmware(fw_entry);
+		fw_entry = NULL;
+	}
+
 	pm_relax(&tcm->pdev->dev);
 
 	if (tcm->health_monitor_support) {
@@ -2492,18 +2499,7 @@ static int syna_dev_probe(struct platform_device *pdev)
 
 	device_init_wakeup(&pdev->dev, 1);
 
-#if defined(TCM_CONNECT_IN_PROBE)
-	/* connect to target device */
-	retval = tcm->dev_connect(tcm);
-	if (retval < 0) {
-		LOGE("Fail to connect to the device\n");
-		mutex_destroy(&tcm->mutex);
-		syna_pal_mutex_free(&tcm->tp_event_mutex);
-		goto err_connect;
-	}
-#endif
-
-/* tcm check panel dt */
+/* ts check panel dt */
 #if IS_ENABLED(CONFIG_DRM_OPLUS_PANEL_NOTIFY) || IS_ENABLED(CONFIG_QCOM_PANEL_EVENT_NOTIFIER)
 	/* get spi of_node from spi_register_driver */
 	for(retry = 0; retry < 10; retry++) {
@@ -2519,6 +2515,17 @@ static int syna_dev_probe(struct platform_device *pdev)
 		LOGE("ts check panel dt failed\n");
 		retval = -EPROBE_DEFER; /* retry */
 		goto err_create_cdev;
+	}
+#endif
+
+#if defined(TCM_CONNECT_IN_PROBE)
+	/* connect to target device */
+	retval = tcm->dev_connect(tcm);
+	if (retval < 0) {
+		LOGE("Fail to connect to the device\n");
+		mutex_destroy(&tcm->mutex);
+		syna_pal_mutex_free(&tcm->tp_event_mutex);
+		goto err_connect;
 	}
 #endif
 
