@@ -1856,6 +1856,9 @@ retry:
 		if ((data[3] == DC_GESTURE_TYPE_ENABLE) || (data[3] == DC_TOUCH_AND_HOLD)) {
 			syna_pal_sleep_ms(50);
 			syna_sysfs_set_fingerprint_post(tcm);
+			if (!tcm->touch_and_hold) {
+				tcm->is_fp_down = false;
+			}
 		}
 	}
 
