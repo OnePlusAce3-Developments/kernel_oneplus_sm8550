@@ -662,6 +662,8 @@ struct syna_tcm {
 	struct work_struct     speed_up_work;               /*using for speedup resume*/
 	/*using for touchpanel speedup resume wq*/
 	struct workqueue_struct *speedup_resume_wq;
+	bool bus_ready;                                     /*spi or i2c resume status*/
+	wait_queue_head_t wait;
 
 	/* the pointer of userspace application info data */
 	void *userspace_app_info;
