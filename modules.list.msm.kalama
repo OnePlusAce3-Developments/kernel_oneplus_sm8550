@@ -128,3 +128,4 @@ oplus_mdmfeature.ko
 oplus_pmicwd.ko
 qpnp-power-on.ko
 oplus_fdleak_check.ko
+qcom_enhance_watchdog.ko
