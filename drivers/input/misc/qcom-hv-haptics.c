@@ -7083,7 +7083,7 @@ static int haptics_suspend(struct device *dev)
 		return rc;
 
 #ifdef CONFIG_DEEPSLEEP
-	if (mem_sleep_current == PM_SUSPEND_MEM)
+	if (pm_suspend_via_firmware())
 		haptics_ds_suspend_config(dev);
 #endif
 
@@ -7100,7 +7100,7 @@ static int haptics_resume(struct device *dev)
 #endif
 
 #ifdef CONFIG_DEEPSLEEP
-	if (mem_sleep_current == PM_SUSPEND_MEM) {
+	if (pm_suspend_via_firmware()) {
 		int rc = 0;
 
 		rc = haptics_ds_resume_config(dev);

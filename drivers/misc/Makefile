@@ -62,6 +62,7 @@ obj-$(CONFIG_HI6421V600_IRQ)	+= hi6421v600-irq.o
 obj-$(CONFIG_UID_SYS_STATS)	+= uid_sys_stats.o
 obj-y	+= tri_state_key/
 obj-$(CONFIG_OPEN_DICE)		+= open-dice.o
+<<<<<<< HEAD
 
 #ifdef OPLUS_FEATURE_RF_CABLE_DETECT
 #mael.ma@network.RF 2021/07/06 modify for rf_cable
@@ -85,3 +86,6 @@ obj-$(CONFIG_OPLUS_GPIO) += oplus_gpio.o
 #ifdef OPLUS_FEATURE_CHG_BASIC
 obj-$(CONFIG_HAPTIC_FEEDBACK) += aw8697_haptic/
 #endif
+=======
+obj-$(CONFIG_QSEECOM_PROXY) 	+= qseecom_proxy.o
+>>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.054
