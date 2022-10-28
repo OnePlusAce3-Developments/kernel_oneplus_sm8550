@@ -1021,16 +1021,17 @@ int walt_find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
 unlock:
 	rcu_read_unlock();
 
-	if (best_energy_cpu < 0 || best_energy_cpu >= WALT_NR_CPUS)
-		best_energy_cpu = prev_cpu;
-
 #if IS_ENABLED(CONFIG_OPLUS_FEATURE_FRAME_BOOST)
 	if (set_frame_group_task_to_perfer_cpu(p, &best_energy_cpu))
 		fbt_env.fastpath = FRAME_BOOST_SELECT;
 #endif
+
 #if IS_ENABLED(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
 	set_ux_task_to_prefer_cpu(p, &best_energy_cpu);
 #endif
+
+	if (best_energy_cpu < 0 || best_energy_cpu >= WALT_NR_CPUS)
+		best_energy_cpu = prev_cpu;
 
 	trace_sched_task_util(p, cpumask_bits(candidates)[0], best_energy_cpu,
 			sync, fbt_env.need_idle, fbt_env.fastpath,
