@@ -537,15 +537,19 @@ static void syna_dev_report_input_events(struct syna_tcm *tcm)
 				touch_data->gesture_id);
 
 			if (touch_data->gesture_id == TOUCH_HOLD_DOWN) {
-				memset(&event_data, 0, sizeof(struct touchpanel_event));
-				event_data.touch_state = 1;
-				event_data.area_rate = 100;
-				event_data.x = touch_data->data_point[0] | (touch_data->data_point[1] << 8);
-				event_data.y = touch_data->data_point[2] | (touch_data->data_point[3] << 8);
-				touchpanel_event_call_notifier(EVENT_ACTION_FOR_FINGPRINT,
-					   (void *)&event_data);
-				tcm->is_fp_down = true;
-				LOGI("screen off fingerprint down\n");
+				if (!tcm->is_fp_down) {
+					memset(&event_data, 0, sizeof(struct touchpanel_event));
+					event_data.touch_state = 1;
+					event_data.area_rate = 100;
+					event_data.x = touch_data->data_point[0] | (touch_data->data_point[1] << 8);
+					event_data.y = touch_data->data_point[2] | (touch_data->data_point[3] << 8);
+					touchpanel_event_call_notifier(EVENT_ACTION_FOR_FINGPRINT,
+						   (void *)&event_data);
+					tcm->is_fp_down = true;
+					LOGI("screen off fingerprint down\n");
+				}/* else {
+					LOGI("repeat 'screen off fingerprint down' triggered\n");
+				}*/
 			} else if (touch_data->gesture_id == TOUCH_HOLD_UP) {
 				memset(&event_data, 0, sizeof(struct touchpanel_event));
 				event_data.touch_state = 0;
@@ -1355,8 +1359,11 @@ static void syna_speedup_resume(struct work_struct *work)
 	LOGI("%s is called\n", __func__);
 
 	/* exit directly if device isn't in suspend state */
-	if (tcm->pwr_state == PWR_ON)
+	if (tcm->pwr_state == PWR_ON) {
+		LOGI("pwr_state is already in PWR_ON, exit.\n");
+		tcm->sub_pwr_state = SUB_PWR_RESUME_DONE;
 		return;
+	}
 
 	if (tcm->health_monitor_support) {
 		reset_healthinfo_time_counter(&start_time);
@@ -1389,8 +1396,8 @@ static void syna_speedup_resume(struct work_struct *work)
 			}
 		}
 	} else {
-		tcm->is_fp_down = false;
-		LOGI("reset fp state\n");
+		/*tcm->is_fp_down = false;*/
+		LOGI("is_fp_down, ignore hw reset\n");
 		retval = syna_dev_enter_normal_sensing(tcm);
 		if (retval < 0) {
 			LOGE("Fail to enter normal power mode\n");
@@ -1457,6 +1464,7 @@ static int syna_dev_suspend(struct device *dev)
 #endif
 	struct syna_tcm *tcm = dev_get_drvdata(dev);
 	struct syna_hw_interface *hw_if = tcm->hw_if;
+	struct touchpanel_event event_data;
 	bool irq_disabled = true;
 	u64 start_time = 0;
 
@@ -1495,7 +1503,11 @@ static int syna_dev_suspend(struct device *dev)
 #else
 	tcm->pwr_state = PWR_OFF;
 #endif
-	tcm->is_fp_down = false;
+	/*report fingerprint up in suspend*/
+	/*tcm->is_fp_down = false;*/
+	memset(&event_data, 0, sizeof(struct touchpanel_event));
+	touchpanel_event_call_notifier(EVENT_ACTION_FOR_FINGPRINT,
+		   (void *)&event_data);
 
 	/* once lpwg is enabled, irq should be alive.
 	 * otherwise, disable irq in suspend.
