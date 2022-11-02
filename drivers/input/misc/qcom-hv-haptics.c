@@ -1152,7 +1152,9 @@ static int haptics_get_status_data(struct haptics_chip *chip,
 	else if (sel == FIFO_REAL_TIME_STS)
 		name = "FIFO_REAL_TIME_STS";
 
+#ifndef OPLUS_FEATURE_CHG_BASIC
 	dev_dbg(chip->dev, "Get status data[%s] = (%#x, %#x)\n", name, data[0], data[1]);
+#endif
 	trace_qcom_haptics_status(name, data[0], data[1]);
 	return 0;
 }
@@ -1368,8 +1370,10 @@ static int haptics_set_vmax_mv(struct haptics_chip *chip, u32 vmax_mv)
 			HAP_CFG_VMAX_REG, &val, 1);
 	if (rc < 0)
 		dev_err(chip->dev, "config VMAX failed, rc=%d\n", rc);
+#ifndef OPLUS_FEATURE_CHG_BASIC
 	else
 		dev_dbg(chip->dev, "Set Vmax to %u mV\n", vmax_mv);
+#endif
 
 	return rc;
 }
@@ -1545,7 +1549,9 @@ static int haptics_wait_hboost_ready(struct haptics_chip *chip)
 	if ((hrtimer_get_remaining(&chip->hbst_off_timer) > 0) ||
 			hrtimer_active(&chip->hbst_off_timer)) {
 		hrtimer_cancel(&chip->hbst_off_timer);
+#ifndef OPLUS_FEATURE_CHG_BASIC
 		dev_dbg(chip->dev, "hboost is still on, ignore\n");
+#endif
 		return 0;
 	}
 
@@ -1726,8 +1732,10 @@ static int haptics_module_enable(struct haptics_chip *chip, bool enable)
 	if (rc < 0)
 		return rc;
 
+#ifndef OPLUS_FEATURE_CHG_BASIC
 	dev_dbg(chip->dev, "haptics module %s\n",
 		enable ? "enabled" : "disabled");
+#endif
 	return 0;
 }
 
@@ -2063,8 +2071,10 @@ static int haptics_get_fifo_fill_status(struct haptics_chip *chip, u32 *fill)
 	full = !!(val[0] & FIFO_FULL_FLAG_BIT);
 	available = get_max_fifo_samples(chip) - filled;
 
+#ifndef OPLUS_FEATURE_CHG_BASIC
 	dev_dbg(chip->dev, "filled=%u, available=%u, full=%d, empty=%d\n",
 			filled, available, full, empty);
+#endif
 	trace_qcom_haptics_fifo_hw_status(filled, available, full, empty);
 	*fill = filled;
 	return 0;
@@ -2556,7 +2566,9 @@ static int haptics_load_custom_effect(struct haptics_chip *chip,
 		goto cleanup;
 	}
 
+#ifndef OPLUS_FEATURE_CHG_BASIC
 	dev_dbg(chip->dev, "Copy custom FIFO samples successfully\n");
+#endif
 	fifo->num_s = custom_data.length;
 	fifo->play_length_us = get_fifo_play_length_us(fifo,
 			chip->custom_effect->t_lra_us);
@@ -2733,7 +2745,9 @@ static int haptics_stop_fifo_play(struct haptics_chip *chip)
 	u8 val;
 
 	if (atomic_read(&chip->play.fifo_status.is_busy) == 0) {
+#ifndef OPLUS_FEATURE_CHG_BASIC
 		dev_dbg(chip->dev, "FIFO playing is not in progress\n");
+#endif
 		return 0;
 	}
 
@@ -2763,7 +2777,9 @@ static int haptics_stop_fifo_play(struct haptics_chip *chip)
 	if (rc < 0)
 		return rc;
 
+#ifndef OPLUS_FEATURE_CHG_BASIC
 	dev_dbg(chip->dev, "stopped FIFO playing successfully\n");
+#endif
 	return 0;
 }
 
@@ -2868,7 +2884,9 @@ static int haptics_playback(struct input_dev *dev, int effect_id, int val)
 	} else {
 		if (play->pattern_src == FIFO &&
 				atomic_read(&play->fifo_status.is_busy)) {
+#ifndef OPLUS_FEATURE_CHG_BASIC
 			dev_dbg(chip->dev, "FIFO playing is not done yet, defer stopping in erase\n");
+#endif
 			return 0;
 		}
 
@@ -6236,8 +6254,10 @@ static long richtap_file_unlocked_ioctl(struct file *file, unsigned int cmd, uns
 	uint32_t tmp;
 	int ret = 0;
 
+#ifndef OPLUS_FEATURE_CHG_BASIC
 	dev_err(chip->dev, "%s: cmd=0x%x, arg=0x%lx\n",
 			  __func__, cmd, arg);
+#endif
 
 	switch (cmd) {
 	case RICHTAP_GET_HWINFO:
@@ -6737,8 +6757,10 @@ static enum hrtimer_restart haptics_disable_hbst_timer(struct hrtimer *timer)
 	rc = haptics_boost_vreg_enable(chip, false);
 	if (rc < 0)
 		dev_err(chip->dev, "disable boost vreg failed, rc=%d\n", rc);
+#ifndef OPLUS_FEATURE_CHG_BASIC
 	else
 		dev_dbg(chip->dev, "boost vreg is disabled\n");
+#endif
 
 	return HRTIMER_NORESTART;
 }
