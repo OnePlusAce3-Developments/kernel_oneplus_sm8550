@@ -21,10 +21,6 @@
 #include <linux/oplus_omrg.h>
 #endif
 
-#if IS_ENABLED(CONFIG_OPLUS_FEATURE_OCH)
-#include <linux/cpufreq_health.h>
-#endif
-
 #define CREATE_TRACE_POINTS
 #include <trace/events/dcvsh.h>
 
@@ -197,11 +193,6 @@ static unsigned int qcom_cpufreq_hw_get(unsigned int cpu)
 	policy = cpufreq_cpu_get_raw(cpu);
 	if (!policy)
 		return 0;
-
-#if IS_ENABLED(CONFIG_OPLUS_FEATURE_OCH)
-	if(cpufreq_health_register(policy))
-		pr_err("cpufreq health init failed!\n");
-#endif
 
 	data = policy->driver_data;
 	soc_data = data->soc_data;

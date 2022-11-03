@@ -1297,6 +1297,11 @@ static int waltgov_init(struct cpufreq_policy *policy)
         omrg_cpufreq_register(policy);
 #endif
 
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_OCH)
+	if(cpufreq_health_register(policy))
+		pr_err("cpufreq health init failed!\n");
+#endif
+
 #if IS_ENABLED(CONFIG_OPLUS_FEATURE_SUGOV_POWER_EFFIENCY)
         frequence_opp_init(policy);
 #endif
