@@ -5889,8 +5889,10 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 			break;
 		}
 
+#ifndef OPLUS_FEATURE_CHG_BASIC
 		dwc3_ext_event_notify(mdwc);
 	}
+#endif
 
 	dwc3_ext_event_notify(mdwc);
 
