@@ -1455,7 +1455,6 @@ static int msm_pcie_check_align(struct msm_pcie_dev_t *dev,
 
 static bool msm_pcie_dll_link_active(struct msm_pcie_dev_t *dev)
 {
-	PCIE_ERR(dev, "PCIe: RC %d PCIE20_CAP_LINKCTRLSTATUS access", dev->rc_idx);
 	return (readl_relaxed(dev->dm_core + PCIE20_CAP_LINKCTRLSTATUS) &
 		PCIE_CAP_DLL_ACTIVE);
 }
@@ -2889,7 +2888,6 @@ static void msm_pcie_debugfs_exit(void)
 
 static int msm_pcie_is_link_up(struct msm_pcie_dev_t *dev)
 {
-	PCIE_ERR(dev, "PCIe: RC %d PCIE20_CAP_LINKCTRLSTATUS access", dev->rc_idx);
 	return readl_relaxed(dev->dm_core +
 			PCIE20_CAP_LINKCTRLSTATUS) & BIT(29);
 }
@@ -4610,7 +4608,6 @@ static int msm_pcie_link_train(struct msm_pcie_dev_t *dev)
 		return MSM_PCIE_ERROR;
 	}
 
-	PCIE_ERR(dev, "PCIe: RC %d PCIE20_CAP_LINKCTRLSTATUS access", dev->rc_idx);
 	link_status = readl_relaxed(dev->dm_core + PCIE20_CAP_LINKCTRLSTATUS);
 
 	dev->current_link_speed = (link_status >> 16) & PCI_EXP_LNKSTA_CLS;
@@ -7050,7 +7047,6 @@ static int msm_pcie_link_retrain(struct msm_pcie_dev_t *pcie_dev,
 			 pcie_dev->rc_idx, status);
 	}
 
-	PCIE_ERR(pcie_dev, "PCIe: RC %d PCIE20_CAP_LINKCTRLSTATUS access", pcie_dev->rc_idx);
 	link_status = readl_relaxed(pcie_dev->dm_core +
 				    PCIE20_CAP_LINKCTRLSTATUS);
 	pcie_dev->current_link_speed = (link_status >> 16) & PCI_EXP_LNKSTA_CLS;
@@ -8288,7 +8284,6 @@ static int msm_pcie_drv_resume(struct msm_pcie_dev_t *pcie_dev)
 		clear_bit(pcie_dev->rc_idx, &pcie_drv.rc_drv_enabled);
 	}
 
-	PCIE_ERR(pcie_dev, "PCIe: RC %d PCIE20_CAP_LINKCTRLSTATUS access", pcie_dev->rc_idx);
 	/* scale CX and rate change based on current GEN speed */
 	pcie_dev->current_link_speed = (readl_relaxed(pcie_dev->dm_core +
 					PCIE20_CAP_LINKCTRLSTATUS) >> 16) &
