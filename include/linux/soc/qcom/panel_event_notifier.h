@@ -60,6 +60,7 @@ enum panel_event_notification_type {
 	/* Six.Xu@MM.Display.LCD, 2022/03/30, add for backlight notifier */
 	DRM_PANEL_EVENT_BACKLIGHT = 0x12,
 	DRM_PANEL_EVENT_DC_MODE = 0x13,
+	DRM_PANEL_EVENT_PWM_TURBO = 0x14,
 #endif /* OPLUS_FEATURE_DISPLAY */
 	DRM_PANEL_EVENT_MAX
 };
