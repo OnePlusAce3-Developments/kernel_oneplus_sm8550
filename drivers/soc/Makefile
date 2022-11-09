@@ -38,6 +38,10 @@ obj-$(CONFIG_OPLUS_FEATURE_MM_FEEDBACK)	+= oplus/multimedia/
 obj-$(CONFIG_OPLUS_DEVICE_IFNO)  +=  oplus/device_info/
 #endif /* OPLUS_FEATURE_TP_BASIC */
 
+#ifdef OPLUS_FEATURE_MIDAS
+obj-$(CONFIG_OPLUS_FEATURE_MIDAS_GKI) += oplus/midas/
+#endif /*OPLUS_FEATURE_MIDAS*/
+
 obj-y                           += oplus/sensor/
 
 #ifdef CONFIG_OPLUS_SENSOR_CONSUMER_IR
