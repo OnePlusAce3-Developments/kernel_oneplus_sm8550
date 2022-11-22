@@ -35,6 +35,10 @@
 #include <../kernel/oplus_cpu/sched/sched_assist/sa_fair.h>
 #endif
 
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_FRAME_BOOST)
+#include <../kernel/oplus_cpu/sched/frame_boost/frame_group.h>
+#endif
+
 const char *task_event_names[] = {
 	"PUT_PREV_TASK",
 	"PICK_NEXT_TASK",
@@ -4219,6 +4223,9 @@ static void android_rvh_set_task_cpu(void *unused, struct task_struct *p, unsign
 
 static void android_rvh_new_task_stats(void *unused, struct task_struct *p)
 {
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_FRAME_BOOST)
+	update_wake_up(p);
+#endif
 	if (unlikely(walt_disabled))
 		return;
 	mark_task_starting(p);
@@ -4433,6 +4440,10 @@ static void android_rvh_try_to_wake_up(void *unused, struct task_struct *p)
 	u64 wallclock;
 	unsigned int old_load;
 	struct walt_related_thread_group *grp = NULL;
+
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_FRAME_BOOST)
+	update_wake_up(p);
+#endif
 
 	if (unlikely(walt_disabled))
 		return;
