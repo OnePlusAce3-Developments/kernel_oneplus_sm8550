@@ -100,9 +100,9 @@
 static char android_boot_dev[ANDROID_BOOT_DEV_MAX];
 
 static DEFINE_PER_CPU(struct freq_qos_request, qos_min_req);
-
+/*feature-flashaging806-v001-1-begin*/
 struct unipro_signal_quality_ctrl signalCtrl;
-
+/*feature-flashaging806-v001-1-end*/
 enum {
 	TSTBUS_UAWM,
 	TSTBUS_UARM,
@@ -2493,7 +2493,7 @@ static void ufs_qcom_save_host_ptr(struct ufs_hba *hba)
 	else
 		ufs_qcom_msg(ERR, hba->dev, "invalid host index %d\n", id);
 }
-
+/*feature-memorymonitor-v001-1-begin*/
 static int monitor_verify_command(unsigned char *cmd)
 {
     if (cmd[0] != 0x3B && cmd[0] != 0x3C && cmd[0] != 0xC0)
@@ -2598,7 +2598,7 @@ error_free_buffer:
 
 	return err;
 }
-
+/*feature-memorymonitor-v001-1-end*/
 /**
  * ufs_qcom_query_ioctl - perform user read queries
  * @hba: per-adapter instance
@@ -2647,6 +2647,9 @@ ufs_qcom_query_ioctl(struct ufs_hba *hba, u8 lun, void __user *buffer)
 		case QUERY_DESC_IDN_INTERCONNECT:
 		case QUERY_DESC_IDN_GEOMETRY:
 		case QUERY_DESC_IDN_POWER:
+                /*feature-memorymonitor-v001-2-begin*/
+		case QUERY_DESC_IDN_HEALTH:
+                /*feature-memorymonitor-v001-2-end*/
 			index = 0;
 			break;
 		case QUERY_DESC_IDN_UNIT:
@@ -2840,11 +2843,13 @@ ufs_qcom_ioctl(struct scsi_device *dev, unsigned int cmd, void __user *buffer)
 					   buffer);
 		ufshcd_rpm_put_sync(hba);
 		break;
+        /*feature-memorymonitor-v001-3-begin*/
 	case UFS_IOCTL_MONITOR:
 		pm_runtime_get_sync(hba->dev);
 		err = ufs_ioctl_monitor(dev, buffer);
 		pm_runtime_put_sync(hba->dev);
 		break;
+        /*feature-memorymonitor-v001-3-end*/
 	default:
 		err = -ENOIOCTLCMD;
 		ufs_qcom_msg(DBG, hba->dev, "%s: Unsupported ioctl cmd %d\n", __func__,
@@ -3442,6 +3447,7 @@ static void ufs_qcom_setup_max_hs_gear(struct ufs_qcom_host *host)
 }
 
 //#ifdef OPLUS_UFS_SIGNAL_QUALITY
+/*feature-flashaging806-v001-2-begin*/
 static void recordTimeStamp(
 	struct signal_quality *record,
 	enum ufs_event_type type
@@ -3685,6 +3691,7 @@ void remove_signal_quality_proc(struct unipro_signal_quality_ctrl *signalCtrl)
 	}
 	return;
 }
+/*feature-flashaging806-v001-2-end*/
 //#endif /*OPLUS_UFS_SIGNAL_QUALITY*/
 static void ufs_qcom_register_minidump(uintptr_t vaddr, u64 size,
 					const char *buf_name, u64 id)
@@ -3906,7 +3913,9 @@ static int ufs_qcom_init(struct ufs_hba *hba)
 	}
 
 	ufs_qcom_init_sysfs(hba);
+        /*feature-flashaging806-v001-3-begin*/
 	create_signal_quality_proc(&signalCtrl);
+        /*feature-flashaging806-v001-3-end*/
 	/* Provide SCSI host ioctl API */
 	hba->host->hostt->ioctl = (int (*)(struct scsi_device *, unsigned int,
 				   void __user *))ufs_qcom_ioctl;
@@ -4604,14 +4613,14 @@ static void ufs_qcom_fixup_dev_quirks(struct ufs_hba *hba)
 {
 	ufshcd_fixup_dev_quirks(hba, ufs_qcom_dev_fixups);
 }
-
+/*feature-flashaging806-v001-4-begin*/
 static void ufs_qcom_event_notify(struct ufs_hba *hba,
 	enum ufs_event_type evt, void *data)
 {
 	u32 reg = *(u32 *)data;
 	recordUniproErr(&signalCtrl, reg, evt);
 }
-
+/*feature-flashaging806-v001-4-end*/
 /*
  * struct ufs_hba_qcom_vops - UFS QCOM specific variant operations
  *
@@ -4638,7 +4647,9 @@ static const struct ufs_hba_variant_ops ufs_hba_qcom_vops = {
 	.setup_xfer_req         = ufs_qcom_qos,
 	.program_key		= ufs_qcom_ice_program_key,
 	.fixup_dev_quirks       = ufs_qcom_fixup_dev_quirks,
+        /*feature-flashaging806-v001-5-begin*/
 	.event_notify           = ufs_qcom_event_notify,
+        /*feature-flashaging806-v001-5-end*/
 };
 
 /**
@@ -4961,6 +4972,7 @@ static void ufs_qcom_hook_check_int_errors(void *param, struct ufs_hba *hba,
 }
 
 //bsp.storage.ufs 2021.10.14 add for /proc/devinfo/ufs
+/*feature-devinfo-v001-1-begin*/
 static int create_devinfo_ufs(struct scsi_device *sdev)
 {
 	static char temp_version[5] = {0};
@@ -4989,7 +5001,7 @@ static int create_devinfo_ufs(struct scsi_device *sdev)
 
 	return ret;
 }
-
+/*feature-devinfo-v001-1-end*/
 static void ufs_qcom_update_sdev(void *param, struct scsi_device *sdev)
 {
 	sdev->broken_fua = 1;
@@ -5138,7 +5150,9 @@ static int ufs_qcom_remove(struct platform_device *pdev)
 	pm_runtime_get_sync(&(pdev)->dev);
 	for (i = 0; i < r->num_groups; i++, qcg++)
 		remove_group_qos(qcg);
+        /*feature-flashaging806-v001-6-begin*/
 	remove_signal_quality_proc(&signalCtrl);
+        /*feature-flashaging806-v001-6-end*/
 	ufshcd_remove(hba);
 	return 0;
 }
