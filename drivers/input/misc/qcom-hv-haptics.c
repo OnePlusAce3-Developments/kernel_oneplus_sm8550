@@ -3554,7 +3554,7 @@ static irqreturn_t fifo_empty_irq_handler(int irq, void *data)
 	u8 *samples, val;
 	int rc, num;
 #ifdef OPLUS_FEATURE_RICHTAP_SUPPORT
-	int16_t num_rt = 0, num_val = 0;
+	int16_t num_rt = 0;
 	int16_t pos = 0, retry = 3;
 #endif //OPLUS_FEATURE_RICHTAP_SUPPORT
 
@@ -3612,7 +3612,6 @@ static irqreturn_t fifo_empty_irq_handler(int irq, void *data)
 				schedule_work(&chip->richtap_erase_work);
 				goto unlock;
 			}
-			num_rt -= (num_rt % HAP_PTN_FIFO_DIN_NUM); // qcom chip issue
 
 			if (chip->livetap_support) {
 				pos = livetap_process_read_data(chip, num_rt, retry);
@@ -3625,53 +3624,45 @@ static irqreturn_t fifo_empty_irq_handler(int irq, void *data)
 					goto unlock;
 				}
 			} else {
-				do {
-					if (chip->current_buf->status == MMAP_BUF_DATA_VALID) {
-						num_val = chip->current_buf->length - chip->pos;
-						if (num_val < 0) {
-							dev_err(chip->dev, "aacrichtap length error, pos = %d, length = %d\n",
-								chip->pos, chip->current_buf->length);
-							schedule_work(&chip->richtap_erase_work);
+				while (num_rt > 0 && atomic_read(&chip->richtap_mode)) {
+					if ((chip->current_buf->status == MMAP_BUF_DATA_VALID)
+						&& (num_rt >= (chip->current_buf->length - chip->pos))) {
+						samples_left = (u32)(chip->current_buf->length - chip->pos);
+						rc = haptics_update_fifo_samples(chip,
+							&chip->current_buf->data[chip->pos], samples_left, true);
+						if (rc < 0) {
+							dev_err(chip->dev,
+							"richtap Update FIFO fail, rc=%d\n", rc);
 							goto unlock;
 						}
-
-						if (num_rt >= num_val) {
-							samples_left = (u32)num_val;
-							memcpy(&chip->rtp_ptr[pos], &chip->current_buf->data[chip->pos], samples_left);
-							pos += samples_left;
-							num_rt -= samples_left;
-							chip->current_buf->status = MMAP_BUF_DATA_INVALID;
-							chip->current_buf->length = 0;
-							chip->current_buf = chip->current_buf->kernel_next;
-							chip->pos = 0;
-						} else {
-							memcpy(&chip->rtp_ptr[pos], &chip->current_buf->data[chip->pos], num_rt);
-							chip->pos += num_rt;
-							pos += num_rt;
-							num_rt = 0;
-						}
-					} else if (chip->current_buf->status == MMAP_BUF_DATA_FINISHED) {
-						break;
-					} else {
-						if (retry-- <= 0) {
-							dev_err(chip->dev, "invalid data\n");
-							break;
-						} else {
-							usleep_range(1000,1001);
-						}
+						num_rt -= (chip->current_buf->length - chip->pos);
+						chip->current_buf->status = MMAP_BUF_DATA_INVALID;
+						chip->current_buf->length = 0;
+						chip->current_buf = chip->current_buf->kernel_next;
+						chip->pos = 0;
+						continue;
 					}
-				} while (num_rt > 0 && atomic_read(&chip->richtap_mode));
 
-				dev_err(chip->dev, "update fifo len %d\n", pos);
-							rc = haptics_update_fifo_samples(chip,
-										chip->rtp_ptr, (u32)pos, true);
-				if (rc < 0) {
-					dev_err(chip->dev,
-						"richtap Update FIFO fail, rc=%d\n", rc);
-					goto unlock;
+					if (chip->current_buf->status == MMAP_BUF_DATA_VALID) {
+						rc = haptics_update_fifo_samples(chip,
+							&chip->current_buf->data[chip->pos], (u32)num_rt, true);
+						if (rc < 0) {
+							dev_err(chip->dev,
+								"richtap Update FIFO fail, rc=%d\n", rc);
+							goto unlock;
+						}
+						chip->pos += num_rt;
+						num_rt = 0;
+						continue;
+					}
+
+					if (chip->current_buf->status != MMAP_BUF_DATA_FINISHED)
+						dev_err(chip->dev, "aac richtap invalid data buf\n");
+					schedule_work(&chip->richtap_erase_work);
+					break;
 				}
+				goto unlock;
 			}
-			goto unlock;
 		}
 #endif	//OPLUS_FEATURE_RICHTAP_SUPPORT
 		if (!chip->play.effect)
