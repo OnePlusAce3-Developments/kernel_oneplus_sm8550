@@ -98,3 +98,7 @@ endmenu
 #ifdef OPLUS_FEATURE_TP_BASIC
 source "drivers/soc/oplus/device_info/Kconfig"
 #endif /* OPLUS_FEATURE_TP_BASIC */
+
+#ifdef OPLUS_FEATURE_ABNORMAL_FLAG
+source "kernel/oplus_cpu/oplus_overload/Kconfig"
+#endif /* OPLUS_FEATURE_ABNORMAL_FLAgit G */

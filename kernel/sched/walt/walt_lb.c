@@ -15,6 +15,10 @@
 #if IS_ENABLED(CONFIG_OPLUS_FEATURE_FRAME_BOOST)
 #include <../kernel/oplus_cpu/sched/frame_boost/frame_group.h>
 #endif
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_ABNORMAL_FLAG)
+#include <../../oplus_cpu/oplus_overload/task_overload.h>
+#include <../kernel/oplus_cpu/sched/sched_assist/sa_common.h>
+#endif
 
 static inline unsigned long walt_lb_cpu_util(int cpu)
 {
@@ -684,6 +688,10 @@ void walt_lb_tick(struct rq *rq)
 
 	walt_cfs_tick(rq);
 
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_ABNORMAL_FLAG)
+	if (!test_task_ux(p))
+		test_task_overload(p);
+#endif /* #OPLUS_FEATURE_ABNORMAL_FLAG */
 #if IS_ENABLED(CONFIG_OPLUS_FEATURE_FRAME_BOOST)
 	if (!rq->misfit_task_load && !need_up_migrate)
 #else
