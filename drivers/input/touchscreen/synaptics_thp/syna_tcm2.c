@@ -53,6 +53,7 @@
 #include "touchpanel_proc.h"
 #include "synaptics_common.h"
 #include "touchpanel_healthinfo/touchpanel_healthinfo.h"
+#include "touchpanel_healthinfo/touchpanel_exception.h"
 #include "../oplus_touchscreen_v2/touchpanel_notify/touchpanel_event_notify.h"
 #include "touchpanel_autotest/touchpanel_autotest.h"
 #include "touch_comon_api/touch_comon_api.h"
@@ -1169,6 +1170,12 @@ static void syna_dev_reflash_startup_work(struct work_struct *work)
 	if (retval < 0) {
 		LOGE("Fail to request %s\n", (tcm->firmware_update_type == 1) ?
 				   tcm->fw_name_fae : tcm->panel_data.fw_name);
+		if (tcm->health_monitor_support) {
+			tp_healthinfo_report(&tcm->monitor_data, HEALTH_FW_UPDATE, "FW_Request_Failed");
+		}
+		if (tcm->exception_upload_support) {
+			tp_exception_report(&tcm->exception_data, EXCEP_FW_UPDATE, "FW_Request_Failed", sizeof("FW_Request_Failed"));
+		}
 		complete(&tcm->fw_complete);
 		return;
 	}
@@ -1198,6 +1205,12 @@ static void syna_dev_reflash_startup_work(struct work_struct *work)
 #endif
 	if (retval < 0) {
 		LOGE("Fail to do reflash\n");
+		if (tcm->health_monitor_support) {
+			tp_healthinfo_report(&tcm->monitor_data, HEALTH_FW_UPDATE, "FW_Update_Failed");
+		}
+		if (tcm->exception_upload_support) {
+			tp_exception_report(&tcm->exception_data, EXCEP_FW_UPDATE, "FW_Update_Failed", sizeof("FW_Update_Failed"));
+		}
 		goto exit;
 	}
 
@@ -2460,6 +2473,10 @@ static int syna_dev_probe(struct platform_device *pdev)
 		/*tcm->monitor_data.debug_info_ops = tcm->debug_info_ops;*/
 	}
 
+	tcm->exception_upload_support = true;
+	tcm->exception_data.exception_upload_support = true;
+	tcm->exception_data.chip_data = tcm;
+
 	tcm->tcm_dev = tcm_dev;
 	tcm->pdev = pdev;
 	tcm->hw_if = hw_if;
@@ -2671,6 +2688,9 @@ err_create_cdev:
 err_manufacture_info:
 err_connect:
 #endif
+	if (tcm->exception_upload_support) {
+		tp_exception_report(&tcm->exception_data, EXCEP_PROBE, "tp_probe_failed", sizeof("tp_probe_failed"));
+	}
 	syna_tcm_buf_release(&tcm->event_data);
 	mutex_destroy(&tcm->mutex);
 	syna_pal_mutex_free(&tcm->tp_event_mutex);

@@ -648,6 +648,9 @@ struct syna_tcm {
 	bool health_monitor_support;                        /*health_monitor is used*/
 	struct monitor_data    monitor_data;                /*health monitor data*/
 
+	bool exception_upload_support;
+	struct exception_data    exception_data;            /*exception_data monitor data*/
+
 	/* fifo to pass the data to userspace */
 	unsigned int fifo_remaining_frame;
 	struct list_head frame_fifo_queue;
