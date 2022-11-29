@@ -693,6 +693,14 @@ static int syna_dev_create_input_device(struct syna_tcm *tcm)
 	set_bit(EV_SYN, input_dev->evbit);
 	set_bit(EV_KEY, input_dev->evbit);
 	set_bit(EV_ABS, input_dev->evbit);
+
+	set_bit(ABS_MT_TOUCH_MAJOR, input_dev->absbit);
+	set_bit(ABS_MT_WIDTH_MAJOR, input_dev->absbit);
+	set_bit(ABS_MT_POSITION_X, input_dev->absbit);
+	set_bit(ABS_MT_POSITION_Y, input_dev->absbit);
+	set_bit(ABS_MT_PRESSURE, input_dev->absbit);
+	set_bit(ABS_MT_TOOL_TYPE, input_dev->absbit);
+
 	set_bit(BTN_TOUCH, input_dev->keybit);
 	set_bit(BTN_TOOL_FINGER, input_dev->keybit);
 #ifdef INPUT_PROP_DIRECT
