@@ -3534,7 +3534,7 @@ static int livetap_process_write_data(struct haptics_chip *chip, int16_t lt)
 			return -1;
 		}
 
-		if ((chip->current_buf->status != MMAP_BUF_DATA_VALID) && (chip->current_buf->length == 0)) {
+		if ((chip->current_buf->status == MMAP_BUF_DATA_INVALID) && (chip->current_buf->length == 0)) {
 			dev_err(chip->dev, "si play interrupt data\n");
 			livetap_stop_play(chip);
 			return -1;
