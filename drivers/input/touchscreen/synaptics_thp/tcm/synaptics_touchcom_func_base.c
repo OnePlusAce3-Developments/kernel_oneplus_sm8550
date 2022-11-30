@@ -342,16 +342,13 @@ static int syna_tcm_detect_protocol(struct tcm_dev *tcm_dev,
 {
 	int retval;
 
-	LOGI("zhangle-->%s is called.\n", __func__);
+	LOGI("%s is called.\n", __func__);
 	if (!tcm_dev) {
 		LOGE("Invalid tcm device handle\n");
 		return _EINVAL;
 	}
 
-// del by zhangle
-//	retval = syna_tcm_v2_detect(tcm_dev, data, data_len);
-//	if (retval < 0)
-		retval = syna_tcm_v1_detect(tcm_dev, data, data_len);
+	retval = syna_tcm_v1_detect(tcm_dev, data, data_len);
 
 	return retval;
 }
@@ -374,24 +371,14 @@ int syna_tcm_detect_device(struct tcm_dev *tcm_dev)
 {
 	int retval = 0;
 	unsigned char data[4] = { 0 };
-	struct regulator *vdd_reg = tcm_dev->hw_if->bdata_pwr.vdd_reg_dev;//add by zhangle
 
 	if (!tcm_dev) {
 		LOGE("Invalid tcm device handle\n");
 		return _EINVAL;
 	}
 
-#if 1//add by zhangle for debuging
-	if (regulator_is_enabled(vdd_reg))
-		LOGI("zhangle-->regulator vdd_reg(1.8v) is enabled.\n");
-	else
-		LOGI("zhangle-->regulator vdd_reg is not enabled.\n");
-
-	LOGI("zhangle-->get avdd_gpio(3v) state is %d\n",
-		gpio_get_value(tcm_dev->hw_if->bdata_pwr.avdd_gpio));
-#endif
 	tcm_dev->dev_mode = MODE_UNKNOWN;
-#if 0//del by zhangle
+
 	/* get the bare data from the bus directly */
 	data[0] = 0x07;
 	retval = syna_tcm_write(tcm_dev, &data[0], 1);
@@ -399,7 +386,7 @@ int syna_tcm_detect_device(struct tcm_dev *tcm_dev)
 		LOGE("Fail to write magic to bus\n");
 		return _EIO;
 	}
-#endif
+
 	retval = syna_tcm_read(tcm_dev,
 			data, (unsigned int)sizeof(data));
 	if (retval < 0) {
@@ -407,7 +394,7 @@ int syna_tcm_detect_device(struct tcm_dev *tcm_dev)
 		return _EIO;
 	}
 
-	LOGI("zhangle-->bare data: %02x %02x %02x %02x\n",
+	LOGI("bare data: %02x %02x %02x %02x\n",
 			data[0], data[1], data[2], data[3]);
 
 	/* distinguish which tcm version running on the device */
@@ -424,7 +411,7 @@ int syna_tcm_detect_device(struct tcm_dev *tcm_dev)
 		return _ENODEV;
 	}
 
-	LOGI("zhangle-->tcm_dev->dev_mode = 0x%x\n", tcm_dev->dev_mode);
+	LOGI("tcm_dev->dev_mode = 0x%x\n", tcm_dev->dev_mode);
 
 	/* check the running mode */
 	switch (tcm_dev->dev_mode) {

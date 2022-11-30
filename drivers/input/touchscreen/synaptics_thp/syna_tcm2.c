@@ -128,16 +128,6 @@ static unsigned char custom_touch_format[] = {
 #define POWER_ALIVE_AT_SUSPEND
 
 /**
- * @section: global variables for an active drm panel
- *           in order to register display notifier
- */
-#if 0//del by zhangle
-#ifdef USE_DRM_PANEL_NOTIFIER
-	struct drm_panel *active_panel;
-#endif
-#endif
-
-/**
  * syna_dev_update_lpwg_status()
  *
  * update tcm->lpwg_enabled.
@@ -823,13 +813,13 @@ static int syna_dev_check_input_params(struct syna_tcm *tcm)
 static int syna_dev_set_up_input_device(struct syna_tcm *tcm)
 {
 	int retval = 0;
-#if 0//del by zhangle
+
 	if (IS_NOT_APP_FW_MODE(tcm->tcm_dev->dev_mode)) {
 		LOGI("Application firmware not running, current mode: %02x\n",
 			tcm->tcm_dev->dev_mode);
 		return 0;
 	}
-#endif
+
 	syna_dev_free_input_events(tcm);
 
 	syna_pal_mutex_lock(&tcm->tp_event_mutex);
@@ -2060,10 +2050,9 @@ err_request_irq:
 
 err_setup_input_dev:
 err_detect_dev:
-#if 0//del by zhangle
 	if (hw_if->ops_power_on)
 		hw_if->ops_power_on(hw_if, false);
-#endif
+
 	return retval;
 }
 

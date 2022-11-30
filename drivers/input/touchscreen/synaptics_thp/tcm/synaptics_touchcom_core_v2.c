@@ -1222,7 +1222,7 @@ static int syna_tcm_v2_write_message(struct tcm_dev *tcm_dev,
 	if (has_irq_ctrl && in_polling && tcm_dev->hw_if->ops_enable_irq)
 		tcm_dev->hw_if->ops_enable_irq(tcm_dev->hw_if, false);
 
-	LOGI("zhangle-->write command: 0x%02x, payload size: %d\n",
+	LOGI("write command: 0x%02x, payload size: %d\n",
 		command, payload_length);
 
 	syna_pal_mutex_lock(cmd_mutex);
@@ -1384,7 +1384,7 @@ int syna_tcm_v2_detect(struct tcm_dev *tcm_dev, unsigned char *data,
 	struct tcm_message_data_blob *tcm_msg = NULL;
 	unsigned char resp_code = 0;
 
-	LOGI("zhangle-->%s is called.\n", __func__);
+	LOGI("%s is called.\n", __func__);
 	if (!tcm_dev) {
 		LOGE("Invalid tcm device handle\n");
 		return _EINVAL;

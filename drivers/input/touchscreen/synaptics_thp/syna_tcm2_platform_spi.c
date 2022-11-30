@@ -159,15 +159,15 @@ static void syna_spi_hw_reset(struct syna_hw_interface *hw_if)
 {
 	struct syna_hw_rst_data *rst = &hw_if->bdata_rst;
 
-	LOGI("zhangle-->reset_active_ms = %u, reset_delay_ms = %u\n",
+	LOGI("reset_active_ms = %u, reset_delay_ms = %u\n",
 		rst->reset_active_ms, rst->reset_delay_ms);
 	if (rst->reset_gpio >= 0) {
-		LOGI("zhangle-->hw reset start\n");
+		LOGI("hw reset start\n");
 		gpio_set_value(rst->reset_gpio, rst->reset_on_state);
 		syna_pal_sleep_ms(rst->reset_active_ms);
 		gpio_set_value(rst->reset_gpio, !rst->reset_on_state);
 		syna_pal_sleep_ms(rst->reset_delay_ms);
-		LOGI("zhangle-->hw reset end\n");
+		LOGI("hw reset end\n");
 	}
 }
 
@@ -190,7 +190,7 @@ static int syna_spi_request_gpio(int gpio, bool config, int dir,
 {
 	int retval;
 
-	LOGI("zhangle-->set gpio(%d) dir:%s state:%d\n", gpio, (dir == 1) ? "output" : "input", state);
+	LOGI("set gpio(%d) dir:%s state:%d\n", gpio, (dir == 1) ? "output" : "input", state);
 #ifdef DEV_MANAGED_API
 	struct device *dev = syna_request_managed_device();
 
@@ -267,26 +267,6 @@ static void syna_spi_release_gpio(struct syna_hw_interface *hw_if)
 		syna_spi_request_gpio(bus->switch_gpio, false, 0, 0, NULL);
 }
 
-#if 1//add by zhangle(oplus_gpio_resume)
-/*
-static int syna_spi_suspend_pinctrl(struct syna_hw_interface *hw_if)
-{
-	int retval = 0;
-	struct syna_hw_bus_data *bus = &hw_if->bdata_io;
-
-	if (bus->pin_spi_mode_suspend != NULL) {
-		retval = pinctrl_select_state(bus->pinctrl, bus->pin_spi_mode_suspend);
-		if (retval < 0) {
-			LOGI("Failed to select pin_spi_mode_active, retval:%d", retval);
-			goto err_suspend_pinctrl;
-		}
-		LOGI("success set suspend for pin_spi_mode_suspend");
-	}
-
-err_suspend_pinctrl:
-	return retval;
-}*/
-
 static int syna_spi_active_pinctrl(struct syna_hw_interface *hw_if)
 {
 	int retval = 0;
@@ -304,7 +284,6 @@ static int syna_spi_active_pinctrl(struct syna_hw_interface *hw_if)
 err_active_pinctrl:
 	return retval;
 }
-#endif
 
 /**
  * syna_spi_config_gpio()
@@ -395,7 +374,7 @@ static int syna_spi_enable_pwr_gpio(struct syna_hw_interface *hw_if,
 			LOGI("enable the avdd_gpio failed.\n");
 			return ret;
 		}
-		LOGI("zhangle-->Enable the avdd_gpio(%d) %d.\n", pwr->avdd_gpio, state);
+		LOGI("Enable the avdd_gpio(%d) %d.\n", pwr->avdd_gpio, state);
 	}
 
 	if (pwr->vdd_gpio >= 0) {
@@ -404,7 +383,7 @@ static int syna_spi_enable_pwr_gpio(struct syna_hw_interface *hw_if,
 			LOGI("enable the vdd_gpio failed.\n");
 			return ret;
 		}
-		LOGI("zhangle-->Enable the vdd_gpio(%d) %d.\n", pwr->vdd_gpio, state);
+		LOGI("Enable the vdd_gpio(%d) %d.\n", pwr->vdd_gpio, state);
 	}
 
 	return ret;
@@ -436,7 +415,7 @@ static int syna_spi_enable_regulator(struct syna_hw_interface *hw_if,
 	}
 
 	if (vdd_reg) {
-		LOGI("zhangle-->Enable the vdd regulator.\n");
+		LOGI("Enable the vdd regulator.\n");
 		retval = regulator_enable(vdd_reg);
 		if (retval < 0) {
 			LOGE("Fail to enable vdd regulator\n");
@@ -445,7 +424,7 @@ static int syna_spi_enable_regulator(struct syna_hw_interface *hw_if,
 	}
 
 	if (avdd_reg) {
-		LOGI("zhangle-->Enable the avdd regulator.\n");
+		LOGI("Enable the avdd regulator.\n");
 		retval = regulator_enable(avdd_reg);
 		if (retval < 0) {
 			LOGE("Fail to enable avdd regulator\n");
@@ -479,34 +458,6 @@ exit:
  * @return
  *    on success, 0; otherwise, negative value on error.
  */
- #if 0//del by zhangle
-static int syna_spi_power_on(struct syna_hw_interface *hw_if,
-		bool en)
-{
-	int retval;
-	struct syna_hw_pwr_data *pwr = &hw_if->bdata_pwr;
-
-	LOGI("Prepare to power %s device through %s\n",
-		(en) ? "on" : "off",
-		(pwr->psu == PSU_GPIO) ? "gpio" : "regulator");
-
-	if (pwr->psu == PSU_GPIO)
-		retval = syna_spi_enable_pwr_gpio(hw_if, en);
-	else
-		retval = syna_spi_enable_regulator(hw_if, en);
-
-	if (retval < 0) {
-		LOGE("Fail to power %s device\n", (en) ? "on" : "off");
-		return retval;
-	}
-
-	syna_pal_sleep_ms(pwr->power_on_delay_ms);
-
-	LOGI("Device power %s\n", (en) ? "on" : "off");
-
-	return 0;
-}
-#else
 static int syna_spi_power_on(struct syna_hw_interface *hw_if,
 		bool en)
 {
@@ -535,7 +486,6 @@ static int syna_spi_power_on(struct syna_hw_interface *hw_if,
 
 	return 0;
 }
-#endif
 
 /**
  * syna_spi_get_regulator()
@@ -556,15 +506,14 @@ static int syna_spi_get_regulator(struct syna_hw_interface *hw_if,
 	struct device *dev = syna_spi_device->dev.parent;
 	struct syna_hw_pwr_data *pwr = &hw_if->bdata_pwr;
 
-	LOGI("zhangle-->%s is called.\n", __func__);
+	LOGI("%s is called.\n", __func__);
 	if (!get) {
-		LOGI("zhangle-->regulator put.\n");
+		LOGI("regulator put.\n");
 		retval = 0;
 		goto regulator_put;
 	}
 
 	if (pwr->vdd_reg_name != NULL && *pwr->vdd_reg_name != 0) {
-		LOGI("zhangle-->before get regulator vdd.\n");
 #ifdef DEV_MANAGED_API
 		pwr->vdd_reg_dev = devm_regulator_get(dev, pwr->vdd_reg_name);
 #else /* Legacy API */
@@ -576,17 +525,15 @@ static int syna_spi_get_regulator(struct syna_hw_interface *hw_if,
 			goto exit;
 		} else {
 			if (regulator_count_voltages(pwr->vdd_reg_dev) > 0) {
-				LOGI("zhangle-->before set vdd voltage 1.8v.\n");
 				retval = regulator_set_voltage(pwr->vdd_reg_dev, 1800000, 1800000);
 				if (retval) {
-					LOGE("zhangle-->Regulator set_vtg failed rc = %d\n", retval);
+					LOGE("Regulator set_vtg failed rc = %d\n", retval);
 					goto exit;
 				}
 
-				LOGI("zhangle-->before set vdd1.8 load 200ma.\n");
 				retval = regulator_set_load(pwr->vdd_reg_dev, 200000);
 				if (retval < 0) {
-					LOGE("zhangle-->Failed to set vdd_1v8 load(rc:%d)\n", retval);
+					LOGE("Failed to set vdd_1v8 load(rc:%d)\n", retval);
 					goto exit;
 				}
 			}
@@ -594,7 +541,6 @@ static int syna_spi_get_regulator(struct syna_hw_interface *hw_if,
 	}
 
 	if (pwr->avdd_reg_name != NULL && *pwr->avdd_reg_name != 0) {
-		LOGI("zhangle-->before get regulator avdd.\n");
 #ifdef DEV_MANAGED_API
 		pwr->avdd_reg_dev = devm_regulator_get(dev, pwr->avdd_reg_name);
 #else /* Legacy API */
@@ -606,17 +552,15 @@ static int syna_spi_get_regulator(struct syna_hw_interface *hw_if,
 			goto regulator_vdd_put;
 		} else {
 			if (regulator_count_voltages(pwr->avdd_reg_dev) > 0) {
-				LOGI("zhangle-->before set avdd voltage 3v.\n");
 				retval = regulator_set_voltage(pwr->avdd_reg_dev, 3100000, 3100000);
 				if (retval) {
-					LOGE("zhangle-->Regulator set_avdd_vtg failed rc = %d\n", retval);
+					LOGE("Regulator set_avdd_vtg failed rc = %d\n", retval);
 					goto exit;
 				}
 
-				LOGI("zhangle-->before set avdd load 200ma.\n");
 				retval = regulator_set_load(pwr->avdd_reg_dev, 200000);
 				if (retval < 0) {
-					LOGE("zhangle-->Failed to set avdd_3v load(rc:%d)\n", retval);
+					LOGE("Failed to set avdd_3v load(rc:%d)\n", retval);
 					goto exit;
 				}
 			}
@@ -812,7 +756,7 @@ static int syna_spi_parse_dt(struct syna_hw_interface *hw_if,
 	struct syna_hw_rst_data *rst = &hw_if->bdata_rst;
 	struct syna_hw_bus_data *bus = &hw_if->bdata_io;
 
-	LOGI("zhangle-->%s is called.\n", __func__);
+	LOGI("%s is called.\n", __func__);
 	prop = of_find_property(np, "synaptics,irq-gpio", NULL);
 	if (prop && prop->length) {
 		attn->irq_gpio = of_get_named_gpio_flags(np,
@@ -850,7 +794,7 @@ static int syna_spi_parse_dt(struct syna_hw_interface *hw_if,
 		pwr->avdd_reg_name = name;
 
 	if (pwr->avdd_reg_name != NULL && *pwr->avdd_reg_name != 0)
-		LOGI("zhangle-->get avdd_reg_name = %s\n", pwr->avdd_reg_name);
+		LOGI("get avdd_reg_name = %s\n", pwr->avdd_reg_name);
 
 	retval = of_property_read_string(np, "synaptics,vdd-name", &name);
 	if (retval < 0)
@@ -859,7 +803,7 @@ static int syna_spi_parse_dt(struct syna_hw_interface *hw_if,
 		pwr->vdd_reg_name = name;
 
 	if (pwr->vdd_reg_name != NULL && *pwr->vdd_reg_name != 0)
-		LOGI("zhangle-->get vdd_reg_name = %s\n", pwr->vdd_reg_name);
+		LOGI("get vdd_reg_name = %s\n", pwr->vdd_reg_name);
 
 	prop = of_find_property(np, "synaptics,vdd-gpio", NULL);
 	if (prop && prop->length) {
@@ -868,7 +812,7 @@ static int syna_spi_parse_dt(struct syna_hw_interface *hw_if,
 	} else {
 		pwr->vdd_gpio = -1;
 	}
-	LOGI("zhangle-->get vdd_gpio = %d\n", pwr->vdd_gpio);
+	LOGI("get vdd_gpio = %d\n", pwr->vdd_gpio);
 
 	prop = of_find_property(np, "synaptics,avdd-gpio", NULL);
 	if (prop && prop->length) {
@@ -877,7 +821,7 @@ static int syna_spi_parse_dt(struct syna_hw_interface *hw_if,
 	} else {
 		pwr->avdd_gpio = -1;
 	}
-	LOGI("zhangle-->get avdd_gpio = %d\n", pwr->avdd_gpio);
+	LOGI("get avdd_gpio = %d\n", pwr->avdd_gpio);
 
 	prop = of_find_property(np, "synaptics,power-on-state", NULL);
 	if (prop && prop->length) {
@@ -893,7 +837,7 @@ static int syna_spi_parse_dt(struct syna_hw_interface *hw_if,
 	} else {
 		pwr->power_on_state = 0;
 	}
-	LOGI("zhangle-->get power_on_state = %d\n", pwr->power_on_state);
+	LOGI("get power_on_state = %d\n", pwr->power_on_state);
 
 	prop = of_find_property(np, "synaptics,power-delay-ms", NULL);
 	if (prop && prop->length) {
@@ -1006,7 +950,7 @@ static int syna_spi_parse_dt(struct syna_hw_interface *hw_if,
 	} else {
 		bus->spi_mode = 0;
 	}
-	LOGI("zhangle-->spi mode = %u\n", bus->spi_mode);
+	LOGI("spi mode = %u\n", bus->spi_mode);
 
 	prop = of_find_property(np, "synaptics,io-switch-gpio", NULL);
 	if (prop && prop->length) {
@@ -1034,7 +978,7 @@ static int syna_spi_parse_dt(struct syna_hw_interface *hw_if,
 	bus->pinctrl = devm_pinctrl_get(dev);
 
 	if (IS_ERR_OR_NULL(bus->pinctrl)) {
-		LOGI("zhangle-->Getting pinctrl handle failed");
+		LOGI("Getting pinctrl handle failed");
 	} else {
 		/* active spi mode */
 		bus->pin_spi_mode_active = pinctrl_lookup_state(bus->pinctrl, "ts_spi_active");
@@ -1398,7 +1342,6 @@ static int syna_spi_probe(struct spi_device *spi)
 		LOGE("Fail to set up SPI protocol driver\n");
 		return retval;
 	}
-	LOGI("zhangle-->spi_setup completed.\n");
 #endif
 
 	/* initialize power unit */
@@ -1407,7 +1350,6 @@ static int syna_spi_probe(struct spi_device *spi)
 		LOGE("Fail to config power unit\n");
 		return retval;
 	}
-	LOGI("zhangle-->syna_spi_config_psu completed.\n");
 
 	/* initialize the gpio pins */
 	retval = syna_spi_config_gpio(&syna_spi_hw_if);
@@ -1415,17 +1357,13 @@ static int syna_spi_probe(struct spi_device *spi)
 		LOGE("Fail to config gpio\n");
 		return retval;
 	}
-	LOGI("zhangle-->syna_spi_config_gpio completed.\n");
 
-#if 1//add by zhangle
 	/* initialize the pinctrl pins */
 	retval = syna_spi_active_pinctrl(&syna_spi_hw_if);
 	if (retval < 0) {
 		LOGE("Fail to config gpio\n");
 		return retval;
 	}
-	LOGI("zhangle-->syna_spi_active_pinctrl completed.\n");
-#endif
 
 	/* do i/o switch if defined */
 	if (bus->switch_gpio >= 0)
@@ -1438,7 +1376,7 @@ static int syna_spi_probe(struct spi_device *spi)
 		return retval;
 	}
 
-	LOGI("zhangle-->syna_spi_probe end.\n");
+	LOGI("syna_spi_probe end.\n");
 	return 0;
 }
 

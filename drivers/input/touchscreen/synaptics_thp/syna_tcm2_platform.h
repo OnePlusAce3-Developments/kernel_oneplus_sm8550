@@ -42,7 +42,7 @@
 #define _SYNAPTICS_TCM2_PLATFORM_H_
 
 #include "syna_tcm2_runtime.h"
-#include <linux/err.h>//add by zhangle
+#include <linux/err.h>
 
 /**
  * @section: The capability of bus transferred
@@ -102,14 +102,12 @@ struct syna_hw_bus_data {
 	int switch_gpio;
 	int switch_state;
 
-#if 1//add by zhangle
 	/*pinctrl*/
 	struct pinctrl          *pinctrl;
 	struct pinctrl_state    *pin_spi_mode_active;
 	struct pinctrl_state    *pin_spi_mode_suspend;
 	struct pinctrl_state    *pin_cs_high;
 	struct pinctrl_state    *pin_cs_low;
-#endif
 };
 
 /* The hardware data especially for ATTN signal */

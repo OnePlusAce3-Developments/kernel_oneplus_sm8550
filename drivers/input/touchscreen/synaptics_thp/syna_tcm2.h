@@ -93,25 +93,11 @@
  * @brief: HAS_TESTING_FEATURE
  *         Open to enable testing features
  */
-#if 1//mod by zhangle
+
 #define HAS_SYSFS_INTERFACE
 #define HAS_REFLASH_FEATURE
 #define HAS_ROMBOOT_REFLASH_FEATURE
 #define HAS_TESTING_FEATURE
-#else
-#if defined(CONFIG_TOUCHSCREEN_SYNA_TCM2_SYSFS)
-#define HAS_SYSFS_INTERFACE
-#endif
-#if defined(CONFIG_TOUCHSCREEN_SYNA_TCM2_REFLASH)
-#define HAS_REFLASH_FEATURE
-#endif
-#if defined(CONFIG_TOUCHSCREEN_SYNA_TCM2_ROMBOOT)
-#define HAS_ROMBOOT_REFLASH_FEATURE
-#endif
-#if defined(CONFIG_TOUCHSCREEN_SYNA_TCM2_TESTING)
-#define HAS_TESTING_FEATURE
-#endif
-#endif
 
 /**
  * @brief: TYPE_B_PROTOCOL

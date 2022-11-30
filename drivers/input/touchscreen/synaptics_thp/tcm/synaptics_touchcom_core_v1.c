@@ -1297,9 +1297,9 @@ int syna_tcm_v1_detect(struct tcm_dev *tcm_dev, unsigned char *data,
 
 	header = (struct tcm_v1_message_header *)data;
 
-	LOGI("zhangle-->check header->marker(0x%x)\n", header->marker);
+	LOGI("check header->marker(0x%x)\n", header->marker);
 	if (header->marker != TCM_V1_MESSAGE_MARKER) {
-		LOGE("zhangle-->Invalid header->marker\n");
+		LOGE("Invalid header->marker\n");
 		return _ENODEV;
 	}
 

@@ -76,7 +76,7 @@
  *
  * Open if willing to use managed-APIs rather than legacy APIs.
  */
-//#define DEV_MANAGED_API	//del by zhangle
+//#define DEV_MANAGED_API
 
 #if defined(DEV_MANAGED_API) || defined(USE_DRM_PANEL_NOTIFIER)
 extern struct device *syna_request_managed_device(void);
