@@ -436,7 +436,3 @@ config BT_VIRTIO
 	  kernel or say M to compile as a module.
 
 endmenu
-
-#WangDi@CONNECTIVITY.BT.HARDWARE.FEATURE 2022/01/13, Add for oplus bt smart antenna
-source "drivers/bluetooth/oplus_bt_bsa/Kconfig"
-
