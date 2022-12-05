@@ -1411,7 +1411,7 @@ static void syna_speedup_resume(struct work_struct *work)
 #ifdef RESET_ON_RESUME
 	if (!tcm->is_fp_down) {
 		LOGI("Do reset on resume\n");
-		syna_pal_sleep_ms(RESET_ON_RESUME_DELAY_MS);
+		/*syna_pal_sleep_ms(RESET_ON_RESUME_DELAY_MS);*/
 
 		if (hw_if->ops_hw_reset) {
 			hw_if->ops_hw_reset(hw_if);

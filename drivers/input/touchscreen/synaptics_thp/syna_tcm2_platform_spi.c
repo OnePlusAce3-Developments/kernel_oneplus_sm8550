@@ -1252,8 +1252,8 @@ static struct syna_hw_interface syna_spi_hw_if = {
 	},
 	.bdata_rst = {
 		.reset_on_state = 0,
-		.reset_delay_ms = 200,
-		.reset_active_ms = 20,
+		.reset_delay_ms = 80,
+		.reset_active_ms = 10,
 	},
 	.bdata_pwr = {
 		.power_on_state = 1,

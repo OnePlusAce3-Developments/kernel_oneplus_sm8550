@@ -1783,7 +1783,8 @@ static int syna_cdev_ioctl_send_message(struct syna_tcm *tcm,
 retry:
 			syna_pal_sleep_ms(5);
 			retryCnt--;
-			if ((tcm->sub_pwr_state < SUB_PWR_SUSPEND_DONE) && (retryCnt > 0))
+			if ((tcm->sub_pwr_state >= SUB_PWR_EARLY_SUSPENDING)
+					   && (tcm->sub_pwr_state < SUB_PWR_SUSPEND_DONE) && (retryCnt > 0))
 				goto retry;
 
 			if(retryCnt <= 0) {

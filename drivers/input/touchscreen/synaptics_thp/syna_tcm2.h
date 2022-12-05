@@ -49,7 +49,7 @@
 
 #define PLATFORM_DRIVER_NAME "synaptics_tcm_hbp"
 
-#define TOUCH_INPUT_NAME "synaptics_tcm_touch"
+#define TOUCH_INPUT_NAME "touchpanel"
 #define TOUCH_INPUT_PHYS_PATH "synaptics_tcm/touch_input"
 
 #define CHAR_DEVICE_NAME "tcm_hbp"
@@ -189,7 +189,7 @@
  *        feature is enabled.
  */
 #ifdef ENABLE_DISP_NOTIFIER
-/* #define RESUME_EARLY_UNBLANK */
+#define RESUME_EARLY_UNBLANK
 #endif
 /**
  * @brief  USE_DRM_PANEL_NOTIFIER
