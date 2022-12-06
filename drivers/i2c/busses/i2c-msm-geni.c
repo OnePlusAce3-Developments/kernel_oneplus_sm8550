@@ -1407,6 +1407,9 @@ geni_i2c_txn_ret:
 	return ret;
 }
 
+/*OPLUS_FEATURE_CHG_BASIC qcom case 06374203 Solve smbus I2C communication exception start*/
+#if IS_ENABLED(CONFIG_I2C_SLAVE_QCOM)
+/*OPLUS_FEATURE_CHG_BASIC qcom case 06374203 Solve smbus I2C communication exception end*/
 /**
  * i2c_slave_xfer: SMbus transfer function.
  * @adap: I2C driver adapter.
@@ -1524,6 +1527,7 @@ static int geni_i2c_smbus_xfer(struct i2c_adapter *adap, u16 addr,
 	}
 	return 0;
 }
+#endif /*OPLUS_FEATURE_CHG_BASIC qcom case 06374203 Solve smbus I2C communication exception*/
 
 static u32 geni_i2c_func(struct i2c_adapter *adap)
 {
@@ -1533,7 +1537,11 @@ static u32 geni_i2c_func(struct i2c_adapter *adap)
 static const struct i2c_algorithm geni_i2c_algo = {
 	.master_xfer	= geni_i2c_xfer,
 	.functionality	= geni_i2c_func,
+/*OPLUS_FEATURE_CHG_BASIC qcom case 06374203 Solve smbus I2C communication exception start*/
+#if IS_ENABLED(CONFIG_I2C_SLAVE_QCOM)
 	.smbus_xfer	= geni_i2c_smbus_xfer,
+#endif
+/*OPLUS_FEATURE_CHG_BASIC qcom case 06374203 Solve smbus I2C communication exception end*/
 };
 
 #if I2C_HUB_DEF
