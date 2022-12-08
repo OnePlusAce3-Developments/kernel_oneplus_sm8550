@@ -1813,7 +1813,7 @@ retry:
 	}
 
 	payload_length = syna_pal_le2_to_uint(&data[1]);
-	LOGD("Command = 0x%02x, payload length = %d\n",
+	LOGI("Command = 0x%02x, payload length = %d\n",
 		data[0], payload_length);
 
 	/* init a buffer for the response data */
@@ -1870,7 +1870,7 @@ retry:
 	data[1] = (unsigned char)(resp_data_buf.data_length & 0xff);
 	data[2] = (unsigned char)((resp_data_buf.data_length >> 8) & 0xff);
 
-	LOGD("resp data: 0x%02x 0x%02x 0x%02x\n",
+	LOGI("resp data: 0x%02x 0x%02x 0x%02x\n",
 		data[0], data[1], data[2]);
 
 	/* response data */

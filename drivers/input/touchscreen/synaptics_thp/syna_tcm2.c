@@ -387,6 +387,49 @@ exit:
 	return retval;
 }
 
+/**
+ * syna_dev_disable_lbp_mode()
+ *
+ * Disable the lbp mode.
+ *
+ * @param
+ *      [ in] tcm: tcm driver handle
+ *
+ * @return
+ *      on success, 0; otherwise, negative value on error.
+ */
+int syna_dev_disable_lbp_mode(struct syna_tcm *tcm)
+{
+	int retval = 0;
+
+#if !defined(ENABLE_EXTERNAL_FRAME_PROCESS)
+	LOGD("Does not support HBP, skip diable_lbp\n");
+	goto exit;
+#endif
+
+	// /* disable LBP active frame report(REPORT_TOUCH = 0x11) */
+	// retval = syna_tcm_enable_report(tcm->tcm_dev,
+	// 		 REPORT_TOUCH, false);
+	// if (retval < 0) {
+	//      LOGE("Fail to disalbe HBP Active Frame report\n");
+	//      goto exit;
+	// }
+
+	/* disable LBP mode: 2-LBP(default),1-HBP */
+	retval = syna_tcm_set_dynamic_config(tcm->tcm_dev,
+			DC_CONTROL_LBP_HBP,
+			0x01,
+			RESP_IN_ATTN);
+	if (retval < 0) {
+		LOGE("Fail to disable LBP mode via DC command\n");
+		goto exit;
+	}
+	//tcm->hbp_enabled = true;
+
+exit:
+	return retval;
+}
+
 #ifdef ENABLE_CUSTOM_TOUCH_ENTITY
 /**
  * syna_dev_parse_custom_touch_data_cb()
@@ -1429,6 +1472,12 @@ static void syna_speedup_resume(struct work_struct *work)
 		if (retval < 0) {
 			LOGE("Fail to enter normal power mode\n");
 			goto exit;
+		}
+	}
+	if (tcm->char_dev_ref_count) {
+		retval = syna_dev_disable_lbp_mode(tcm);
+		if (retval < 0) {
+			LOGE("Fail to disable lbp mode\n");
 		}
 	}
 #else
