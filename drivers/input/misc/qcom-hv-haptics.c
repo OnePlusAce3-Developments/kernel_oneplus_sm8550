@@ -3556,6 +3556,7 @@ static irqreturn_t fifo_empty_irq_handler(int irq, void *data)
 #ifdef OPLUS_FEATURE_RICHTAP_SUPPORT
 	int16_t num_rt = 0;
 	int16_t pos = 0, retry = 3;
+	int16_t count = 10;
 #endif //OPLUS_FEATURE_RICHTAP_SUPPORT
 
 	rc = haptics_read(chip, chip->cfg_addr_base,
@@ -3624,7 +3625,7 @@ static irqreturn_t fifo_empty_irq_handler(int irq, void *data)
 					goto unlock;
 				}
 			} else {
-				while (num_rt > 0 && atomic_read(&chip->richtap_mode)) {
+				while (num_rt > 0 && atomic_read(&chip->richtap_mode) && count > 0) {
 					if ((chip->current_buf->status == MMAP_BUF_DATA_VALID)
 						&& (num_rt >= (chip->current_buf->length - chip->pos))) {
 						samples_left = (u32)(chip->current_buf->length - chip->pos);
@@ -3656,9 +3657,12 @@ static irqreturn_t fifo_empty_irq_handler(int irq, void *data)
 						continue;
 					}
 
-					if (chip->current_buf->status != MMAP_BUF_DATA_FINISHED)
+					if (chip->current_buf->status != MMAP_BUF_DATA_FINISHED) {
 						dev_err(chip->dev, "aac richtap invalid data buf\n");
-					schedule_work(&chip->richtap_erase_work);
+						usleep_range(1000, 1001);
+						count--;
+						continue;
+					}
 					break;
 				}
 				goto unlock;
