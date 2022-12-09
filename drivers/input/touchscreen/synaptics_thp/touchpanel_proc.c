@@ -397,6 +397,11 @@ static ssize_t proc_fingerprint_trigger_write(struct file *file,
 		return count;
 	}
 
+	if (count > 64) {
+		TPD_INFO("%s:count > 64\n", __func__);
+		return count;
+	}
+
 	mutex_lock(&tcm->mutex);
 	if (copy_from_user(buf, buffer, count)) {
 		TPD_INFO("%s: read proc input error.\n", __func__);
@@ -439,6 +444,11 @@ static ssize_t proc_daemon_state_write(struct file *file,
 
 	if (!tcm) {
 		TPD_INFO("ts not exist!\n");
+		return count;
+	}
+
+	if (count > 64) {
+		TPD_INFO("%s:count > 64\n", __func__);
 		return count;
 	}
 
