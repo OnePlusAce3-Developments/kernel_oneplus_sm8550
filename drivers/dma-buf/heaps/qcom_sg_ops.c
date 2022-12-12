@@ -32,6 +32,10 @@
 
 #include "qcom_sg_ops.h"
 
+//add by zhenghaiqing@oppo.com for dma debug
+#define CREATE_TRACE_POINTS
+#include "qcom_dma_trace.h"
+
 static struct sg_table *dup_sg_table(struct sg_table *table)
 {
 	struct sg_table *new_table;
@@ -517,6 +521,8 @@ static void qcom_sg_release(struct dma_buf *dmabuf)
 {
 	struct qcom_sg_buffer *buffer = dmabuf->priv;
 
+        //add by zhenghaiqing@oppo.com for dma debug
+        trace_qcom_dma_free(buffer->len, file_inode(dmabuf->file)->i_ino, dmabuf->exp_name?:"NULL");
 	if (mem_buf_vmperm_release(buffer->vmperm))
 		return;
 
