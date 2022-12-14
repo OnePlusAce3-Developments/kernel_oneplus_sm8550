@@ -2511,9 +2511,7 @@ static int monitor_verify_command(unsigned char *cmd)
  */
 int ufs_ioctl_monitor(struct scsi_device *dev, void __user *buf_user)
 {
-	struct scsi_disk *sdp = (struct scsi_disk *)dev_get_drvdata(&dev->sdev_gendev);
 	struct request_queue *q = dev->request_queue;
-	struct gendisk *disk = sdp->disk;
 	struct request *rq;
 	struct scsi_request *req;
 	struct scsi_ioctl_command __user *sic = (struct scsi_ioctl_command __user *)buf_user;
@@ -2574,7 +2572,7 @@ int ufs_ioctl_monitor(struct scsi_device *dev, void __user *buf_user)
 		if (err)
 			goto error;
 	}
-	blk_execute_rq(disk, rq, 0);
+	blk_execute_rq(NULL, rq, 0);
 
 #define OMAX_SB_LEN 16          /* For backward compatibility */
 	err = req->result & 0xff;	/* only 8 bit SCSI status */
