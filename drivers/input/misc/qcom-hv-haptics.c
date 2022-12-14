@@ -692,6 +692,7 @@ struct haptics_chip {
 	struct regulator_dev		*swr_slave_rdev;
 #ifdef OPLUS_FEATURE_RICHTAP_SUPPORT
 	struct mutex			irq_lock;
+	bool				cancel_work;
 #endif
 #ifdef OPLUS_FEATURE_CHG_BASIC
 	struct haptics_calibration_data cal_data;
@@ -3408,143 +3409,6 @@ static int haptics_hw_init(struct haptics_chip *chip)
 	return haptics_init_fifo_memory(chip);
 }
 
-#ifdef OPLUS_FEATURE_RICHTAP_SUPPORT
-static void livetap_clean_buf(struct haptics_chip *chip, int status)
-{
-	struct mmap_buf_format *opbuf = chip->start_buf;
-	int i;
-
-	for (i = 0; i < RICHTAP_MMAP_BUF_SUM; i++) {
-		opbuf->length = 0;
-		opbuf->status = status;
-		opbuf = opbuf->kernel_next;
-	}
-}
-
-static void livetap_stop_play(struct haptics_chip *chip)
-{
-	livetap_clean_buf(chip, MMAP_BUF_DATA_FINISHED);
-	haptics_stop_fifo_play(chip);
-	atomic_set(&chip->play.fifo_status.written_done, 1);
-	haptics_set_fifo_empty_threshold(chip, 0);
-	atomic_set(&chip->richtap_mode, false);
-}
-
-static int livetap_process_start_read_data(struct haptics_chip *chip, int16_t retry)
-{
-	int16_t t_len = 0;
-	int16_t retry_number = retry;
-	int16_t count = 0;
-
-	do {
-		if (chip->current_buf->status == MMAP_BUF_DATA_VALID) {
-			if ((t_len + chip->current_buf->length) > get_max_fifo_samples(chip)) {
-				memcpy(&chip->rtp_ptr[t_len], chip->current_buf->data, (get_max_fifo_samples(chip) - t_len));
-				chip->pos = get_max_fifo_samples(chip) - t_len;
-				t_len = get_max_fifo_samples(chip);
-				dev_err(chip->dev, "first full\n");
-			} else {
-				memcpy(&chip->rtp_ptr[t_len], chip->current_buf->data, chip->current_buf->length);
-				t_len += chip->current_buf->length;
-				chip->current_buf->status = MMAP_BUF_DATA_INVALID;
-				chip->current_buf->length = 0;
-				chip->pos = 0;
-				chip->current_buf = chip->current_buf->kernel_next;
-			}
-		} else if ((chip->current_buf->status == MMAP_BUF_DATA_FINISHED) || (chip->current_buf->status == MMAP_BUF_DATA_INVALID)) {
-			break;
-		} else {
-			usleep_range(1000, 1001);
-			dev_err(chip->dev, "wait for data\n");
-		}
-	} while(t_len < get_max_fifo_samples(chip) && count++ < retry_number);
-
-	return t_len;
-}
-
-static int livetap_process_read_data(struct haptics_chip *chip, int16_t n_rt, int16_t retry_num)
-{
-	int16_t number_rt = n_rt;
-	u32 samples_left;
-	int16_t number_val = 0;
-	int16_t pos = 0;
-	int16_t retry_count = retry_num;
-
-	do {
-		if (chip->current_buf->status == MMAP_BUF_DATA_VALID) {
-			number_val = chip->current_buf->length - chip->pos;
-			if (number_val <= 0) {
-				dev_err(chip->dev, "aacrichtap length error, pos = %d, length = %d\n",
-							chip->pos, chip->current_buf->length);
-				livetap_stop_play(chip);
-				return -1;
-			}
-			if (number_rt >= number_val) {
-				samples_left = (u32)number_val;
-				memcpy(&chip->rtp_ptr[pos], &chip->current_buf->data[chip->pos], samples_left);
-				pos += samples_left;
-				number_rt -= samples_left;
-				chip->current_buf->status = MMAP_BUF_DATA_INVALID;
-				chip->current_buf->length = 0;
-				chip->current_buf = chip->current_buf->kernel_next;
-				chip->pos = 0;
-			} else {
-				memcpy(&chip->rtp_ptr[pos], &chip->current_buf->data[chip->pos], number_rt);
-				chip->pos += number_rt;
-				pos += number_rt;
-				number_rt = 0;
-			}
-		} else if (chip->current_buf->status == MMAP_BUF_DATA_FINISHED) {
-			break;
-		} else {
-			if (retry_count-- <= 0) {
-				livetap_stop_play(chip);
-				return -1;
-			} else {
-				usleep_range(1000,1001);
-			}
-		}
-	} while (number_rt > 0 && atomic_read(&chip->richtap_mode));
-
-	return pos;
-}
-
-#define LIVETAP_FIFO_UPDATE_SIZE 256
-static int livetap_process_write_data(struct haptics_chip *chip, int16_t lt)
-{
-	int16_t write_all_number = lt;
-	int ret = 0;
-	int16_t write_number = 0;
-
-	while (write_all_number) {
-		if (write_all_number >= LIVETAP_FIFO_UPDATE_SIZE) {
-			ret = haptics_update_fifo_samples(chip,
-						chip->rtp_ptr + write_number, (u32)LIVETAP_FIFO_UPDATE_SIZE, true);
-			write_number += LIVETAP_FIFO_UPDATE_SIZE;
-			write_all_number -= LIVETAP_FIFO_UPDATE_SIZE;
-		} else {
-			ret = haptics_update_fifo_samples(chip,
-						chip->rtp_ptr + write_number, (u32)write_all_number, true);
-				write_number += write_all_number;
-				write_all_number = 0;
-		}
-
-		if (ret < 0) {
-			dev_err(chip->dev, "richtap Update FIFO fail, ret=%d\n", ret);
-			return -1;
-		}
-
-		if ((chip->current_buf->status == MMAP_BUF_DATA_INVALID) && (chip->current_buf->length == 0)) {
-			dev_err(chip->dev, "si play interrupt data\n");
-			livetap_stop_play(chip);
-			return -1;
-		}
-	}
-
-	return 0;
-}
-#endif
-
 static irqreturn_t fifo_empty_irq_handler(int irq, void *data)
 {
 	struct haptics_chip *chip = data;
@@ -3555,7 +3419,6 @@ static irqreturn_t fifo_empty_irq_handler(int irq, void *data)
 	int rc, num;
 #ifdef OPLUS_FEATURE_RICHTAP_SUPPORT
 	int16_t num_rt = 0;
-	int16_t pos = 0, retry = 3;
 	int16_t count = 10;
 #endif //OPLUS_FEATURE_RICHTAP_SUPPORT
 
@@ -3614,59 +3477,47 @@ static irqreturn_t fifo_empty_irq_handler(int irq, void *data)
 				goto unlock;
 			}
 
-			if (chip->livetap_support) {
-				pos = livetap_process_read_data(chip, num_rt, retry);
-				dev_err(chip->dev, "update FIFO len %d\n", pos);
-				if (pos <= 0)
-					goto unlock;
-				rc = livetap_process_write_data(chip, pos);
-				if (rc < 0) {
-					dev_err(chip->dev, "richtap Update FIFO fail, rc=%d\n", rc);
-					goto unlock;
+			while (num_rt > 0 && atomic_read(&chip->richtap_mode) && count > 0) {
+				if ((chip->current_buf->status == MMAP_BUF_DATA_VALID)
+					&& (num_rt >= (chip->current_buf->length - chip->pos))) {
+					samples_left = (u32)(chip->current_buf->length - chip->pos);
+					rc = haptics_update_fifo_samples(chip,
+						&chip->current_buf->data[chip->pos], samples_left, true);
+					if (rc < 0) {
+						dev_err(chip->dev,
+						"richtap Update FIFO fail, rc=%d\n", rc);
+						goto unlock;
+					}
+					num_rt -= (chip->current_buf->length - chip->pos);
+					chip->current_buf->status = MMAP_BUF_DATA_INVALID;
+					chip->current_buf->length = 0;
+					chip->current_buf = chip->current_buf->kernel_next;
+					chip->pos = 0;
+					continue;
 				}
-			} else {
-				while (num_rt > 0 && atomic_read(&chip->richtap_mode) && count > 0) {
-					if ((chip->current_buf->status == MMAP_BUF_DATA_VALID)
-						&& (num_rt >= (chip->current_buf->length - chip->pos))) {
-						samples_left = (u32)(chip->current_buf->length - chip->pos);
-						rc = haptics_update_fifo_samples(chip,
-							&chip->current_buf->data[chip->pos], samples_left, true);
-						if (rc < 0) {
-							dev_err(chip->dev,
+
+				if (chip->current_buf->status == MMAP_BUF_DATA_VALID) {
+					rc = haptics_update_fifo_samples(chip,
+						&chip->current_buf->data[chip->pos], (u32)num_rt, true);
+					if (rc < 0) {
+						dev_err(chip->dev,
 							"richtap Update FIFO fail, rc=%d\n", rc);
-							goto unlock;
-						}
-						num_rt -= (chip->current_buf->length - chip->pos);
-						chip->current_buf->status = MMAP_BUF_DATA_INVALID;
-						chip->current_buf->length = 0;
-						chip->current_buf = chip->current_buf->kernel_next;
-						chip->pos = 0;
-						continue;
+						goto unlock;
 					}
-
-					if (chip->current_buf->status == MMAP_BUF_DATA_VALID) {
-						rc = haptics_update_fifo_samples(chip,
-							&chip->current_buf->data[chip->pos], (u32)num_rt, true);
-						if (rc < 0) {
-							dev_err(chip->dev,
-								"richtap Update FIFO fail, rc=%d\n", rc);
-							goto unlock;
-						}
-						chip->pos += num_rt;
-						num_rt = 0;
-						continue;
-					}
-
-					if (chip->current_buf->status != MMAP_BUF_DATA_FINISHED) {
-						dev_err(chip->dev, "aac richtap invalid data buf\n");
-						usleep_range(1000, 1001);
-						count--;
-						continue;
-					}
-					break;
+					chip->pos += num_rt;
+					num_rt = 0;
+					continue;
 				}
-				goto unlock;
+
+				if (chip->current_buf->status != MMAP_BUF_DATA_FINISHED) {
+					dev_err(chip->dev, "aac richtap invalid data buf\n");
+					usleep_range(1000, 1001);
+					count--;
+					continue;
+				}
+				break;
 			}
+			goto unlock;
 		}
 #endif	//OPLUS_FEATURE_RICHTAP_SUPPORT
 		if (!chip->play.effect)
@@ -6189,6 +6040,9 @@ static void richtap_erase_work_proc(struct work_struct *work)
 	u8 count = 5;
 	u32 fill;
 
+	if (chip->livetap_support)
+		count = 45;
+
 	while (count--) {
 		rc = haptics_get_fifo_fill_status(chip, &fill);
 		if (rc < 0)
@@ -6197,9 +6051,16 @@ static void richtap_erase_work_proc(struct work_struct *work)
 			break;
 		if (atomic_read(&chip->play.fifo_status.is_busy) == 0)
 			return;
-		fill /= 24; //24k play_rate_hz
-		fill *= 1000;
-		usleep_range((fill + 25), (fill + 30));
+		if (chip->cancel_work)
+			break;
+
+		if (chip->livetap_support) {
+			usleep_range(2000, 2000);
+		} else {
+			fill /= 24; //24k play_rate_hz
+			fill *= 1000;
+			usleep_range((fill + 25), (fill + 30));
+		}
 		dev_err(chip->dev, "aac fill time %d\n", fill);
 	}
 
@@ -6311,52 +6172,64 @@ unlock:
 	return rc;
 }
 
+#define LIVETAP_WRITE_DATA_LENGTH_MAX 1000
 static void richtap_work_proc(struct work_struct *work)
 {
 	struct haptics_chip *chip  = container_of(work, struct haptics_chip, richtap_stream_work);
 
 	uint32_t count = 100, temp_len = 0, retry_count = 30;
 	int ret;
+	int max_write_len;
 
 	cancel_work_sync(&chip->richtap_erase_work);
 	richtap_rc_clk_disable(chip, true);
 	atomic_set(&chip->richtap_mode, true);
 
 	while ((count--) && (chip->start_buf->status != MMAP_BUF_DATA_VALID)) {
+		if (chip->cancel_work) {
+			dev_err(chip->dev, "exit1 %s,cancel_work is true: chip->start_buf->status = 0x%x\n",
+					__func__, chip->start_buf->status);
+			return;
+		}
 		usleep_range(1000, 1001);
 	}
 
+	if (chip->livetap_support)
+		max_write_len = LIVETAP_WRITE_DATA_LENGTH_MAX;
+	else
+		max_write_len = get_max_fifo_samples(chip);
 	chip->pos = 0;
 	count = 0;
 	chip->current_buf = chip->start_buf;
-	if (chip->livetap_support) {
-		temp_len = livetap_process_start_read_data(chip, retry_count);
-	} else {
-		do {
-			if (chip->current_buf->status == MMAP_BUF_DATA_VALID) {
-				if ((temp_len + chip->current_buf->length) > get_max_fifo_samples(chip)) {
-					memcpy(&chip->rtp_ptr[temp_len], chip->current_buf->data, (get_max_fifo_samples(chip) - temp_len));
-					chip->pos = get_max_fifo_samples(chip) - temp_len;
-					temp_len = get_max_fifo_samples(chip);
-					dev_err(chip->dev, "first full\n");
-				} else {
-					memcpy(&chip->rtp_ptr[temp_len], chip->current_buf->data, chip->current_buf->length);
-					temp_len += chip->current_buf->length;
-					chip->current_buf->status = MMAP_BUF_DATA_INVALID;
-					chip->current_buf->length = 0;
-					chip->pos = 0;
-					chip->current_buf = chip->current_buf->kernel_next;
-				}
-			} else if (chip->current_buf->status == MMAP_BUF_DATA_FINISHED) {
-				break;
+	do {
+		if (chip->cancel_work) {
+			dev_err(chip->dev, "exit2 %s,cancel_work is true: chip->current_buf->status = 0x%x\n",
+					__func__, chip->current_buf->status);
+			return;
+		}
+		if (chip->current_buf->status == MMAP_BUF_DATA_VALID) {
+			if ((temp_len + chip->current_buf->length) > max_write_len) {
+				memcpy(&chip->rtp_ptr[temp_len], chip->current_buf->data, (max_write_len - temp_len));
+				chip->pos = max_write_len - temp_len;
+				temp_len = max_write_len;
+				dev_err(chip->dev, "first full\n");
 			} else {
-				usleep_range(1000, 1001);
-				dev_err(chip->dev, "wait for data\n");
+				memcpy(&chip->rtp_ptr[temp_len], chip->current_buf->data, chip->current_buf->length);
+				temp_len += chip->current_buf->length;
+				chip->current_buf->status = MMAP_BUF_DATA_INVALID;
+				chip->current_buf->length = 0;
+				chip->pos = 0;
+				chip->current_buf = chip->current_buf->kernel_next;
 			}
-		} while(temp_len < get_max_fifo_samples(chip) && count++ < retry_count);
-	}
+		} else if (chip->current_buf->status == MMAP_BUF_DATA_FINISHED) {
+			break;
+		} else {
+			usleep_range(1000, 1001);
+			dev_err(chip->dev, "wait for data\n");
+		}
+	} while(temp_len < max_write_len && count++ < retry_count);
 
-	dev_dbg(chip->dev, "temp_len %d, retry %d, max_fifo %d\n", temp_len, count, get_max_fifo_samples(chip));
+	dev_dbg(chip->dev, "temp_len %d, retry %d, max_fifo %d\n", temp_len, count, max_write_len);
 	ret = richtap_load_prebake(chip, chip->rtp_ptr, temp_len);
 	if (ret < 0) {
 		dev_err(chip->dev, "aac RichTap Upload FIFO data fail\n", ret);
@@ -6472,6 +6345,12 @@ static long richtap_file_unlocked_ioctl(struct file *file, unsigned int cmd, uns
 		haptics_set_vmax_mv(chip, chip->play.vmax_mv);
 		break;
 	case RICHTAP_STREAM_MODE:
+		if (chip->livetap_support) {
+			chip->cancel_work = true;
+			cancel_work_sync(&chip->richtap_stream_work);
+			cancel_work_sync(&chip->richtap_erase_work);
+			chip->cancel_work = false;
+		}
 		richtap_clean_buf(chip, MMAP_BUF_DATA_INVALID);
 		mutex_lock(&play->lock);
 		haptics_stop_fifo_play(chip);
@@ -6481,7 +6360,14 @@ static long richtap_file_unlocked_ioctl(struct file *file, unsigned int cmd, uns
 		schedule_work(&chip->richtap_stream_work);
 		break;
 	case RICHTAP_STOP_MODE:
-		cancel_work_sync(&chip->richtap_stream_work);
+		if (chip->livetap_support) {
+			chip->cancel_work = true;
+			cancel_work_sync(&chip->richtap_stream_work);
+			cancel_work_sync(&chip->richtap_erase_work);
+			chip->cancel_work = false;
+		} else {
+			cancel_work_sync(&chip->richtap_stream_work);
+		}
 		mutex_lock(&play->lock);
 		atomic_set(&chip->play.fifo_status.written_done, 1);
 		haptics_set_fifo_empty_threshold(chip, 0);
@@ -7145,6 +7031,7 @@ static int haptics_probe(struct platform_device *pdev)
 
 	atomic_set(&chip->richtap_mode, false);
 	g_richtap_ptr = chip;
+	chip->cancel_work = false;
 #endif //OPLUS_FEATURE_RICHTAP_SUPPORT
 #ifdef CONFIG_DEBUG_FS
 	rc = haptics_create_debugfs(chip);
