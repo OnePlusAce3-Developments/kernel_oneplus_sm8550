@@ -20,6 +20,8 @@
 #include "touchpanel_healthinfo/touchpanel_healthinfo.h"
 #include "touchpanel_autotest/touchpanel_autotest.h"
 #include "touch_comon_api/touch_comon_api.h"
+#include "synaptics_touchcom_func_base.h"
+#include "syna_tcm2.h"
 
 /*irq_depth - For enable or disable irq
  * Output:
@@ -527,6 +529,43 @@ static int health_monitor_open(struct inode *inode, struct file *file)
 }
 
 DECLARE_PROC_OPS(tp_health_monitor_proc_fops, health_monitor_open, seq_read, health_monitor_control, single_release);
+
+/*proc/touchpanel/debug_info/main_register*/
+static int tp_main_register_read_func(struct seq_file *s, void *v)
+{
+	struct syna_tcm *tcm = s->private;
+	struct debug_info_proc_operations *debug_info_ops;
+
+	if (!tcm) {
+		return 0;
+	}
+	debug_info_ops = (struct debug_info_proc_operations *)tcm->debug_info_ops;
+	if (!debug_info_ops) {
+		return 0;
+	}
+
+	if (!debug_info_ops->main_register_read) {
+		seq_printf(s, "Not support main_register proc node\n");
+		return 0;
+	}
+
+	if (tcm->tcm_dev->is_sleep) {
+		seq_printf(s, "Not in resume over state\n");
+		return 0;
+	}
+
+	mutex_lock(&tcm->mutex);
+	debug_info_ops->main_register_read(s, tcm);
+
+	mutex_unlock(&tcm->mutex);
+	return 0;
+}
+static int main_register_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, tp_main_register_read_func, PDE_DATA(inode));
+}
+
+DECLARE_PROC_OPS(tp_main_register_proc_fops, main_register_open, seq_read, NULL, single_release);
 #endif
 
 /*******Part5:Register node Function  Area********************/
@@ -556,6 +595,7 @@ static int init_debug_info_proc(struct syna_tcm *tcm,
 
 	tp_proc_node proc_debug_node[] = {
 #ifndef CONFIG_REMOVE_OPLUS_FUNCTION
+		{"main_register", 0666, NULL, &tp_main_register_proc_fops, tcm, false, true},/* show main_register interface*/
 		{
 			"health_monitor", 0666, NULL, &tp_health_monitor_proc_fops, tcm, false,
 			tcm->health_monitor_support

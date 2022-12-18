@@ -519,6 +519,21 @@ struct exception_data {
 	u32 bus_error_upload_count;
 };
 */
+
+static inline unsigned int le2_to_uint(const unsigned char *src)
+{
+	return (unsigned int)src[0] +
+	       (unsigned int)src[1] * 0x100;
+}
+
+static inline unsigned int le4_to_uint(const unsigned char *src)
+{
+	return (unsigned int)src[0] +
+	       (unsigned int)src[1] * 0x100 +
+	       (unsigned int)src[2] * 0x10000 +
+	       (unsigned int)src[3] * 0x1000000;
+}
+
 /**
  * @brief: context of the synaptics linux-based driver
  *
@@ -606,6 +621,8 @@ struct syna_tcm {
 	bool rst_on_resume_enabled;
 	bool hbp_enabled; /* report data to report_to_queue[] */
 	int daemon_state;
+	bool snr_read_support;			/*feature to support reading snr data*/
+	bool freq_hop_simulate_support;                     /*frequency hopping simulate feature*/
 
 	unsigned short gesture_type;
 	unsigned short touch_and_hold;
@@ -625,6 +642,9 @@ struct syna_tcm {
 || IS_ENABLED(CONFIG_FB)
 	struct notifier_block fb_notif;	/*register to control suspend/resume*/
 #endif
+
+	struct debug_info_proc_operations *debug_info_ops; /*debug info data*/
+	void *chip_data;
 
 	struct com_api_data com_api_data;
 	struct com_test_data com_test_data;	/*test comon data*/

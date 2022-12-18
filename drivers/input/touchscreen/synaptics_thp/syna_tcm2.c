@@ -126,6 +126,7 @@ static unsigned char custom_touch_format[] = {
  *           is going to suspend stage.
  */
 #define POWER_ALIVE_AT_SUSPEND
+static void syna_main_register(struct seq_file *s, void *chip_data);
 
 /**
  * syna_dev_update_lpwg_status()
@@ -2123,6 +2124,9 @@ static struct tcm_engineer_test_operations syna_tcm_engineer_test_ops = {
 	.auto_test                  = synaptics_auto_test,
 };
 
+static struct debug_info_proc_operations syna_debug_proc_ops = {
+	.main_register_read = syna_main_register,
+};
 
 static int init_chip_dts(struct device *dev, void *chip_data)
 {
@@ -2536,6 +2540,8 @@ static int syna_dev_probe(struct platform_device *pdev)
 	tcm->engineer_ops = &syna_tcm_engineer_test_ops;
 	tcm->com_test_data.chip_test_ops = &syna_tcm_test_ops;
 
+	tcm->debug_info_ops = &syna_debug_proc_ops;
+
 	tcm->userspace_app_info = NULL;
 
 	platform_set_drvdata(pdev, tcm);
@@ -2803,6 +2809,349 @@ static void syna_dev_shutdown(struct platform_device *pdev)
 	syna_dev_remove(pdev);
 }
 
+enum dynamic_config_id {
+	DC_UNKNOWN_1 = 0x00,
+	DC_NO_DOZE,
+	DC_DISABLE_NOISE_MITIGATION_1,
+	DC_INHIBIT_FREQUENCY_SHIFT,
+	DC_REQUESTED_FREQUENCY,
+	DC_DISABLE_HSYNC_1,
+	DC_REZERO_ON_EXIT_DEEP_SLEEP_1,
+	DC_CHARGER_CONNECTED,
+	DC_NO_BASELINE_RELAXATION,
+	DC_IN_WAKEUP_GESTURE_MODE,
+	DC_STIMULUS_FINGERS,
+	DC_GRIP_SUPPRESSION_ENABLED,
+	DC_ENABLE_THICK_GLOVE_1,
+	DC_ENABLE_GLOVE_1,
+	DC_PS_STATUS = 0xC1,
+	DC_DISABLE_ESD = 0xC2,
+	DC_FREQUENCE_HOPPING = 0xD2,
+	DC_TOUCH_HOLD = 0xD4,
+	DC_ERROR_PRIORITY = 0xD5,
+	DC_NOISE_LENGTH = 0xD6,
+	DC_GRIP_CONDTION_ZONE = 0xD8,
+	DC_GRIP_SPECIAL_ZONE_X = 0xD9,
+	DC_GRIP_SPECIAL_ZONE_Y = 0xDA,
+	DC_GRIP_SPECIAL_ZONE_L = 0xDB,
+	DC_GRIP_ROATE_TO_HORIZONTAL_LEVEL = 0xDC,
+	DC_DARK_ZONE_ENABLE = 0xDD,
+	DC_GRIP_ENABLED = 0xDE,
+	DC_GRIP_DARK_ZONE_X = 0xDF,
+	DC_GRIP_DARK_ZONE_Y = 0xE0,
+	DC_GRIP_ABS_DARK_X = 0xE1,
+	DC_GRIP_ABS_DARK_Y = 0xE2,
+	DC_GRIP_ABS_DARK_U = 0xE3,
+	DC_GRIP_ABS_DARK_V = 0xE4,
+	DC_GRIP_ABS_DARK_SEL = 0xE5,
+	DC_SET_REPORT_FRE = 0xE6,
+	DC_GESTURE_MASK = 0xFE,
+	DC_LOW_TEMP_ENABLE = 0xFD,
+};
+
+static void syna_main_register(struct seq_file *s, void *chip_data)
+{
+	int retval = 0;
+	unsigned short config = 0;
+	unsigned int temp = 0;
+	struct syna_tcm *tcm_info = (struct syna_tcm *)chip_data;
+
+	retval = syna_tcm_get_dynamic_config(tcm_info->tcm_dev,
+					     DC_IN_WAKEUP_GESTURE_MODE,
+					     &config, 0);
+	if (retval < 0) {
+		TPD_INFO("gesture mode : ERROR\n");
+		seq_printf(s, "gesture mode : ERROR\n");
+
+	} else {
+		TPD_INFO("gesture mode : %d\n", config);
+		seq_printf(s, "gesture mode : %d\n", config);
+	}
+
+	retval = syna_tcm_get_dynamic_config(tcm_info->tcm_dev, DC_ERROR_PRIORITY,
+					     &config, 0);
+	if (retval < 0) {
+		TPD_INFO("error priority(1:finger,0:error): ERROR\n");
+		seq_printf(s, "error priority(1:finger,0:error): ERROR\n");
+
+	} else {
+		TPD_INFO("error priority(1:finger,0:error): 0x%0X\n", config);
+		seq_printf(s, "error priority(1:finger,0:error): 0x%0X\n",
+			   config);
+	}
+
+	retval = syna_tcm_get_dynamic_config(tcm_info->tcm_dev, DC_NOISE_LENGTH,
+					     &config, 0);
+	if (retval < 0) {
+		TPD_INFO("noise length : ERROR\n");
+		seq_printf(s, "noise length : ERROR\n");
+	} else {
+		TPD_INFO("noise length : %d\n", config);
+		seq_printf(s, "noise length : %d\n", config);
+	}
+
+	retval = syna_tcm_get_dynamic_config(tcm_info->tcm_dev, DC_SET_REPORT_FRE,
+					     &config, 0);
+
+	if (retval < 0) {
+		TPD_INFO("report rate(1:120HZ,2:240HZ,3:180HZ): ERROR\n");
+		seq_printf(s, "report rate(1:120HZ,2:240HZ,3:180HZ): ERROR\n");
+	} else {
+		TPD_INFO("report rate(1:120HZ,2:240HZ,3:180HZ): %d\n", config);
+		seq_printf(s, "report rate(1:120HZ,2:240HZ,3:180HZ): %d\n",
+			   config);
+	}
+
+	retval = syna_tcm_get_dynamic_config(tcm_info->tcm_dev, DC_CHARGER_CONNECTED,
+					     &config, 0);
+	if (retval < 0) {
+		TPD_INFO("charger mode : ERROR\n");
+		seq_printf(s, "charger mode : ERROR\n");
+	} else {
+		TPD_INFO("charger mode : %d\n", config);
+		seq_printf(s, "charger mode : %d\n", config);
+	}
+
+	retval = syna_tcm_get_dynamic_config(tcm_info->tcm_dev, DC_TOUCH_HOLD, &config, 0);
+	if (retval < 0) {
+		TPD_INFO("fingerprint mode : ERROR\n");
+		seq_printf(s, "fingerprint mode : ERROR\n");
+	} else {
+		TPD_INFO("fingerprint mode : %d\n", config);
+		seq_printf(s, "fingerprint mode : %d\n", config);
+	}
+
+	retval = syna_tcm_get_dynamic_config(tcm_info->tcm_dev, DC_GRIP_ENABLED,
+					     &config, 0);
+	if (retval < 0) {
+		TPD_INFO("grip enable : ERROR\n");
+		seq_printf(s, "grip enable : ERROR\n");
+	} else {
+		TPD_INFO("grip enable : 0x%0X\n", config);
+		seq_printf(s, "grip enable : 0x%0X\n", config);
+	}
+
+	retval = syna_tcm_get_dynamic_config(tcm_info->tcm_dev,
+					     DC_GRIP_ROATE_TO_HORIZONTAL_LEVEL,
+					     &config, 0);
+	if (retval < 0) {
+		TPD_INFO("grip direction(1:ver 0:hor): ERROR\n");
+		seq_printf(s, "grip direction(1:ver 0:hor): ERROR\n");
+	} else {
+		TPD_INFO("grip direction(1:ver 0:hor): 0x%0X\n", config);
+		seq_printf(s, "grip direction(0:ver 1:hor): 0x%0X\n", config);
+	}
+
+	retval = syna_tcm_get_dynamic_config(tcm_info->tcm_dev, DC_DARK_ZONE_ENABLE,
+					     &config, 0);
+	if (retval < 0) {
+		TPD_INFO("dark zone enable : ERROR\n");
+		seq_printf(s, "dark zone enable : ERROR\n");
+
+	} else {
+		TPD_INFO("dark zone enable : 0x%0X\n", config);
+		seq_printf(s, "dark zone enable : 0x%0X\n", config);
+	}
+
+	retval = syna_tcm_get_dynamic_config(tcm_info->tcm_dev, DC_GRIP_DARK_ZONE_X,
+					     &config, 0);
+
+	if (retval < 0) {
+		TPD_INFO("dark zone x : ERROR\n");
+		seq_printf(s, "dark zone x : ERROR\n");
+
+	} else {
+		TPD_INFO("dark zone x : 0x%0X\n", config);
+		seq_printf(s, "dark zone x : 0x%0X\n", config);
+	}
+
+	retval = syna_tcm_get_dynamic_config(tcm_info->tcm_dev, DC_GRIP_DARK_ZONE_Y,
+					     &config, 0);
+	if (retval < 0) {
+		TPD_INFO("dark zone y : ERROR\n");
+		seq_printf(s, "dark zone y : ERROR\n");
+
+	} else {
+		TPD_INFO("dark zone y : 0x%0X\n", config);
+		seq_printf(s, "dark zone y : 0x%0X\n", config);
+	}
+
+	retval = syna_tcm_get_dynamic_config(tcm_info->tcm_dev, DC_GRIP_ABS_DARK_SEL,
+					     &config, 0);
+
+	if (retval < 0) {
+		TPD_INFO("abs dark sel : ERROR\n");
+		seq_printf(s, "abs dark sel : ERROR\n");
+
+	} else {
+		TPD_INFO("abs dark sel : 0x%0X\n", config);
+		seq_printf(s, "abs dark sel : 0x%0X\n", config);
+	}
+
+	retval = syna_tcm_get_dynamic_config(tcm_info->tcm_dev, DC_GRIP_ABS_DARK_X,
+					     &config, 0);
+
+	if (retval < 0) {
+		TPD_INFO("abs dark zone x : ERROR\n");
+		seq_printf(s, "abs dark zone x : ERROR\n");
+	} else {
+		TPD_INFO("abs dark zone x : %d\n", config);
+		seq_printf(s, "abs dark zone x : %d\n", config);
+	}
+
+	retval = syna_tcm_get_dynamic_config(tcm_info->tcm_dev, DC_GRIP_ABS_DARK_Y,
+					     &config, 0);
+	if (retval < 0) {
+		TPD_INFO("abs dark zone y : ERROR\n");
+		seq_printf(s, "abs dark zone y : ERROR\n");
+
+	} else {
+		TPD_INFO("abs dark zone y : %d\n", config);
+		seq_printf(s, "abs dark zone y : %d\n", config);
+	}
+
+	retval = syna_tcm_get_dynamic_config(tcm_info->tcm_dev, DC_GRIP_ABS_DARK_U,
+					     &config, 0);
+	if (retval < 0) {
+		TPD_INFO("abs dark zone U : ERROR\n");
+		seq_printf(s, "abs dark zone U : ERROR\n");
+	} else {
+		TPD_INFO("abs dark zone U : %d\n", config);
+		seq_printf(s, "abs dark zone U : %d\n", config);
+	}
+
+	retval = syna_tcm_get_dynamic_config(tcm_info->tcm_dev, DC_GRIP_ABS_DARK_V,
+					     &config, 0);
+	if (retval < 0) {
+		TPD_INFO("abs dark zone V : ERROR\n");
+		seq_printf(s, "abs dark zone V : ERROR\n");
+	} else {
+		TPD_INFO("abs dark zone V : %d\n", config);
+		seq_printf(s, "abs dark zone V : %d\n", config);
+	}
+
+	retval = syna_tcm_get_dynamic_config(tcm_info->tcm_dev, DC_GRIP_CONDTION_ZONE,
+					     &config, 0);
+	if (retval < 0) {
+		TPD_INFO("condtion zone : ERROR\n");
+		seq_printf(s, "condtion zone : ERROR\n");
+	} else {
+		TPD_INFO("condtion zone : %d\n", config);
+		seq_printf(s, "condtion zone : 0x%0X\n", config);
+	}
+
+	retval = syna_tcm_get_dynamic_config(tcm_info->tcm_dev, DC_GRIP_SPECIAL_ZONE_X,
+					     &config, 0);
+
+	if (retval < 0) {
+		TPD_INFO("special zone x : ERROR\n");
+		seq_printf(s, "special zone x : ERROR\n");
+
+	} else {
+		TPD_INFO("special zone x : %d\n", config);
+		seq_printf(s, "special zone x : %d\n", config);
+	}
+
+	retval = syna_tcm_get_dynamic_config(tcm_info->tcm_dev, DC_GRIP_SPECIAL_ZONE_Y,
+					     &config, 0);
+
+	if (retval < 0) {
+		TPD_INFO("special zone y : ERROR\n");
+		seq_printf(s, "special zone y : ERROR\n");
+
+	} else {
+		TPD_INFO("special zone y : %d\n", config);
+		seq_printf(s, "special zone y : %d\n", config);
+	}
+
+	retval = syna_tcm_get_dynamic_config(tcm_info->tcm_dev, DC_GRIP_SPECIAL_ZONE_L,
+					     &config, 0);
+	if (retval < 0) {
+		TPD_INFO("special zone len : ERROR\n");
+		seq_printf(s, "special zone len : ERROR\n");
+
+	} else {
+		TPD_INFO("special zone len : %d\n", config);
+		seq_printf(s, "special zone len : %d\n", config);
+	}
+
+	TPD_INFO("Buid ID:%d, Custom ID:0x%s\n",
+		 le4_to_uint(tcm_info->tcm_dev->id_info.build_id),
+		 tcm_info->tcm_dev->app_info.customer_config_id);
+
+	seq_printf(s, "Buid ID:%d, Custom ID:0x%s\n",
+		   le4_to_uint(tcm_info->tcm_dev->id_info.build_id),
+		   tcm_info->tcm_dev->app_info.customer_config_id);
+
+	TPD_INFO("APP info : version:%d\n",
+		 le2_to_uint(tcm_info->tcm_dev->app_info.version));
+
+	TPD_INFO("APP info : status:%d\n",
+		 le2_to_uint(tcm_info->tcm_dev->app_info.status));
+
+	TPD_INFO("APP info : max_touch_report_config_size:%d\n",
+		 le2_to_uint(tcm_info->tcm_dev->app_info.max_touch_report_config_size));
+	TPD_INFO("APP info : max_touch_report_payload_size:%d\n",
+		 le2_to_uint(tcm_info->tcm_dev->app_info.max_touch_report_payload_size));
+
+	TPD_INFO("APP info : customer_config_id:%d\n",
+		 le2_to_uint(tcm_info->tcm_dev->app_info.customer_config_id));
+	TPD_INFO("APP info : max_x:%d\n",
+		 le2_to_uint(tcm_info->tcm_dev->app_info.max_x));
+
+	TPD_INFO("APP info : max_y:%d\n",
+		 le2_to_uint(tcm_info->tcm_dev->app_info.max_y));
+
+	TPD_INFO("APP info : num_of_image_rows:%d\n",
+		 le2_to_uint(tcm_info->tcm_dev->app_info.num_of_image_rows));
+
+	TPD_INFO("APP info : num_of_image_cols:%d\n",
+		 le2_to_uint(tcm_info->tcm_dev->app_info.num_of_image_cols));
+
+	seq_printf(s, "APP info : version:%d\n",
+		   le2_to_uint(tcm_info->tcm_dev->app_info.version));
+
+	seq_printf(s, "APP info : status:%d\n",
+		   le2_to_uint(tcm_info->tcm_dev->app_info.status));
+
+	temp = le2_to_uint(tcm_info->tcm_dev->app_info.max_touch_report_config_size);
+	seq_printf(s, "APP info : max_touch_report_config_size:%d\n",
+		   temp);
+
+	temp = le2_to_uint(tcm_info->tcm_dev->app_info.max_touch_report_payload_size);
+	seq_printf(s, "APP info : max_touch_report_payload_size:%d\n",
+		   temp);
+
+	seq_printf(s, "APP info : customer_config_id:%d\n",
+		   le2_to_uint(tcm_info->tcm_dev->app_info.customer_config_id));
+
+	seq_printf(s, "APP info : max_x:%d\n",
+		   le2_to_uint(tcm_info->tcm_dev->app_info.max_x));
+
+	seq_printf(s, "APP info : max_y:%d\n",
+		   le2_to_uint(tcm_info->tcm_dev->app_info.max_y));
+
+	seq_printf(s, "APP info : num_of_image_rows:%d\n",
+		   le2_to_uint(tcm_info->tcm_dev->app_info.num_of_image_rows));
+
+	seq_printf(s, "APP info : num_of_image_cols:%d\n",
+		   le2_to_uint(tcm_info->tcm_dev->app_info.num_of_image_cols));
+
+	/* no default touch config in tcm orgin, remove */
+	if (tcm_info->tcm_dev->touch_config.data_length > 0) {
+		seq_printf(s, "default_config:%*ph\n",
+			tcm_info->tcm_dev->touch_config.data_length, tcm_info->tcm_dev->touch_config.buf);
+		TPD_INFO("default_config:%*ph\n",
+			tcm_info->tcm_dev->touch_config.data_length, tcm_info->tcm_dev->touch_config.buf);
+	}
+	retval = syna_tcm_get_dynamic_config(tcm_info->tcm_dev, DC_LOW_TEMP_ENABLE, &config, 0);
+	if (retval < 0) {
+		TPD_INFO("Failed to get temperature config\n");
+	}
+	seq_printf(s, "DC_LOW_TEMP_ENABLE:%d\n", config);
+	TPD_INFO("DC_LOW_TEMP_ENABLE:%d\n", config);
+	return;
+}
 
 static int syna_spi_suspend(struct device *dev)
 {
