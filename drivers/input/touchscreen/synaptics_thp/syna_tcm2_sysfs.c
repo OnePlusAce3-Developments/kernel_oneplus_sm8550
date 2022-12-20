@@ -1658,7 +1658,7 @@ exit:
 	if(tcm->sub_pwr_state == SUB_PWR_SUSPEND_DONE) {
 		/* enable the report to queue */
 		syna_cdev_clean_queue(tcm);
-		syna_pal_mem_set(tcm->report_to_queue, EFP_ENABLE, (STATUS_ERROR + 1));
+		/*syna_pal_mem_set(tcm->report_to_queue, EFP_ENABLE, (STATUS_ERROR + 1));*/
 		LOGI("enable response to report_to_queue for touch_and_hold\n");
 		tcm->hbp_enabled = true;
 	}
@@ -1687,13 +1687,13 @@ static int syna_sysfs_set_fingerprint_post(struct syna_tcm *tcm)
 	if((tcm->sub_pwr_state == SUB_PWR_RESUME_DONE) && (tcm->pwr_state == PWR_ON)) {
 		//screen on, nothing to do
 		LOGI("Enable all Report and Response to report_to_queue\n");
-		syna_pal_mem_set(tcm->report_to_queue, EFP_ENABLE, REPORT_TYPES);
+		/*syna_pal_mem_set(tcm->report_to_queue, EFP_ENABLE, REPORT_TYPES);*/
 		tcm->hbp_enabled = true;
 		goto exit;
 	} else if (tcm->sub_pwr_state == SUB_PWR_SUSPEND_DONE){
 		/* do not fill any report/response to queue */
 		LOGI("Disable all Report and response to report_to_queue\n");
-		syna_pal_mem_set(tcm->report_to_queue, EFP_DISABLE, REPORT_TYPES);
+		/*syna_pal_mem_set(tcm->report_to_queue, EFP_DISABLE, REPORT_TYPES);*/
 		tcm->hbp_enabled = false;
 
 		//screen off
