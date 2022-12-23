@@ -64,11 +64,18 @@ bool tp_judge_ic_match(char *tp_ic_name)
 {
 	pr_err("[TP] tp_ic_name = %s \n", tp_ic_name);
 	pr_err("[TP] tp_dsi_display_primary = %s \n", tp_dsi_display_primary);
+	pr_err("[TP] tp_dsi_display_secondary = %s \n", tp_dsi_display_secondary);
 
 	if (strstr(tp_dsi_display_primary, tp_ic_name)) {
 		pr_err("[TP] tp_judge_ic_match match ok\n");
 		return true;
 	}
+
+	if (strstr(tp_dsi_display_secondary, tp_ic_name)) {
+		pr_err("[TP] secondary disp match ok\n");
+		return true;
+	}
+
 	pr_err("[TP] tp_judge_ic_match not match ok\n");
 	return false;
 
@@ -89,7 +96,9 @@ int tp_judge_ic_match_commandline(struct panel_info *panel_data)
 			pr_err("[TP] Driver match support project [%d]\n", panel_data->platform_support_project[i]);
 
 			for(j = 0; j < panel_data->panel_num; j++) {
-				if(strstr(tp_dsi_display_primary, panel_data->platform_support_commandline[j]) || strstr("default_commandline", panel_data->platform_support_commandline[j])) {
+				if(strstr(tp_dsi_display_primary, panel_data->platform_support_commandline[j]) \
+				|| strstr(tp_dsi_display_secondary, panel_data->platform_support_commandline[j]) \
+				|| strstr("default_commandline", panel_data->platform_support_commandline[j])) {
 					panel_data->tp_type = panel_data->panel_type[j];
 					if(panel_data->chip_num > 1) {
 						chip_name = panel_data->chip_name[j];
