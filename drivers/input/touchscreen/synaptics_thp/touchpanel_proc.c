@@ -108,6 +108,11 @@ static ssize_t proc_fw_update_write(struct file *file,
 		return count;
 	}
 
+	if (count > 4) {
+		TPD_INFO("%s:count > 4\n", __func__);
+		return count;
+	}
+
 	if (copy_from_user(buf, buffer, count)) {
 		LOGE("%s: read proc input error.\n", __func__);
 		return count;
@@ -426,6 +431,7 @@ static ssize_t proc_fingerprint_trigger_write(struct file *file,
 			TPD_INFO("screen on fingerprint up : (%d, %d)\n", tcm->fp_info.x, tcm->fp_info.y);
 		}
 	} else {
+		buf[63] = '\0';
 		TPD_INFO("invalid content: '%s', length = %zd\n", buf, count);
 	}
 
@@ -465,6 +471,7 @@ static ssize_t proc_daemon_state_write(struct file *file,
 		tcm->daemon_state = state;
 		TPD_INFO("%s: daemon state switch: %d --> %d.\n", __func__, pre_state, tcm->daemon_state);
 	} else {
+		buf[63] = '\0';
 		TPD_INFO("%s: invalid content: '%s', length = %zd\n", __func__, buf, count);
 	}
 
