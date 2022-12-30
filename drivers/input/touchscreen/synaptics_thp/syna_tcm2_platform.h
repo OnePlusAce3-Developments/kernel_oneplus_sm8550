@@ -129,6 +129,8 @@ struct syna_hw_rst_data {
 	int reset_on_state;
 	unsigned int reset_delay_ms;
 	unsigned int reset_active_ms;
+	/* mutex to protect the reset control, if needed */
+	syna_pal_mutex_t reset_en_mutex;
 };
 
 /* The hardware data especially for power control */

@@ -162,12 +162,14 @@ static void syna_spi_hw_reset(struct syna_hw_interface *hw_if)
 	LOGI("reset_active_ms = %u, reset_delay_ms = %u\n",
 		rst->reset_active_ms, rst->reset_delay_ms);
 	if (rst->reset_gpio >= 0) {
+		syna_pal_mutex_lock(&rst->reset_en_mutex);
 		LOGI("hw reset start\n");
 		gpio_set_value(rst->reset_gpio, rst->reset_on_state);
 		syna_pal_sleep_ms(rst->reset_active_ms);
 		gpio_set_value(rst->reset_gpio, !rst->reset_on_state);
 		syna_pal_sleep_ms(rst->reset_delay_ms);
 		LOGI("hw reset end\n");
+		syna_pal_mutex_unlock(&rst->reset_en_mutex);
 	}
 }
 
@@ -1290,6 +1292,7 @@ static int syna_spi_probe(struct spi_device *spi)
 	int retval;
 	struct syna_hw_attn_data *attn = &syna_spi_hw_if.bdata_attn;
 	struct syna_hw_bus_data *bus = &syna_spi_hw_if.bdata_io;
+	struct syna_hw_rst_data *rst = &syna_spi_hw_if.bdata_rst;
 
 	if (spi->master->flags & SPI_MASTER_HALF_DUPLEX) {
 		LOGE("Full duplex not supported by host\n");
@@ -1309,6 +1312,7 @@ static int syna_spi_probe(struct spi_device *spi)
 
 	syna_pal_mutex_alloc(&attn->irq_en_mutex);
 	syna_pal_mutex_alloc(&bus->io_mutex);
+	syna_pal_mutex_alloc(&rst->reset_en_mutex);
 
 	switch (bus->spi_mode) {
 	case 0:
@@ -1395,6 +1399,7 @@ static int syna_spi_remove(struct spi_device *spi)
 {
 	struct syna_hw_attn_data *attn = &syna_spi_hw_if.bdata_attn;
 	struct syna_hw_bus_data *bus = &syna_spi_hw_if.bdata_io;
+	struct syna_hw_rst_data *rst = &syna_spi_hw_if.bdata_rst;
 
 	/* release gpios */
 	syna_spi_release_gpio(&syna_spi_hw_if);
@@ -1405,6 +1410,7 @@ static int syna_spi_remove(struct spi_device *spi)
 	/* release mutex */
 	syna_pal_mutex_free(&attn->irq_en_mutex);
 	syna_pal_mutex_free(&bus->io_mutex);
+	syna_pal_mutex_free(&rst->reset_en_mutex);
 
 	/* remove the platform device */
 	syna_spi_device->dev.platform_data = NULL;

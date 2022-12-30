@@ -1222,6 +1222,7 @@ static void syna_dev_reflash_startup_work(struct work_struct *work)
 	pm_stay_awake(&tcm->pdev->dev);
 
 	/* perform fw update */
+	syna_pal_mutex_lock(&hw_if->bdata_rst.reset_en_mutex);
 #ifdef MULTICHIP_DUT_REFLASH
 	/* do firmware update for the multichip-based device */
 	retval = syna_tcm_romboot_do_multichip_reflash(tcm_dev,
@@ -1245,6 +1246,7 @@ static void syna_dev_reflash_startup_work(struct work_struct *work)
 		if (tcm->exception_upload_support) {
 			tp_exception_report(&tcm->exception_data, EXCEP_FW_UPDATE, "FW_Update_Failed", sizeof("FW_Update_Failed"));
 		}
+		syna_pal_mutex_unlock(&hw_if->bdata_rst.reset_en_mutex);
 		goto exit;
 	}
 
@@ -1252,6 +1254,7 @@ static void syna_dev_reflash_startup_work(struct work_struct *work)
 	retval = syna_dev_set_up_app_fw(tcm);
 	if (retval < 0) {
 		LOGE("Fail to set up app fw after fw update\n");
+		syna_pal_mutex_unlock(&hw_if->bdata_rst.reset_en_mutex);
 		goto exit;
 	}
 
@@ -1262,9 +1265,11 @@ static void syna_dev_reflash_startup_work(struct work_struct *work)
 		retval = syna_dev_set_up_input_device(tcm);
 		if (retval < 0) {
 			LOGE("Fail to register input device\n");
+			syna_pal_mutex_unlock(&hw_if->bdata_rst.reset_en_mutex);
 			goto exit;
 		}
 	}
+	syna_pal_mutex_unlock(&hw_if->bdata_rst.reset_en_mutex);
 
 	LOGI("Do reset after fw update\n");
 	if (hw_if->ops_hw_reset) {
