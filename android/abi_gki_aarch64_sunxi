@@ -1,59 +1,39 @@
 [abi_symbol_list]
   add_device_randomness
   add_timer
-<<<<<<< HEAD
-=======
   add_uevent_var
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
   alloc_anon_inode
   alloc_chrdev_region
   alloc_netdev_mqs
   __alloc_pages
-<<<<<<< HEAD
-=======
   alloc_pages_exact
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
   __alloc_percpu
   __alloc_percpu_gfp
   __alloc_skb
   alloc_workqueue
-<<<<<<< HEAD
-=======
   anon_inode_getfd
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
   arc4_crypt
   arc4_setkey
   __arch_copy_from_user
   __arch_copy_to_user
   arm64_const_caps_ready
   arm64_use_ng_mappings
-<<<<<<< HEAD
-=======
   __arm_smccc_hvc
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
   __arm_smccc_smc
   atomic_notifier_chain_register
   autoremove_wake_function
   bcmp
-<<<<<<< HEAD
-  bio_endio
-  bio_end_io_acct_remapped
-=======
   bio_add_page
   bio_alloc_bioset
   bio_associate_blkg
   bio_endio
   bio_end_io_acct_remapped
   bio_put
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
   bio_start_io_acct
   __blk_alloc_disk
   blk_cleanup_disk
   blk_cleanup_queue
-<<<<<<< HEAD
-=======
   blkdev_get_by_dev
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
   blk_mq_alloc_tag_set
   blk_mq_complete_request
   __blk_mq_end_request
@@ -90,10 +70,7 @@
   bt_err
   bt_info
   build_skb
-<<<<<<< HEAD
-=======
   bus_for_each_dev
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
   bus_register
   bus_register_notifier
   bus_set_iommu
@@ -116,13 +93,9 @@
   __class_create
   class_create_file_ns
   class_destroy
-<<<<<<< HEAD
-  __class_register
-=======
   class_find_device
   __class_register
   class_remove_file_ns
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
   class_unregister
   __ClearPageMovable
   clk_disable
@@ -158,15 +131,10 @@
   cma_alloc
   cma_get_name
   cma_release
-<<<<<<< HEAD
-  complete
-  complete_all
-=======
   compat_ptr_ioctl
   complete
   complete_all
   completion_done
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
   console_lock
   console_suspend_enabled
   console_unlock
@@ -212,10 +180,7 @@
   crypto_has_alg
   __crypto_memneq
   crypto_shash_digest
-<<<<<<< HEAD
-=======
   crypto_shash_final
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
   crypto_shash_finup
   crypto_shash_setkey
   crypto_shash_update
@@ -266,10 +231,7 @@
   device_initialize
   device_init_wakeup
   device_move
-<<<<<<< HEAD
-=======
   device_property_read_string
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
   device_register
   device_remove_file
   device_remove_groups
@@ -291,11 +253,8 @@
   devm_gpio_free
   devm_gpio_request
   devm_gpio_request_one
-<<<<<<< HEAD
-=======
   devm_hwrng_register
   devm_iio_device_alloc
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
   devm_input_allocate_device
   devm_ioremap
   devm_ioremap_resource
@@ -479,15 +438,10 @@
   free_netdev
   __free_pages
   free_pages
-<<<<<<< HEAD
-  free_percpu
-  freezing_slow_path
-=======
   free_pages_exact
   free_percpu
   freezing_slow_path
   fs_bio_set
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
   fsync_bdev
   gcd
   generic_file_llseek
@@ -496,14 +450,6 @@
   genlmsg_put
   genl_register_family
   genl_unregister_family
-<<<<<<< HEAD
-  gen_pool_dma_alloc_align
-  gen_pool_dma_zalloc_align
-  gen_pool_free_owner
-  get_cpu_device
-  get_device
-  __get_free_pages
-=======
   gen_pool_add_owner
   gen_pool_alloc_algo_owner
   gen_pool_best_fit
@@ -518,7 +464,6 @@
   get_device
   __get_free_pages
   get_kernel_pages
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
   get_net_ns_by_fd
   get_net_ns_by_pid
   get_random_bytes
@@ -549,10 +494,6 @@
   handle_edge_irq
   handle_fasteoi_irq
   handle_sysrq
-<<<<<<< HEAD
-  hrtimer_cancel
-  hrtimer_forward
-=======
   hid_hw_start
   hid_open_report
   __hid_register_driver
@@ -562,7 +503,6 @@
   hrtimer_cancel
   hrtimer_forward
   __hrtimer_get_remaining
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
   hrtimer_init
   hrtimer_start_range_ns
   hrtimer_try_to_cancel
@@ -599,14 +539,10 @@
   idr_remove
   idr_replace
   ignore_console_lock_warning
-<<<<<<< HEAD
-  inc_zone_page_state
-=======
   __iio_device_register
   iio_device_unregister
   inc_zone_page_state
   in_egroup_p
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
   inet_csk_get_port
   init_net
   init_pseudo
@@ -619,10 +555,7 @@
   input_allocate_device
   input_close_device
   input_event
-<<<<<<< HEAD
-=======
   input_ff_create_memless
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
   input_free_device
   input_open_device
   input_register_device
@@ -765,18 +698,12 @@
   memdup_user
   memmove
   memparse
-<<<<<<< HEAD
-=======
   memremap
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
   mem_section
   memset64
   memset
   memstart_addr
-<<<<<<< HEAD
-=======
   memunmap
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
   mfd_add_devices
   mfd_remove_devices
   misc_deregister
@@ -805,10 +732,7 @@
   module_put
   __msecs_to_jiffies
   msleep
-<<<<<<< HEAD
-=======
   msleep_interruptible
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
   __mutex_init
   mutex_is_locked
   mutex_lock
@@ -954,10 +878,7 @@
   pinctrl_lookup_state
   pinctrl_put
   pinctrl_select_state
-<<<<<<< HEAD
-=======
   pin_user_pages_fast
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
   platform_bus_type
   platform_device_add
   platform_device_alloc
@@ -1012,10 +933,7 @@
   proc_create
   proc_create_data
   proc_create_seq_private
-<<<<<<< HEAD
-=======
   proc_dointvec
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
   proc_mkdir
   __pskb_copy_fclone
   pskb_expand_head
@@ -1080,10 +998,7 @@
   register_reboot_notifier
   register_shrinker
   register_syscore_ops
-<<<<<<< HEAD
-=======
   register_sysctl_table
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
   regmap_add_irq_chip
   regmap_bulk_read
   regmap_bulk_write
@@ -1330,20 +1245,14 @@
   strlcpy
   strlen
   strncasecmp
-<<<<<<< HEAD
-=======
   strnchr
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
   strncmp
   strncpy
   strnlen
   strpbrk
   strsep
   strstr
-<<<<<<< HEAD
-=======
   submit_bio_wait
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
   __sw_hweight16
   __sw_hweight32
   __sw_hweight64
@@ -1368,10 +1277,6 @@
   system_freezing_cnt
   system_power_efficient_wq
   system_wq
-<<<<<<< HEAD
-  __tasklet_hi_schedule
-=======
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
   tasklet_init
   tasklet_kill
   __tasklet_schedule
@@ -1386,24 +1291,18 @@
   trace_event_raw_init
   trace_event_reg
   trace_handle_return
-<<<<<<< HEAD
-=======
   __traceiter_android_vh_dmabuf_heap_flags_validation
   __traceiter_android_vh_dma_buf_release
   __traceiter_android_vh_meminfo_proc_show
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
   __traceiter_android_vh_show_mem
   __traceiter_gpu_mem_total
   __traceiter_mmap_lock_acquire_returned
   __traceiter_mmap_lock_released
   __traceiter_mmap_lock_start_locking
-<<<<<<< HEAD
-=======
   __tracepoint_android_vh_dmabuf_heap_flags_validation
   __tracepoint_android_vh_dma_buf_release
   __tracepoint_android_vh_meminfo_proc_show
   __tracepoint_android_vh_page_cache_forced_ra
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
   __tracepoint_android_vh_show_mem
   __tracepoint_gpu_mem_total
   __tracepoint_mmap_lock_acquire_returned
@@ -1477,10 +1376,7 @@
   __udelay
   unlock_page
   unmap_mapping_range
-<<<<<<< HEAD
-=======
   unpin_user_pages
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
   unregister_blkdev
   __unregister_chrdev
   unregister_chrdev_region
@@ -1556,10 +1452,7 @@
   usb_unpoison_urb
   __usecs_to_jiffies
   usleep_range_state
-<<<<<<< HEAD
-=======
   uuid_null
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
   v4l2_ctrl_cluster
   v4l2_ctrl_get_name
   v4l2_ctrl_handler_free
@@ -1646,12 +1539,9 @@
   wakeup_source_unregister
   __warn_printk
   wireless_nlevent_flush
-<<<<<<< HEAD
-=======
   __xa_alloc
   xa_erase
   xa_load
   xas_load
   xas_nomem
   xas_store
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25

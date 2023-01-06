@@ -996,10 +996,7 @@
   iommu_device_sysfs_remove
   iommu_device_unlink
   iommu_device_unregister
-<<<<<<< HEAD
-=======
   iommu_dma_enable_best_fit_algo
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
   iommu_fwspec_add_ids
   iommu_fwspec_free
   iommu_get_dma_cookie
