@@ -149,6 +149,7 @@ static int qcom_mhi_qrtr_probe(struct mhi_device *mhi_dev,
 		return rc;
 
 	/* start channels */
+<<<<<<< HEAD
 	rc = mhi_prepare_for_transfer(mhi_dev, MHI_CH_INBOUND_ALLOC_BUFS);
 	if (rc) {
 		qrtr_endpoint_unregister(&qdev->ep);
@@ -157,6 +158,14 @@ static int qcom_mhi_qrtr_probe(struct mhi_device *mhi_dev,
 	}
 
 	complete_all(&qdev->prepared);
+=======
+	rc = mhi_prepare_for_transfer(mhi_dev);
+	if (rc) {
+		qrtr_endpoint_unregister(&qdev->ep);
+		return rc;
+	}
+
+>>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
 	dev_dbg(qdev->dev, "Qualcomm MHI QRTR driver probed\n");
 
 	return 0;

@@ -37,4 +37,8 @@ obj-$(CONFIG_MEMBARRIER) += membarrier.o
 obj-$(CONFIG_CPU_ISOLATION) += isolation.o
 obj-$(CONFIG_PSI) += psi.o
 obj-$(CONFIG_SCHED_CORE) += core_sched.o
+<<<<<<< HEAD
 obj-$(CONFIG_SCHED_WALT) += walt/
+=======
+obj-$(CONFIG_ANDROID_VENDOR_HOOKS) += vendor_hooks.o
+>>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25

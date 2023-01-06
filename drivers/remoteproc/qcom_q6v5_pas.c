@@ -419,6 +419,7 @@ static void adsp_minidump(struct rproc *rproc)
 {
 	struct qcom_adsp *adsp = rproc->priv;
 
+<<<<<<< HEAD
 	trace_rproc_qcom_event(dev_name(adsp->dev), "adsp_minidump", "enter");
 
 	if (rproc->dump_conf == RPROC_COREDUMP_DISABLED)
@@ -438,6 +439,12 @@ static int adsp_toggle_load_state(struct qmp *qmp, const char *name, bool enable
 		 "{class: image, res: load_state, name: %s, val: %s}",
 		 name, enable ? "on" : "off");
 	return qmp_send(qmp, buf, sizeof(buf));
+=======
+	if (rproc->dump_conf == RPROC_COREDUMP_DISABLED)
+		return;
+
+	qcom_minidump(rproc, adsp->minidump_id);
+>>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
 }
 
 static int adsp_pds_enable(struct qcom_adsp *adsp, struct device **pds,

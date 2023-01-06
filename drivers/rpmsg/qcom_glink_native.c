@@ -1991,7 +1991,11 @@ static void qcom_glink_rx_close(struct qcom_glink *glink, unsigned int rcid)
 	kthread_cancel_work_sync(&channel->intent_work);
 
 	if (channel->rpdev) {
+<<<<<<< HEAD
 		strscpy(chinfo.name, channel->name, sizeof(chinfo.name));
+=======
+		strscpy_pad(chinfo.name, channel->name, sizeof(chinfo.name));
+>>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
 		chinfo.src = RPMSG_ADDR_ANY;
 		chinfo.dst = RPMSG_ADDR_ANY;
 
