@@ -81,13 +81,6 @@ int qcom_icc_aggregate(struct icc_node *node, u32 tag, u32 avg_bw,
 	*agg_avg += avg_bw;
 	*agg_peak = max_t(u32, *agg_peak, peak_bw);
 
-<<<<<<< HEAD
-	for (i = 0; i < qn->num_bcms; i++)
-		qcom_icc_bcm_voter_add(qp->voters[qn->bcms[i]->voter_idx],
-				       qn->bcms[i]);
-
-=======
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
 	return 0;
 }
 EXPORT_SYMBOL_GPL(qcom_icc_aggregate);

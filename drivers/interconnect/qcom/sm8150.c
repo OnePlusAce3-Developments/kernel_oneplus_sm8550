@@ -2709,11 +2709,6 @@ static struct platform_driver qnoc_driver = {
 	.driver = {
 		.name = "qnoc-sm8150",
 		.of_match_table = qnoc_of_match,
-<<<<<<< HEAD
-		.pm = &qnoc_sm8150_pm_ops,
-		.sync_state = qcom_icc_rpmh_sync_state,
-=======
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
 	},
 };
 module_platform_driver(qnoc_driver);
