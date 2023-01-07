@@ -332,15 +332,11 @@ static blk_status_t virtio_queue_rq(struct blk_mq_hw_ctx *hctx,
 	}
 
 	spin_lock_irqsave(&vblk->vqs[qid].lock, flags);
-<<<<<<< HEAD
-	err = virtblk_add_req(vblk->vqs[qid].vq, vbr, vbr->sg, num);
+	err = virtblk_add_req(vblk->vqs[qid].vq, vbr, vbr->sg_table.sgl, num);
 #ifdef CONFIG_GH_VIRTIO_DEBUG
 	trace_virtio_block_submit(vblk->vqs[qid].vq->vdev->index,
 		vbr->out_hdr.type, vbr->out_hdr.sector, vbr->out_hdr.ioprio, err, num);
 #endif
-=======
-	err = virtblk_add_req(vblk->vqs[qid].vq, vbr, vbr->sg_table.sgl, num);
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
 	if (err) {
 		virtqueue_kick(vblk->vqs[qid].vq);
 		/* Don't stop the queue if -ENOMEM: we may have failed to

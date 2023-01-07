@@ -1494,7 +1494,6 @@ out:
 	return err;
 }
 
-<<<<<<< HEAD
 static int ufs_qcom_get_bus_vote(struct ufs_qcom_host *host,
 		const char *speed_mode)
 {
@@ -1837,9 +1836,6 @@ static int ufs_qcom_bus_register(struct ufs_qcom_host *host)
 		ufs_qcom_msg(ERR, dev, "Error: (%d) Failed to create sysfs entries\n",
 			err);
 	return 0;
-=======
-	return ufs_qcom_ice_resume(host);
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
 }
 
 static void ufs_qcom_dev_ref_clk_ctrl(struct ufs_qcom_host *host, bool enable)
@@ -2212,22 +2208,12 @@ static void ufs_qcom_set_caps(struct ufs_hba *hba)
 {
 	struct ufs_qcom_host *host = ufshcd_get_variant(hba);
 
-<<<<<<< HEAD
-	if (!host->disable_lpm) {
-		hba->caps |= UFSHCD_CAP_CLK_GATING |
-		UFSHCD_CAP_HIBERN8_WITH_CLK_GATING |
-		UFSHCD_CAP_CLK_SCALING | UFSHCD_CAP_AUTO_BKOPS_SUSPEND;
-		hba->caps |= UFSHCD_CAP_WB_EN;
-		hba->caps |= UFSHCD_CAP_AGGR_POWER_COLLAPSE;
-	}
-
-=======
 	hba->caps |= UFSHCD_CAP_CLK_GATING | UFSHCD_CAP_HIBERN8_WITH_CLK_GATING;
 	hba->caps |= UFSHCD_CAP_CLK_SCALING | UFSHCD_CAP_WB_WITH_CLK_SCALING;
 	hba->caps |= UFSHCD_CAP_AUTO_BKOPS_SUSPEND;
 	hba->caps |= UFSHCD_CAP_WB_EN;
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
 	hba->caps |= UFSHCD_CAP_CRYPTO;
+	hba->caps |= UFSHCD_CAP_AGGR_POWER_COLLAPSE;
 
 	if (host->hw_ver.major >= 0x2)
 		host->caps = UFS_QCOM_CAP_QUNIPRO |

@@ -635,12 +635,8 @@ static int f2fs_unlink(struct inode *dir, struct dentry *dentry)
 		goto fail;
 	}
 	f2fs_delete_entry(de, page, dir, inode);
-<<<<<<< HEAD
-        f2fs_unlock_op(sbi);
-=======
 	f2fs_unlock_op(sbi);
 
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
 #ifdef CONFIG_UNICODE
 	/* VFS negative dentries are incompatible with Encoding and
 	 * Case-insensitiveness. Eventually we'll want avoid
@@ -651,11 +647,8 @@ static int f2fs_unlink(struct inode *dir, struct dentry *dentry)
 	if (IS_CASEFOLDED(dir))
 		d_invalidate(dentry);
 #endif
-<<<<<<< HEAD
 	//f2fs_unlock_op(sbi);
 
-=======
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
 	if (IS_DIRSYNC(dir))
 		f2fs_sync_fs(sbi->sb, 1);
 fail:
