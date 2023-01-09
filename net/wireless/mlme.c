@@ -769,8 +769,7 @@ int cfg80211_mlme_mgmt_tx(struct cfg80211_registered_device *rdev,
 			return err;
 	}
 
-<<<<<<< HEAD
-	if (!ether_addr_equal(mgmt->sa, wdev_address(wdev))) {
+	if (!cfg80211_allowed_address(wdev, mgmt->sa)) {
 		/* Allow random TA to be used with authentication frames if the
 		 * driver has indicated support for this. Otherwise, only allow
 		 * the local address to be used.
@@ -781,9 +780,6 @@ int cfg80211_mlme_mgmt_tx(struct cfg80211_registered_device *rdev,
 			   NL80211_EXT_FEATURE_AUTH_TX_RANDOM_TA))
 			goto out_tx;
 
-=======
-	if (!cfg80211_allowed_address(wdev, mgmt->sa)) {
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
 		/* Allow random TA to be used with Public Action frames if the
 		 * driver has indicated support for this. Otherwise, only allow
 		 * the local address to be used.
