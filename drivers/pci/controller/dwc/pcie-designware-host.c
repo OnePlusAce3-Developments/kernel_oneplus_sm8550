@@ -373,11 +373,6 @@ int dw_pcie_host_init(struct pcie_port *pp)
 			msi_vaddr = dmam_alloc_coherent(dev, sizeof(u64), &pp->msi_data,
 							GFP_KERNEL);
 			if (!msi_vaddr) {
-<<<<<<< HEAD
-				dev_err(dev, "Failed to alloc and map MSI data\n");
-				ret = -ENOMEM;
-				goto err_free_msi;
-=======
 				u16 msi_capabilities;
 
 				/* Retry the allocation with a 64-bit mask if supported. */
@@ -394,7 +389,6 @@ int dw_pcie_host_init(struct pcie_port *pp)
 					ret = -ENOMEM;
 					goto err_free_msi;
 				}
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
 			}
 		}
 	}
