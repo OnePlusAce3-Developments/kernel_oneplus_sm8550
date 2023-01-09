@@ -1528,16 +1528,10 @@ enum nl80211_commands {
 	NL80211_CMD_ADD_LINK,
 	NL80211_CMD_REMOVE_LINK,
 
-<<<<<<< HEAD
-	NL80211_CMD_RESERVED_DO_NOT_USE_3 = 150,
-	NL80211_CMD_RESERVED_DO_NOT_USE_4 = 151,
-	NL80211_CMD_RESERVED_DO_NOT_USE_5 = 152,
-=======
 	NL80211_CMD_ADD_LINK_STA,
 	NL80211_CMD_MODIFY_LINK_STA,
 	NL80211_CMD_REMOVE_LINK_STA,
 
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
 	NL80211_CMD_RESERVED_DO_NOT_USE_6 = 153,
 	NL80211_CMD_RESERVED_DO_NOT_USE_7 = 154,
 	NL80211_CMD_RESERVED_DO_NOT_USE_8 = 155,
@@ -3283,19 +3277,12 @@ enum nl80211_attrs {
 
 	NL80211_ATTR_MAX_NUM_AKM_SUITES,
 
-<<<<<<< HEAD
-	NL80211_ATTR_RESERVED_DO_NOT_USE_6 = 317,
-	NL80211_ATTR_RESERVED_DO_NOT_USE_7 = 318,
-	NL80211_ATTR_RESERVED_DO_NOT_USE_8 = 319,
-	NL80211_ATTR_RESERVED_DO_NOT_USE_9 = 320,
-=======
 	NL80211_ATTR_EML_CAPABILITY,
 	NL80211_ATTR_MLD_CAPA_AND_OPS,
 
 	NL80211_ATTR_TX_HW_TIMESTAMP,
 	NL80211_ATTR_RX_HW_TIMESTAMP,
 
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
 	NL80211_ATTR_RESERVED_DO_NOT_USE_10 = 321,
 	NL80211_ATTR_RESERVED_DO_NOT_USE_11 = 322,
 	NL80211_ATTR_RESERVED_DO_NOT_USE_12 = 323,
@@ -5044,11 +5031,7 @@ enum nl80211_bss {
 	NL80211_BSS_CHAIN_SIGNAL,
 	NL80211_BSS_FREQUENCY_OFFSET,
 	NL80211_BSS_MLO_LINK_ID,
-<<<<<<< HEAD
-	NL80211_BSS_RESERVED_DO_NOT_USE_2 = 22,
-=======
 	NL80211_BSS_MLD_ADDR,
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
 	NL80211_BSS_RESERVED_DO_NOT_USE_3 = 23,
 	NL80211_BSS_RESERVED_DO_NOT_USE_4 = 24,
 	NL80211_BSS_RESERVED_DO_NOT_USE_5 = 25,
@@ -6358,10 +6341,6 @@ enum nl80211_feature_flags {
  * @NL80211_EXT_FEATURE_RADAR_BACKGROUND: Device supports background radar/CAC
  *	detection.
  *
-<<<<<<< HEAD
- * @NL80211_EXT_FEATURE_AUTH_TX_RANDOM_TA: Device supports randomized TA
- *	for authentication frames in @NL80211_CMD_FRAME.
-=======
  * @NL80211_EXT_FEATURE_POWERED_ADDR_CHANGE: Device can perform a MAC address
  *	change without having to bring the underlying network device down
  *	first. For example, in station mode this can be used to vary the
@@ -6369,7 +6348,6 @@ enum nl80211_feature_flags {
  *	or other reasons. Note that certain driver specific restrictions
  *	might apply, e.g. no scans in progress, no offchannel operations
  *	in progress, and no active connections.
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
  *
  * @NUM_NL80211_EXT_FEATURES: number of extended features.
  * @MAX_NL80211_EXT_FEATURES: highest extended feature index.
@@ -6438,11 +6416,7 @@ enum nl80211_ext_feature_index {
 	NL80211_EXT_FEATURE_BSS_COLOR,
 	NL80211_EXT_FEATURE_FILS_CRYPTO_OFFLOAD,
 	NL80211_EXT_FEATURE_RADAR_BACKGROUND,
-<<<<<<< HEAD
-	NL80211_EXT_FEATURE_AUTH_TX_RANDOM_TA,
-=======
 	NL80211_EXT_FEATURE_POWERED_ADDR_CHANGE,
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
 	NL80211_EXT_FEATURE_RESERVED_DO_NOT_USE_2 = 63,
 	NL80211_EXT_FEATURE_RESERVED_DO_NOT_USE_3 = 64,
 	NL80211_EXT_FEATURE_RESERVED_DO_NOT_USE_4 = 65,

@@ -623,17 +623,10 @@ static void sysmon_stop(struct rproc_subdev *subdev, bool crashed)
 	/* Don't request graceful shutdown if we've crashed */
 	if (crashed)
 		return;
-
-<<<<<<< HEAD
-	sysmon->timeout_data.timer.function = sysmon_shutdown_notif_timeout_handler;
-	timeout = jiffies + msecs_to_jiffies(SYSMON_NOTIF_TIMEOUT);
-	mod_timer(&sysmon->timeout_data.timer, timeout);
-=======
 	if (sysmon->ssctl_instance) {
 		if (!wait_for_completion_timeout(&sysmon->ssctl_comp, HZ / 2))
 			dev_err(sysmon->dev, "timeout waiting for ssctl service\n");
 	}
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
 
 	if (sysmon->ssctl_version)
 		sysmon->shutdown_acked = ssctl_request_shutdown(sysmon);
@@ -865,11 +858,7 @@ struct qcom_sysmon *qcom_add_sysmon_subdev(struct rproc *rproc,
 	init_completion(&sysmon->comp);
 	init_completion(&sysmon->ind_comp);
 	init_completion(&sysmon->shutdown_comp);
-<<<<<<< HEAD
-	timer_setup(&sysmon->timeout_data.timer, sysmon_notif_timeout_handler, 0);
-=======
 	init_completion(&sysmon->ssctl_comp);
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
 	mutex_init(&sysmon->lock);
 	mutex_init(&sysmon->state_lock);
 
