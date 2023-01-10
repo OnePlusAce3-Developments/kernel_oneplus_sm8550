@@ -3902,9 +3902,6 @@ static int stmmac_open(struct net_device *dev)
 		goto init_error;
 	}
 
-<<<<<<< HEAD
-#ifdef CONFIG_PTPSUPPORT_OBJ
-=======
 	if (priv->plat->serdes_powerup) {
 		ret = priv->plat->serdes_powerup(dev, priv->plat->bsp_priv);
 		if (ret < 0) {
@@ -3914,7 +3911,7 @@ static int stmmac_open(struct net_device *dev)
 		}
 	}
 
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
+#ifdef CONFIG_PTPSUPPORT_OBJ
 	ret = stmmac_hw_setup(dev, true);
 #else
 	ret = stmmac_hw_setup(dev, false);
@@ -7476,21 +7473,6 @@ int stmmac_dvr_probe(struct device *device,
 		goto error_netdev_register;
 	}
 
-<<<<<<< HEAD
-	if (priv->plat->serdes_powerup) {
-		ret = priv->plat->serdes_powerup(ndev,
-						 priv->plat->bsp_priv);
-
-		if (ret < 0)
-			goto error_serdes_powerup;
-	}
-
-	/* Disable tx_coal_timer if plat provides callback */
-	priv->tx_coal_timer_disable =
-		plat_dat->get_plat_tx_coal_frames ? true : false;
-
-=======
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
 #ifdef CONFIG_DEBUG_FS
 	stmmac_init_fs(ndev);
 #endif
