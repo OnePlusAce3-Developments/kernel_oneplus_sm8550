@@ -418,9 +418,26 @@ void adsp_segment_dump(struct rproc *rproc, struct rproc_dump_segment *segment,
 static void adsp_minidump(struct rproc *rproc)
 {
 	struct qcom_adsp *adsp = rproc->priv;
+
+	trace_rproc_qcom_event(dev_name(adsp->dev), "adsp_minidump", "enter");
+
 	if (rproc->dump_conf == RPROC_COREDUMP_DISABLED)
-		return;
-	qcom_minidump(rproc, adsp->minidump_id);
+		goto exit;
+
+	qcom_minidump(rproc, adsp->minidump_id, adsp_segment_dump);
+
+exit:
+	trace_rproc_qcom_event(dev_name(adsp->dev), "adsp_minidump", "exit");
+}
+
+static int adsp_toggle_load_state(struct qmp *qmp, const char *name, bool enable)
+{
+	char buf[QMP_MSG_LEN] = {};
+
+	snprintf(buf, sizeof(buf),
+		 "{class: image, res: load_state, name: %s, val: %s}",
+		 name, enable ? "on" : "off");
+	return qmp_send(qmp, buf, sizeof(buf));
 }
 
 static int adsp_pds_enable(struct qcom_adsp *adsp, struct device **pds,
