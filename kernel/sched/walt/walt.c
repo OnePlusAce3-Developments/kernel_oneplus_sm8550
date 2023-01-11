@@ -20,6 +20,7 @@
 #include <trace/hooks/cpufreq.h>
 #include <trace/hooks/topology.h>
 #include <trace/events/power.h>
+#include <trace/hooks/cgroup.h>
 #include "walt.h"
 #include "trace.h"
 
