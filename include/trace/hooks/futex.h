@@ -9,12 +9,6 @@
 
 #ifndef __GENKSYMS__
 #include <linux/plist.h>
-<<<<<<< HEAD
-#ifndef __GENKSYMS__
-#include <linux/futex.h>
-#endif
-
-=======
 #include <linux/futex.h>
 #endif
 
@@ -23,7 +17,6 @@ struct plist_head;
 struct task_struct;
 union futex_key;
 
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
 /*
  * Following tracepoints are not exported in tracefs and provide a
  * mechanism for vendor modules to hook and extend functionality

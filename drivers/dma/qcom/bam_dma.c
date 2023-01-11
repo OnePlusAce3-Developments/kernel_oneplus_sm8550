@@ -614,13 +614,7 @@ static void bam_free_chan(struct dma_chan *chan)
 	unsigned long flags;
 	int ret;
 
-<<<<<<< HEAD
-	DMA_BAM_DBG(bdev->ipc_log_dma, bdev->dev,
-		    "%s chan id:%d\n", __func__, bchan->id);
-	ret = bam_pm_runtime_get_sync(bdev->dev);
-=======
 	ret = pm_runtime_get_sync(bdev->dev);
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
 	if (ret < 0)
 		return;
 
@@ -828,13 +822,7 @@ static int bam_pause(struct dma_chan *chan)
 	unsigned long flag;
 	int ret;
 
-<<<<<<< HEAD
-	DMA_BAM_DBG(bdev->ipc_log_dma, bdev->dev,
-		    "%s chan id:%d\n", __func__, bchan->id);
-	ret = bam_pm_runtime_get_sync(bdev->dev);
-=======
 	ret = pm_runtime_get_sync(bdev->dev);
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
 	if (ret < 0)
 		return ret;
 
@@ -860,13 +848,7 @@ static int bam_resume(struct dma_chan *chan)
 	unsigned long flag;
 	int ret;
 
-<<<<<<< HEAD
-	DMA_BAM_DBG(bdev->ipc_log_dma, bdev->dev,
-		    "%s chan id:%d\n", __func__, bchan->id);
-	ret = bam_pm_runtime_get_sync(bdev->dev);
-=======
 	ret = pm_runtime_get_sync(bdev->dev);
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
 	if (ret < 0)
 		return ret;
 

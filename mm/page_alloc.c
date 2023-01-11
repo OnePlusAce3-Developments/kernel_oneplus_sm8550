@@ -4719,11 +4719,7 @@ EXPORT_SYMBOL_GPL(fs_reclaim_release);
  * retries the allocation if zonelist changes. Writer side is protected by the
  * embedded spin_lock.
  */
-<<<<<<< HEAD
-DEFINE_SEQLOCK(zonelist_update_seq);
-=======
 static DEFINE_SEQLOCK(zonelist_update_seq);
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
 
 static unsigned int zonelist_iter_begin(void)
 {

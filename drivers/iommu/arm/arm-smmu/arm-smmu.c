@@ -3449,15 +3449,7 @@ static int arm_smmu_device_probe(struct platform_device *pdev)
 	if (err)
 		return err;
 
-<<<<<<< HEAD
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!res)
-		return -EINVAL;
-	ioaddr = res->start;
-	smmu->base = devm_ioremap_resource(dev, res);
-=======
 	smmu->base = devm_platform_get_and_ioremap_resource(pdev, 0, &res);
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
 	if (IS_ERR(smmu->base))
 		return PTR_ERR(smmu->base);
 	ioaddr = res->start;

@@ -566,8 +566,6 @@ struct anon_vma *page_lock_anon_vma_read(struct page *page,
 		anon_vma = NULL;
 		goto out;
 	}
-<<<<<<< HEAD
-=======
 
 	if (rwc && rwc->try_lock) {
 		anon_vma = NULL;
@@ -575,7 +573,6 @@ struct anon_vma *page_lock_anon_vma_read(struct page *page,
 		goto out;
 	}
 
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
 	/* trylock failed, we got to sleep */
 	if (!atomic_inc_not_zero(&anon_vma->refcount)) {
 		anon_vma = NULL;
@@ -2463,11 +2460,6 @@ static void rmap_walk_file(struct page *page, struct rmap_walk_control *rwc,
 			if (!got_lock)
 				return;
 		} else {
-<<<<<<< HEAD
-			i_mmap_lock_read(mapping);
-		}
-	}
-=======
 			if (i_mmap_trylock_read(mapping))
 				goto lookup;
 
@@ -2480,7 +2472,6 @@ static void rmap_walk_file(struct page *page, struct rmap_walk_control *rwc,
 		}
 	}
 lookup:
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
 	vma_interval_tree_foreach(vma, &mapping->i_mmap,
 			pgoff_start, pgoff_end) {
 		unsigned long address = vma_address(page, vma);

@@ -22,14 +22,9 @@
 #include <linux/types.h>
 #include <linux/mm.h>
 #include <linux/oom.h>
-<<<<<<< HEAD
-#include <trace/hooks/vendor_hooks.h>
 #include <linux/rwsem.h>
 
 /* struct slabinfo */
-=======
-#include <linux/rwsem.h>
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
 #include <../mm/slab.h>
 #endif
 
@@ -140,12 +135,9 @@ DECLARE_HOOK(android_vh_page_should_be_protected,
 DECLARE_HOOK(android_vh_mark_page_accessed,
 	TP_PROTO(struct page *page),
 	TP_ARGS(page));
-<<<<<<< HEAD
-=======
 DECLARE_HOOK(android_vh_page_cache_forced_ra,
 	TP_PROTO(struct readahead_control *ractl, unsigned long req_count, bool *do_forced_ra),
 	TP_ARGS(ractl, req_count, do_forced_ra));
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
 DECLARE_HOOK(android_vh_alloc_pages_reclaim_bypass,
 	TP_PROTO(gfp_t gfp_mask, int order, int alloc_flags,
 	int migratetype, struct page **page),
@@ -154,27 +146,21 @@ DECLARE_HOOK(android_vh_alloc_pages_failure_bypass,
 	TP_PROTO(gfp_t gfp_mask, int order, int alloc_flags,
 	int migratetype, struct page **page),
 	TP_ARGS(gfp_mask, order, alloc_flags, migratetype, page));
-<<<<<<< HEAD
-=======
 DECLARE_HOOK(android_vh_save_track_hash,
 	TP_PROTO(bool alloc, struct track *p),
 	TP_ARGS(alloc, p));
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
 DECLARE_HOOK(android_vh_rmqueue,
 	TP_PROTO(struct zone *preferred_zone, struct zone *zone,
 		unsigned int order, gfp_t gfp_flags,
 		unsigned int alloc_flags, int migratetype),
 	TP_ARGS(preferred_zone, zone, order,
 		gfp_flags, alloc_flags, migratetype));
-<<<<<<< HEAD
-=======
 DECLARE_HOOK(android_vh_kmalloc_slab,
 	TP_PROTO(unsigned int index, gfp_t flags, struct kmem_cache **s),
 	TP_ARGS(index, flags, s));
 DECLARE_HOOK(android_vh_madvise_cold_or_pageout,
 	TP_PROTO(struct vm_area_struct *vma, bool *allow_shared),
 	TP_ARGS(vma, allow_shared));
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
 #endif /* _TRACE_HOOK_MM_H */
 
 /* This part must be outside protection */

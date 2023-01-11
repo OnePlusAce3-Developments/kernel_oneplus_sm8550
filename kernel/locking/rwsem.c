@@ -1382,13 +1382,8 @@ static inline void __up_write(struct rw_semaphore *sem)
 	DEBUG_RWSEMS_WARN_ON((rwsem_owner(sem) != current) &&
 			    !rwsem_test_oflags(sem, RWSEM_NONSPINNABLE), sem);
 
-<<<<<<< HEAD
-	preempt_disable();
-	trace_android_vh_record_rwsem_lock_starttime(current, 0);
-=======
 	trace_android_vh_record_rwsem_lock_starttime(current, 0);
 	preempt_disable();
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
 	rwsem_clear_owner(sem);
 	tmp = atomic_long_fetch_add_release(-RWSEM_WRITER_LOCKED, &sem->count);
 	preempt_enable();

@@ -392,15 +392,6 @@ EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_mark_page_accessed);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_mmc_ffu_update_cid);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_alloc_uid);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_free_user);
-<<<<<<< HEAD
-EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_alloc_pages_reclaim_bypass);
-EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_alloc_pages_failure_bypass);
-EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_mmput);
-EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_modify_thermal_cpu_get_power);
-EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_cpufreq_acct_update_power);
-EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_rmqueue);
-EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_tune_inactive_ratio);
-=======
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_modify_thermal_cpu_get_power);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_page_cache_forced_ra);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_alloc_pages_reclaim_bypass);
@@ -420,4 +411,3 @@ EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_cma_alloc_retry);
  */
 const struct readahead_control *GKI_struct_readahead_control;
 EXPORT_SYMBOL_GPL(GKI_struct_readahead_control);
->>>>>>> origin/android13-5.15-2022-12_r1_tmp_2023-01-06-11-25
