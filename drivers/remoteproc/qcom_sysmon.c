@@ -601,7 +601,6 @@ static int sysmon_start(struct rproc_subdev *subdev)
 
 static void sysmon_stop(struct rproc_subdev *subdev, bool crashed)
 {
-	unsigned long timeout;
 	struct qcom_sysmon *sysmon = container_of(subdev, struct qcom_sysmon, subdev);
 	struct qcom_rproc_ssr *ssr;
 
