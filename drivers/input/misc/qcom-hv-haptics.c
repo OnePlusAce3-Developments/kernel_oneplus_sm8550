@@ -190,7 +190,11 @@
 
 #define ADT_BRK_DUTY_EN_BIT			BIT(6)
 #define DRV_DUTY_MASK				GENMASK(5, 3)
+#ifdef OPLUS_FEATURE_CHG_BASIC
+#define DRV_DUTY_62P5_PCT			4
+#else
 #define DRV_DUTY_62P5_PCT			2
+#endif
 #define DRV_DUTY_SHIFT				3
 #define BRK_DUTY_MASK				GENMASK(2, 0)
 #define BRK_DUTY_75_PCT			6
