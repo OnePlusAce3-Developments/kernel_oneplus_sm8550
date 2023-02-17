@@ -3054,12 +3054,6 @@ static void binder_transaction(struct binder_proc *proc,
 	struct list_head pf_head;
 	const void __user *user_buffer = (const void __user *)
 				(uintptr_t)tr->data.ptr.buffer;
-<<<<<<< HEAD
-=======
-	bool is_nested = false;
-	struct list_head sgc_head;
-	struct list_head pf_head;
->>>>>>> 798c73cb116aa45372fa0aaf354607ce24103f93
 	INIT_LIST_HEAD(&sgc_head);
 	INIT_LIST_HEAD(&pf_head);
 
