@@ -190,6 +190,11 @@ obj-$(CONFIG_OPLUS_FEATURE_ATD) += oplus_cpu/detection/
 
 obj-$(CONFIG_OPLUS_CPU_FREQ_GOV_UAG) += oplus_cpu/uad/
 
+#ifdef OPLUS_FEATURE_ABNORMAL_FLAG
+#ziyu.qi@oppo.com, 2022/11/25, Add for task overload
+obj-$(CONFIG_OPLUS_FEATURE_ABNORMAL_FLAG) += oplus_cpu/oplus_overload/
+#endif
+
 #
 # ANDROID: GKI: Generate headerfiles required for gki_module.o
 #

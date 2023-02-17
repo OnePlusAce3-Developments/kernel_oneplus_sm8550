@@ -16,6 +16,9 @@
 #if IS_ENABLED(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
 #include <../kernel/oplus_cpu/sched/sched_assist/sa_fair.h>
 #include <../kernel/oplus_cpu/sched/sched_assist/sa_common.h>
+#ifdef CONFIG_OPLUS_CPU_AUDIO_PERF
+#include <../kernel/oplus_cpu/sched/sched_assist/sa_audio.h>
+#endif
 #endif
 
 #if IS_ENABLED(CONFIG_OPLUS_FEATURE_FRAME_BOOST)
@@ -1058,6 +1061,9 @@ walt_select_task_rq_fair(void *unused, struct task_struct *p, int prev_cpu,
 	sibling_count_hint = p->wake_q_count;
 	p->wake_q_count = 0;
 
+#ifdef CONFIG_OPLUS_CPU_AUDIO_PERF
+	oplus_sched_assist_audio_set_wake_up_idle(p);
+#endif
 	*target_cpu = walt_find_energy_efficient_cpu(p, prev_cpu, sync, sibling_count_hint);
 }
 

@@ -190,7 +190,11 @@
 
 #define ADT_BRK_DUTY_EN_BIT			BIT(6)
 #define DRV_DUTY_MASK				GENMASK(5, 3)
+#ifdef OPLUS_FEATURE_CHG_BASIC
+#define DRV_DUTY_62P5_PCT			4
+#else
 #define DRV_DUTY_62P5_PCT			2
+#endif
 #define DRV_DUTY_SHIFT				3
 #define BRK_DUTY_MASK				GENMASK(2, 0)
 #define BRK_DUTY_75_PCT			6
@@ -776,7 +780,8 @@ struct haptics_chip *g_richtap_ptr;
 static void richtap_clean_buf(struct haptics_chip *chip, int status);
 #endif //OPLUS_FEATURE_RICHTAP_SUPPORT
 #ifdef OPLUS_FEATURE_CHG_BASIC
-	struct haptics_chip *g_chip;
+struct haptics_chip *g_chip;
+static int haptics_toggle_module_enable(struct haptics_chip *chip);
 #endif
 
 static inline int get_max_fifo_samples(struct haptics_chip *chip)
@@ -1193,21 +1198,31 @@ static int haptics_get_status_data(struct haptics_chip *chip,
 static int haptics_wait_brake_complete(struct haptics_chip *chip)
 {
 	struct haptics_play_info *play = &chip->play;
-	u32 brake_length_us, timeout, delay_us;
+	u32 brake_length_us, t_lra_us, timeout, delay_us;
 	int rc;
 	u8 val;
 
 	if (chip->hw_type != HAP525_HV)
 		return 0;
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	t_lra_us = (chip->config.cl_t_lra_us) ?
+			chip->config.cl_t_lra_us : chip->config.t_lra_us;
+#endif
+
 	brake_length_us = get_brake_play_length_us(play->brake, chip->config.cl_t_lra_us);
 
 	/* add a cycle to give some margin for brake sychronization */
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	brake_length_us += t_lra_us;
+	delay_us = t_lra_us / 2;
+#else
 	brake_length_us += chip->config.cl_t_lra_us;
 	if (chip->config.cl_t_lra_us)
 		delay_us = chip->config.cl_t_lra_us / 2;
 	else
 		delay_us = chip->config.t_lra_us / 2;
+#endif
 
 	timeout = brake_length_us / delay_us + 1;
 	dev_dbg(chip->dev, "wait %d us for brake pattern to complete\n", brake_length_us);
@@ -1230,8 +1245,12 @@ static int haptics_wait_brake_complete(struct haptics_chip *chip)
 				timeout, val);
 	} while (--timeout);
 
-	if (timeout == 0)
+	if (timeout == 0) {
 		dev_warn(chip->dev, "poll HPWR_DISABLED failed after stopped play\n");
+#ifdef OPLUS_FEATURE_CHG_BASIC
+		return haptics_toggle_module_enable(chip);
+#endif
+	}
 
 	return 0;
 }
@@ -2096,6 +2115,13 @@ static int haptics_update_memory_data(struct haptics_chip *chip,
 	int rc, count, i;
 	u32 left;
 	u8 tmp[HAP_PTN_FIFO_DIN_NUM] = {0};
+
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	if (data == NULL) {
+		dev_err(chip->dev, "no FIFO data available\n");
+		return -EINVAL;
+	}
+#endif
 
 	if (!length)
 		return 0;
@@ -3758,9 +3784,16 @@ static irqreturn_t fifo_empty_irq_handler(int irq, void *data)
 			}
 
 			while (num_rt > 0 && atomic_read(&chip->richtap_mode)) {
+				if ((chip->current_buf->length - chip->pos) <= 0) {
+					schedule_work(&chip->richtap_erase_work);
+					dev_err(chip->dev,"length=%d,pos=%d\n", chip->current_buf->length,chip->pos);
+					break;
+				}
 				if ((chip->current_buf->status == MMAP_BUF_DATA_VALID)
 					&& (num_rt >= (chip->current_buf->length - chip->pos))) {
 					samples_left = (u32)(chip->current_buf->length - chip->pos);
+					samples_left -=
+							(samples_left % HAP_PTN_FIFO_DIN_NUM);
 					rc = haptics_update_fifo_samples(chip,
 						&chip->current_buf->data[chip->pos], samples_left, true);
 					if (rc < 0) {
@@ -3777,6 +3810,7 @@ static irqreturn_t fifo_empty_irq_handler(int irq, void *data)
 				}
 
 				if (chip->current_buf->status == MMAP_BUF_DATA_VALID) {
+					num_rt -= (num_rt % HAP_PTN_FIFO_DIN_NUM);
 					rc = haptics_update_fifo_samples(chip,
 						&chip->current_buf->data[chip->pos], (u32)num_rt, true);
 					if (rc < 0) {
@@ -6572,7 +6606,7 @@ static long richtap_file_unlocked_ioctl(struct file *file, unsigned int cmd, uns
 	uint32_t tmp;
 	int ret = 0;
 
-#ifndef OPLUS_FEATURE_CHG_BASIC
+#ifdef OPLUS_FEATURE_CHG_BASIC
 	dev_err(chip->dev, "%s: cmd=0x%x, arg=0x%lx\n",
 			  __func__, cmd, arg);
 #endif

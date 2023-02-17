@@ -132,3 +132,4 @@ oplus_fdleak_check.ko
 qcom_enhance_watchdog.ko
 nvme-core.ko
 nvme.ko
+task_overload.ko
