@@ -1458,7 +1458,7 @@ static void walt_cfs_replace_next_task_fair(void *unused, struct rq *rq, struct 
 
 	trace_walt_cfs_mvp_pick_next(mvp, wts, walt_cfs_mvp_task_limit(mvp));
 #else
-	oplus_replace_next_task_fair(rq, p, se, repick, simple);
+	android_rvh_replace_next_task_fair_handler(NULL, rq, p, se, repick, simple, prev);
 #endif
 }
 
