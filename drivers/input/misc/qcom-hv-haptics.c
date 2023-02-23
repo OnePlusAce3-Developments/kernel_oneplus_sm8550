@@ -5797,7 +5797,11 @@ static int haptics_detect_lra_frequency(struct haptics_chip *chip)
 
 	if (chip->hw_type == HAP525_HV)
 		val = AUTORES_EN_DLY_7_CYCLES << AUTORES_EN_DLY_SHIFT|
+#ifdef OPLUS_FEATURE_CHG_BASIC
+			AUTORES_ERR_WINDOW_50_PERCENT | AUTORES_EN_BIT;
+#else
 			AUTORES_ERR_WINDOW_25_PERCENT | AUTORES_EN_BIT;
+#endif
 	else
 		val = AUTORES_EN_DLY_6_CYCLES << AUTORES_EN_DLY_SHIFT|
 			AUTORES_ERR_WINDOW_50_PERCENT | AUTORES_EN_BIT;
