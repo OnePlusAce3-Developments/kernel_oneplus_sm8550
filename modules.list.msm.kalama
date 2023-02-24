@@ -133,3 +133,4 @@ qcom_enhance_watchdog.ko
 nvme-core.ko
 nvme.ko
 task_overload.ko
+oplus_ipa_thermal.ko
