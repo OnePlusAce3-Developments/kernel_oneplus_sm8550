@@ -70,3 +70,8 @@ obj-$(CONFIG_OPLUS_FEATURE_MDMFEATURE)     += oplus/mdmfeature/
 #xiaoyu.wu@NETWORK.ARCH.3830854, 2022/07/14, add for mdmrst
 obj-$(CONFIG_OPLUS_FEATURE_RECORD_MDMRST)     += oplus/mdmrst/
 #endif /*OPLUS_FEATURE_MODEM_MINIDUMP*/
+
+#ifdef OPLUS_FREEZE_DEBUG
+#Colin.Liu@POWER, 2023/03/09, add for freezing tasks failed logging on
+obj-$(CONFIG_OPLUS_FREEZE_DEBUG)     += oplus/power/freeze_debug/
+#endif /* OPLUS_FREEZE_DEBUG */

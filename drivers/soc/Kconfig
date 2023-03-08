@@ -102,3 +102,8 @@ source "drivers/soc/oplus/device_info/Kconfig"
 #ifdef OPLUS_FEATURE_ABNORMAL_FLAG
 source "kernel/oplus_cpu/oplus_overload/Kconfig"
 #endif /* OPLUS_FEATURE_ABNORMAL_FLAgit G */
+
+#ifdef OPLUS_FREEZE_DEBUG
+#Colin.Liu@POWER, 2023/03/09, add for freezing tasks failed logging on
+source "drivers/soc/oplus/power/freeze_debug/Kconfig"
+#endif /* OPLUS_FREEZE_DEBUG */
