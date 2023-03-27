@@ -3623,6 +3623,7 @@ static const struct proc_ops record_fops = {
 	.proc_open = record_open,
 	.proc_read = seq_read,
 	.proc_release = single_release,
+	.proc_lseek = default_llseek,
 };
 
 #define SEQ_UPLOAD_PRINT(x) \
@@ -3662,6 +3663,7 @@ static const struct proc_ops record_upload_fops = {
 	.proc_open = record_upload_open,
 	.proc_read = seq_read,
 	.proc_release = single_release,
+	.proc_lseek = default_llseek,
 };
 
 int create_signal_quality_proc(struct unipro_signal_quality_ctrl *signalCtrl)
