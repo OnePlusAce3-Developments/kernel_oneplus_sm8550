@@ -3,7 +3,7 @@
 
 #define AW210XX_I2C_NAME "aw210xx_led"
 
-#define LED_MAX_NUM							(4)
+#define LED_MAX_NUM							(6)
 #define AW_DEBUG 							(1)
 
 #if AW_DEBUG
@@ -340,12 +340,14 @@ typedef struct aw210xx_cfg {
 enum AW2023_LED_MODE{
 	AW210XX_LED_NONE = 0,
 	AW210XX_LED_CCMODE,
+	AW210XX_LED_NEW_ALWAYSON,
 	AW210XX_LED_BLINKMODE,
 	AW210XX_LED_BREATHMODE,
+	AW210XX_LED_INDIVIDUAL_CTL_BREATH,
 	AW210XX_LED_MUSICMODE,
 	AW210XX_LED_MAXMODE,
 };
-	
+
 enum AW210XX_LED_TYPE {
 	AW210xx_LED_RED = 0,
 	AW210xx_LED_GREEN,
@@ -353,7 +355,7 @@ enum AW210XX_LED_TYPE {
 	AW210xx_LED_ON,
 	AW210xx_LED_OFF,
 };
-	
+
 struct aw210xx_platform_data {
 	int imax;
 	const char *led_default_trigger;
