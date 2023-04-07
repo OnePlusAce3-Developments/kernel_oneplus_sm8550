@@ -1563,7 +1563,11 @@ static int enable_audio_stream(struct snd_usb_substream *subs,
 				 BUS_INTERVAL_FULL_SPEED));
 	}
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	return ret;
+#else
 	return 0;
+#endif
 }
 
 static void handle_uaudio_stream_req(struct qmi_handle *handle,
