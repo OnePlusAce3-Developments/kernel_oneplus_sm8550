@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #define pr_fmt(fmt)	"io-pgtable-fast: " fmt
@@ -19,7 +18,7 @@
 #include <linux/vmalloc.h>
 #include <linux/dma-mapping.h>
 #include <linux/qcom-iommu-util.h>
-#include <linux/qcom-io-pgtable.h>
+#include "qcom-io-pgtable.h"
 
 #define AV8L_FAST_MAX_ADDR_BITS		48
 
