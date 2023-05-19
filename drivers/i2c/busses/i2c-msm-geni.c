@@ -1330,6 +1330,14 @@ static int geni_i2c_xfer(struct i2c_adapter *adap,
 		return -EACCES;
 	}
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	if (gi2c->i2c_reset_processing) {
+		I2C_LOG_ERR(gi2c->ipcl, true, gi2c->dev,
+			"IO lines in bad state, reset processing need return\n");
+		return -ENXIO;
+	}
+#endif /* OPLUS_FEATURE_CHG_BASIC */
+
 	if (!gi2c->is_le_vm) {
 		ret = pm_runtime_get_sync(gi2c->dev);
 		if (ret < 0) {
