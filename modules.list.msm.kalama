@@ -118,6 +118,7 @@ oplus_security_guard.ko
 oplus_security_keventupload.ko
 oplus_secure_common.ko
 oplus_bsp_sched_assist.ko
+oplus_bsp_eas_opt.ko
 oplus_bsp_frame_boost.ko
 cpu_jankinfo.ko
 cpufreq_bouncing.ko
@@ -137,3 +138,4 @@ nvme.ko
 task_overload.ko
 oplus_ipa_thermal.ko
 oplus_freeze_debug.ko
+

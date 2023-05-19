@@ -25,6 +25,10 @@
 #include <../kernel/oplus_cpu/sched/frame_boost/frame_group.h>
 #endif
 
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_FAKE_CAP)
+#include <../kernel/oplus_cpu/sched/eas_opt/fake_cap.h>
+#endif
+
 static void create_util_to_cost_pd(struct em_perf_domain *pd)
 {
 	int util, cpu = cpumask_first(to_cpumask(pd->cpus));
@@ -224,6 +228,10 @@ static void walt_get_indicies(struct task_struct *p, int *order_index,
 
 	for (i = *order_index ; i < num_sched_clusters - 1; i++) {
 		if (task_demand_fits(p, cpumask_first(&cpu_array[i][0])))
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_FAKE_CAP)
+			if (adjust_group_task(p, cpumask_first(&cpu_array[i][0])))
+				continue;
+#endif
 			break;
 	}
 
@@ -752,6 +760,14 @@ walt_pd_compute_energy(struct task_struct *p, int dst_cpu, struct perf_domain *p
 	int cpu;
 	unsigned long cpu_util;
 	bool prev_dst_same_cluster = false;
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_FAKE_CAP)
+	struct rq *rq = NULL;
+	unsigned int avg_nr_running = 1;
+	unsigned int count_cpu = 0;
+	int cluster_id = topology_physical_package_id(cpumask_first(pd_mask));
+	int util_thresh = 0;
+	unsigned long capacity =  arch_scale_cpu_capacity(cpumask_first(pd_mask));
+#endif
 
 	if (same_cluster(task_cpu(p), dst_cpu))
 		prev_dst_same_cluster = true;
@@ -769,9 +785,32 @@ walt_pd_compute_energy(struct task_struct *p, int dst_cpu, struct perf_domain *p
 		sum_util += cpu_util_next_walt(cpu, p, dst_cpu);
 		cpu_util = cpu_util_next_walt_prs(cpu, p, dst_cpu, prev_dst_same_cluster, prs);
 		max_util = max(max_util, cpu_util);
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_FAKE_CAP)
+		rq = cpu_rq(cpu);
+		avg_nr_running += rq->nr_running;
+		count_cpu++;
+#endif
 	}
 
 	max_util = scale_time_to_util(max_util);
+
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_FAKE_CAP)
+	if (eas_opt_enable && (util_thresh_percent[cluster_id] != 100) && count_cpu) {
+		unsigned long max_util_bak = max_util;
+		//util_thresh = mult_frac(capacity, util_thresh_percent[cluster_id], 100);
+		util_thresh = capacity * util_thresh_cvt[cluster_id] >> SCHED_CAPACITY_SHIFT;
+		avg_nr_running = mult_frac(avg_nr_running, 1, count_cpu);
+		//util = avg_nr_running * util * fake_cap_multiple[4] * 1024 / fake_cap_multiple[cluster_id] >>  SCHED_CAPACITY_SHIFT;
+		max_util = (util_thresh < max_util) ?
+			(util_thresh + ((avg_nr_running * (max_util-util_thresh)* nr_fake_cap_multiple[cluster_id]) >> SCHED_CAPACITY_SHIFT)) : max_util;
+		if (unlikely(eas_opt_debug_enable))
+		{
+			trace_printk("[eas_opt]: cluster_id: %d, capacity: %d, util_thresh: %d, avg_nr_running: %d, "
+					"origin_max_util: %d, max_util: %d, util_thresh_percent: %d\n",
+					cluster_id, capacity, util_thresh, avg_nr_running, max_util_bak, max_util, util_thresh_percent[cluster_id]);
+		}
+	}
+#endif
 
 	if (output)
 		output->cluster_first_cpu[x] = cpumask_first(pd_mask);
