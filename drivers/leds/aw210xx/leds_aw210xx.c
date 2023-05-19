@@ -102,9 +102,9 @@ static int aw210xx_i2c_write(struct aw210xx *aw210xx,
 		ret = i2c_smbus_write_byte_data(aw210xx->i2c,
 				reg_addr, reg_data);
 		if (ret < 0)
-			AW_ERR("i2c_write fail cnt=%d ret=%d addr=0x%x data=0x%x\n", cnt, ret, reg_addr, reg_data);
+			AW_ERR("id = %d i2c_write fail cnt=%d ret=%d addr=0x%x data=0x%x\n", aw210xx->id, cnt, ret, reg_addr, reg_data);
 		else {
-			AW_ERR("i2c_write suc cnt=%d ret=%d addr=0x%x data=0x%x\n", cnt, ret, reg_addr, reg_data);
+			AW_ERR("id = %d i2c_write suc cnt=%d ret=%d addr=0x%x data=0x%x\n", aw210xx->id, cnt, ret, reg_addr, reg_data);
 			break;
 		}
 		cnt++;
@@ -124,10 +124,10 @@ static int aw210xx_i2c_read(struct aw210xx *aw210xx,
 	while (cnt < AW_I2C_RETRIES) {
 		ret = i2c_smbus_read_byte_data(aw210xx->i2c, reg_addr);
 		if (ret < 0) {
-			AW_ERR("i2c_read fail cnt=%d ret=%d addr=0x%x\n", cnt, ret, reg_addr);
+			AW_ERR("id = %d i2c_read fail cnt=%d ret=%d addr=0x%x\n", aw210xx->id, cnt, ret, reg_addr);
 		} else {
 			*reg_data = ret;
-			AW_ERR("i2c_read suc cnt=%d ret=%d addr=0x%x\n", cnt, ret, reg_addr);
+			AW_ERR("id = %d i2c_read suc cnt=%d ret=%d addr=0x%x\n", aw210xx->id, cnt, ret, reg_addr);
 			break;
 		}
 		cnt++;
@@ -253,63 +253,63 @@ int32_t aw210xx_osc_pwm_set(struct aw210xx *aw210xx)
 {
 	switch (aw210xx->osc_clk) {
 	case CLK_FRQ_16M:
-		AW_LOG("osc is 16MHz!\n");
+		AW_LOG("id = %d osc is 16MHz!\n", aw210xx->id);
 		aw210xx_i2c_write_bits(aw210xx,
 				AW210XX_REG_GCR,
 				AW210XX_BIT_CLKFRQ_MASK,
 				AW210XX_BIT_CLKFRQ_16MHz);
 		break;
 	case CLK_FRQ_8M:
-		AW_LOG("osc is 8MHz!\n");
+		AW_LOG("id = %d osc is 8MHz!\n", aw210xx->id);
 		aw210xx_i2c_write_bits(aw210xx,
 				AW210XX_REG_GCR,
 				AW210XX_BIT_CLKFRQ_MASK,
 				AW210XX_BIT_CLKFRQ_8MHz);
 		break;
 	case CLK_FRQ_1M:
-		AW_LOG("osc is 1MHz!\n");
+		AW_LOG("id = %d osc is 1MHz!\n", aw210xx->id);
 		aw210xx_i2c_write_bits(aw210xx,
 				AW210XX_REG_GCR,
 				AW210XX_BIT_CLKFRQ_MASK,
 				AW210XX_BIT_CLKFRQ_1MHz);
 		break;
 	case CLK_FRQ_512k:
-		AW_LOG("osc is 512KHz!\n");
+		AW_LOG("id = %d osc is 512KHz!\n", aw210xx->id);
 		aw210xx_i2c_write_bits(aw210xx,
 				AW210XX_REG_GCR,
 				AW210XX_BIT_CLKFRQ_MASK,
 				AW210XX_BIT_CLKFRQ_512kHz);
 		break;
 	case CLK_FRQ_256k:
-		AW_LOG("osc is 256KHz!\n");
+		AW_LOG("id = %d osc is 256KHz!\n", aw210xx->id);
 		aw210xx_i2c_write_bits(aw210xx,
 				AW210XX_REG_GCR,
 				AW210XX_BIT_CLKFRQ_MASK,
 				AW210XX_BIT_CLKFRQ_256kHz);
 		break;
 	case CLK_FRQ_125K:
-		AW_LOG("osc is 125KHz!\n");
+		AW_LOG("id = %d osc is 125KHz!\n", aw210xx->id);
 		aw210xx_i2c_write_bits(aw210xx,
 				AW210XX_REG_GCR,
 				AW210XX_BIT_CLKFRQ_MASK,
 				AW210XX_BIT_CLKFRQ_125kHz);
 		break;
 	case CLK_FRQ_62_5K:
-		AW_LOG("osc is 62.5KHz!\n");
+		AW_LOG("id = %d osc is 62.5KHz!\n", aw210xx->id);
 		aw210xx_i2c_write_bits(aw210xx,
 				AW210XX_REG_GCR,
 				AW210XX_BIT_CLKFRQ_MASK,
 				AW210XX_BIT_CLKFRQ_62_5kHz);
 		break;
 	case CLK_FRQ_31_25K:
-		AW_LOG("osc is 31.25KHz!\n");
+		AW_LOG("id = %d osc is 31.25KHz!\n", aw210xx->id);
 		aw210xx_i2c_write_bits(aw210xx,
 				AW210XX_REG_GCR,
 				AW210XX_BIT_CLKFRQ_MASK,
 				AW210XX_BIT_CLKFRQ_31_25kHz);
 		break;
 	default:
-		AW_LOG("this clk_pwm is unsupported!\n");
+		AW_LOG("id = %d this clk_pwm is unsupported!\n", aw210xx->id);
 		return -AW210XX_CLK_MODE_UNSUPPORT;
 	}
 
@@ -320,35 +320,35 @@ int32_t aw210xx_br_res_set(struct aw210xx *aw210xx)
 {
 	switch (aw210xx->br_res) {
 	case BR_RESOLUTION_8BIT:
-		AW_LOG("br resolution select 8bit!\n");
+		AW_LOG("id = %d br resolution select 8bit!\n", aw210xx->id);
 		aw210xx_i2c_write_bits(aw210xx,
 				AW210XX_REG_GCR,
 				AW210XX_BIT_PWMRES_MASK,
 				AW210XX_BIT_PWMRES_8BIT);
 		break;
 	case BR_RESOLUTION_9BIT:
-		AW_LOG("br resolution select 9bit!\n");
+		AW_LOG("id = %d br resolution select 9bit!\n", aw210xx->id);
 		aw210xx_i2c_write_bits(aw210xx,
 				AW210XX_REG_GCR,
 				AW210XX_BIT_PWMRES_MASK,
 				AW210XX_BIT_PWMRES_9BIT);
 		break;
 	case BR_RESOLUTION_12BIT:
-		AW_LOG("br resolution select 12bit!\n");
+		AW_LOG("id = %d br resolution select 12bit!\n", aw210xx->id);
 		aw210xx_i2c_write_bits(aw210xx,
 				AW210XX_REG_GCR,
 				AW210XX_BIT_PWMRES_MASK,
 				AW210XX_BIT_PWMRES_12BIT);
 		break;
 	case BR_RESOLUTION_9_AND_3_BIT:
-		AW_LOG("br resolution select 9+3bit!\n");
+		AW_LOG("id = %d br resolution select 9+3bit!\n", aw210xx->id);
 		aw210xx_i2c_write_bits(aw210xx,
 				AW210XX_REG_GCR,
 				AW210XX_BIT_PWMRES_MASK,
 				AW210XX_BIT_PWMRES_9_AND_3_BIT);
 		break;
 	default:
-		AW_LOG("this br_res is unsupported!\n");
+		AW_LOG("id = %d this br_res is unsupported!\n", aw210xx->id);
 		return -AW210XX_CLK_MODE_UNSUPPORT;
 	}
 
@@ -377,6 +377,7 @@ static void aw210xx_brightness(struct aw210xx *led)
 {
 	int i = 0;
 	int color[4] = {0};
+	int temp_brightness[4] = {0};
 	int led_brightness = 0;
 	AW_LOG("id = %d brightness = %d\n", led->id, led->cdev.brightness);
 	if (led->id > 5) {
@@ -412,13 +413,13 @@ static void aw210xx_brightness(struct aw210xx *led)
 			aw210xx_i2c_write(led, AW210XX_REG_RESET, 0x00);
 			usleep_range(2000, 2200);
 			if (aw210xx_led_init(led->pdata->led)) {
-				AW_LOG("aw210xx active failed");
+				AW_LOG("id = %d aw210xx active failed", led->id);
 			}
 		}
 	} else {
 		if (led->pdata->led->led_enable && !(led->pdata->led->rgb_isnk_on)) {
 			if (aw210xx_chipen_set(led->pdata->led, false)) {
-				AW_LOG("aw210xx sleep failed");
+				AW_LOG("id = %d aw210xx sleep failed", led->id);
 			}
 		}
 	}
@@ -450,22 +451,32 @@ static void aw210xx_brightness(struct aw210xx *led)
 		for (i = 0; i < led->pdata->led->led_groups_num; i++) {
 			if (led->id == 0 && dec_flag) {
 				color[i] = (led->pdata->color[i] * 2) / 3;
-				AW_LOG("id = %d set color[%d] = %d\n", led->id, i, color[i]);
+				//AW_LOG("id = %d set color[%d] = %d\n", led->id, i, color[i]);
 			} else if (led->id == 1 && dec_flag) {
 				color[i] = (led->pdata->color[i] * 2) / 3;
-				AW_LOG("id = %d set color[%d] = %d\n", led->id, i, color[i]);
+				//AW_LOG("id = %d set color[%d] = %d\n", led->id, i, color[i]);
 			} else if (led->id == 2 && dec_flag) {
 				color[i] = (led->pdata->color[i] * 2) / 3;
-				AW_LOG("id = %d set color[%d] = %d\n", led->id, i, color[i]);
+				//AW_LOG("id = %d set color[%d] = %d\n", led->id, i, color[i]);
 			}
 		}
 
 		if (led->pdata->led->led_groups_num == 2) {
+			for (i = 0; i < led->pdata->led->led_groups_num; i++) {
+				color[i] = (color[i] * led->pdata->led->led_current_numerator[i]) / led->pdata->led->led_current_denominator[i];
+				AW_LOG("id =%d color * (2/3) * %d/%d set reg color[%d] = %d\n", led->id, led->pdata->led->led_current_numerator[i],
+					led->pdata->led->led_current_denominator[i], i, color[i]);
+			}
 			aw210xx_i2c_write(led, AW210XX_REG_SL00 + led->id, color[0]);
 			aw210xx_i2c_write(led, AW210XX_REG_SL03 + led->id, color[1]);
 			aw210xx_i2c_write(led, AW210XX_REG_GCFG, 0x40);
 			AW_LOG("id = %d led_groups_num = %d \n", led->id, led->pdata->led->led_groups_num);
 		} else if (led->pdata->led->led_groups_num == 4) {
+			for (i = 0; i < led->pdata->led->led_groups_num; i++) {
+				color[i] = (color[i] * led->pdata->led->led_current_numerator[i]) / led->pdata->led->led_current_denominator[i];
+				AW_LOG("id = %d color * (2/3) * %d/%d set reg color[%d] = %d\n", led->id, led->pdata->led->led_current_numerator[i],
+					led->pdata->led->led_current_denominator[i], i, color[i]);
+			}
 			aw210xx_i2c_write(led, AW210XX_REG_SL00 + led->id, color[0]);
 			aw210xx_i2c_write(led, AW210XX_REG_SL03 + led->id, color[1]);
 			aw210xx_i2c_write(led, AW210XX_REG_SL06 + led->id, color[2]);
@@ -473,6 +484,11 @@ static void aw210xx_brightness(struct aw210xx *led)
 			aw210xx_i2c_write(led, AW210XX_REG_GCFG, 0x40);
 			AW_LOG("id = %d led_groups_num = %d \n", led->id, led->pdata->led->led_groups_num);
 		} else {
+			for (i = 0; i < led->pdata->led->led_groups_num; i++) {
+				color[i] = (color[i] * led->pdata->led->led_current_numerator[i]) / led->pdata->led->led_current_denominator[i];
+				AW_LOG("id = %d color * (2/3) * %d/%d set reg color[%d] = %d\n", led->id, led->pdata->led->led_current_numerator[i],
+					led->pdata->led->led_current_denominator[i], i, color[i]);
+			}
 			aw210xx_i2c_write(led, AW210XX_REG_SL00 + led->id, color[0]);
 			aw210xx_i2c_write(led, AW210XX_REG_SL03 + led->id, color[1]);
 			aw210xx_i2c_write(led, AW210XX_REG_SL06 + led->id, color[2]);
@@ -485,13 +501,13 @@ static void aw210xx_brightness(struct aw210xx *led)
 		for (i = 0; i < led->pdata->led->led_groups_num; i++) {
 			if (led->id == 0 && dec_flag) {
 				color[i] = (led->pdata->color[i] * 2) / 3;
-				AW_LOG("id = %d set color[%d] = %d\n", led->id, i, color[i]);
+				//AW_LOG("id = %d set color[%d] = %d\n", led->id, i, color[i]);
 			} else if (led->id == 1 && dec_flag) {
 				color[i] = (led->pdata->color[i] * 2) / 3;
-				AW_LOG("id = %d set color[%d] = %d\n", led->id, i, color[i]);
+				//AW_LOG("id = %d set color[%d] = %d\n", led->id, i, color[i]);
 			} else if (led->id == 2 && dec_flag) {
 				color[i] = (led->pdata->color[i] * 2) / 3;
-				AW_LOG("id = %d set color[%d] = %d\n", led->id, i, color[i]);
+				//AW_LOG("id = %d set color[%d] = %d\n", led->id, i, color[i]);
 			}
 		}
 
@@ -501,11 +517,21 @@ static void aw210xx_brightness(struct aw210xx *led)
 		aw210xx_sbmd_set(led, true);
 
 		if (led->pdata->led->led_groups_num == 2) {
+			for (i = 0; i < led->pdata->led->led_groups_num; i++) {
+				color[i] = (color[i] * led->pdata->led->led_current_numerator[i]) / led->pdata->led->led_current_denominator[i];
+				AW_LOG("id = %d color * (2/3) * %d/%d set reg color[%d] = %d\n", led->id, led->pdata->led->led_current_numerator[i],
+					led->pdata->led->led_current_denominator[i], i, color[i]);
+			}
 			aw210xx_i2c_write(led, AW210XX_REG_SL00 + led->id, color[0]);
 			aw210xx_i2c_write(led, AW210XX_REG_SL03 + led->id, color[1]);
 			aw210xx_i2c_write(led, AW210XX_REG_GCFG, 0x47);
 			AW_LOG("id = %d led_groups_num = %d \n", led->id, led->pdata->led->led_groups_num);
 		} else if (led->pdata->led->led_groups_num == 4) {
+			for (i = 0; i < led->pdata->led->led_groups_num; i++) {
+				color[i] = (color[i] * led->pdata->led->led_current_numerator[i]) / led->pdata->led->led_current_denominator[i];
+				AW_LOG("id = %d color * (2/3) * %d/%d set reg color[%d] = %d\n", led->id, led->pdata->led->led_current_numerator[i],
+					led->pdata->led->led_current_denominator[i], i, color[i]);
+			}
 			aw210xx_i2c_write(led, AW210XX_REG_SL00 + led->id, color[0]);
 			aw210xx_i2c_write(led, AW210XX_REG_SL03 + led->id, color[1]);
 			aw210xx_i2c_write(led, AW210XX_REG_SL06 + led->id, color[2]);
@@ -513,6 +539,11 @@ static void aw210xx_brightness(struct aw210xx *led)
 			aw210xx_i2c_write(led, AW210XX_REG_GCFG, 0x4F);
 			AW_LOG("id = %d led_groups_num = %d \n", led->id, led->pdata->led->led_groups_num);
 		} else {
+			for (i = 0; i < led->pdata->led->led_groups_num; i++) {
+				color[i] = (color[i] * led->pdata->led->led_current_numerator[i]) / led->pdata->led->led_current_denominator[i];
+				AW_LOG("id = %d color * (2/3) * %d/%d set reg color[%d] = %d\n", led->id, led->pdata->led->led_current_numerator[i],
+					led->pdata->led->led_current_denominator[i], i, color[i]);
+			}
 			aw210xx_i2c_write(led, AW210XX_REG_SL00 + led->id, color[0]);
 			aw210xx_i2c_write(led, AW210XX_REG_SL03 + led->id, color[1]);
 			aw210xx_i2c_write(led, AW210XX_REG_SL06 + led->id, color[2]);
@@ -523,13 +554,13 @@ static void aw210xx_brightness(struct aw210xx *led)
 	} else {
 		if (led->id == 0 && dec_flag) {
 			led_brightness = (led->cdev.brightness * 2) / 3;
-			AW_LOG("id = %d set brightness = %d\n", led->id, led_brightness);
+			//AW_LOG("id = %d set brightness = %d\n", led->id, led_brightness);
 		} else if (led->id == 1 && dec_flag) {
 			led_brightness = (led->cdev.brightness * 2) / 3;
-			AW_LOG("id = %d set brightness = %d\n", led->id, led_brightness);
+			//AW_LOG("id = %d set brightness = %d\n", led->id, led_brightness);
 		} else if (led->id == 2 && dec_flag) {
 			led_brightness = (led->cdev.brightness * 2) / 3;
-			AW_LOG("id = %d set brightness = %d\n", led->id, led_brightness);
+			//AW_LOG("id = %d set brightness = %d\n", led->id, led_brightness);
 		}
 
 		led->br_res = BR_RESOLUTION_8BIT;
@@ -538,22 +569,37 @@ static void aw210xx_brightness(struct aw210xx *led)
 		aw210xx_sbmd_set(led, true);
 
 		if (led->pdata->led->led_groups_num == 2) {
-			aw210xx_i2c_write(led, AW210XX_REG_SL00 + led->id, led_brightness);
-			aw210xx_i2c_write(led, AW210XX_REG_SL03 + led->id, led_brightness);
+			for (i = 0; i < led->pdata->led->led_groups_num; i++) {
+				temp_brightness[i] = (led_brightness * led->pdata->led->led_current_numerator[i]) / led->pdata->led->led_current_denominator[i];
+				AW_LOG("id = %d led_brightness * (2/3) * %d/%d set reg led_brightness[%d] = %d\n", led->id, led->pdata->led->led_current_numerator[i],
+					led->pdata->led->led_current_denominator[i], i, temp_brightness[i]);
+			}
+			aw210xx_i2c_write(led, AW210XX_REG_SL00 + led->id, temp_brightness[0]);
+			aw210xx_i2c_write(led, AW210XX_REG_SL03 + led->id, temp_brightness[1]);
 			aw210xx_i2c_write(led, AW210XX_REG_GCFG, 0x47);
 			AW_LOG("id = %d led_groups_num = %d\n", led->id, led->pdata->led->led_groups_num);
 		} else if (led->pdata->led->led_groups_num == 4) {
-			aw210xx_i2c_write(led, AW210XX_REG_SL00 + led->id, led_brightness);
-			aw210xx_i2c_write(led, AW210XX_REG_SL03 + led->id, led_brightness);
-			aw210xx_i2c_write(led, AW210XX_REG_SL06 + led->id, led_brightness);
-			aw210xx_i2c_write(led, AW210XX_REG_SL09 + led->id, led_brightness);
+			for (i = 0; i < led->pdata->led->led_groups_num; i++) {
+				temp_brightness[i] = (led_brightness * led->pdata->led->led_current_numerator[i]) / led->pdata->led->led_current_denominator[i];
+				AW_LOG("id = %d led_brightness * (2/3) * %d/%d set reg led_brightness[%d] = %d\n", led->id, led->pdata->led->led_current_numerator[i],
+					led->pdata->led->led_current_denominator[i], i, temp_brightness[i]);
+			}
+			aw210xx_i2c_write(led, AW210XX_REG_SL00 + led->id, temp_brightness[0]);
+			aw210xx_i2c_write(led, AW210XX_REG_SL03 + led->id, temp_brightness[1]);
+			aw210xx_i2c_write(led, AW210XX_REG_SL06 + led->id, temp_brightness[2]);
+			aw210xx_i2c_write(led, AW210XX_REG_SL09 + led->id, temp_brightness[3]);
 			aw210xx_i2c_write(led, AW210XX_REG_GCFG, 0x4F);
 			AW_LOG("id = %d led_groups_num = %d\n", led->id, led->pdata->led->led_groups_num);
 		} else {
-			aw210xx_i2c_write(led, AW210XX_REG_SL00 + led->id, led_brightness);
-			aw210xx_i2c_write(led, AW210XX_REG_SL03 + led->id, led_brightness);
-			aw210xx_i2c_write(led, AW210XX_REG_SL06 + led->id, led_brightness);
-			aw210xx_i2c_write(led, AW210XX_REG_SL09 + led->id, led_brightness);
+			for (i = 0; i < led->pdata->led->led_groups_num; i++) {
+				temp_brightness[i] = (led_brightness * led->pdata->led->led_current_numerator[i]) / led->pdata->led->led_current_denominator[i];
+				AW_LOG("id = %d led_brightness * (2/3) * %d/%d set reg led_brightness[%d] = %d\n", led->id, led->pdata->led->led_current_numerator[i],
+					led->pdata->led->led_current_denominator[i], i, temp_brightness[i]);
+			}
+			aw210xx_i2c_write(led, AW210XX_REG_SL00 + led->id, temp_brightness[0]);
+			aw210xx_i2c_write(led, AW210XX_REG_SL03 + led->id, temp_brightness[1]);
+			aw210xx_i2c_write(led, AW210XX_REG_SL06 + led->id, temp_brightness[2]);
+			aw210xx_i2c_write(led, AW210XX_REG_SL09 + led->id, temp_brightness[3]);
 			aw210xx_i2c_write(led, AW210XX_REG_GCFG, 0x4F);
 			AW_LOG("id = %d led_groups_num = %d\n", led->id, led->pdata->led->led_groups_num);
 		}
@@ -622,7 +668,7 @@ static void aw210xx_brightness_work(struct work_struct *work)
 	struct aw210xx *aw210xx = container_of(work, struct aw210xx,
 			brightness_work);
 
-	AW_LOG("aw210xx_brightness_work enter\n");
+	AW_LOG("id = %d aw210xx_brightness_work enter\n", aw210xx->id);
 	aw210xx_brightness(aw210xx);
 }
 
@@ -736,7 +782,7 @@ static int aw210xx_read_chipid(struct aw210xx *aw210xx)
 
 static int aw210xx_led_init(struct aw210xx *aw210xx)
 {
-	AW_LOG("enter\n");
+	AW_LOG("id = %d enter\n", aw210xx->id);
 
 	aw210xx->sdmd_flag = 0;
 	aw210xx->rgbmd_flag = 0;
@@ -1043,12 +1089,12 @@ static ssize_t aw210xx_effect_show(struct device *dev,
 
 	for (i = 0; i < (sizeof(aw210xx_cfg_array) /
 			sizeof(aw210xx_cfg_t)); i++) {
-		len += snprintf(buf + len, PAGE_SIZE - len, "effect[%d]: %pf\n",
-				i, aw210xx_cfg_array[i].p);
+		len += snprintf(buf + len, PAGE_SIZE - len, "effect[%d]: %p\n",
+				i, (unsigned char *)aw210xx_cfg_array[i].p);
 	}
 
-	len += snprintf(buf + len, PAGE_SIZE - len, "current effect[%d]: %pf\n",
-			aw210xx->effect, aw210xx_cfg_array[aw210xx->effect].p);
+	len += snprintf(buf + len, PAGE_SIZE - len, "current effect[%d]: %p\n",
+			aw210xx->effect, (unsigned char *)aw210xx_cfg_array[aw210xx->effect].p);
 	return len;
 }
 
@@ -1213,7 +1259,7 @@ static ssize_t aw210xx_led_br_attr_store(struct device *dev,
 	led_order[1] = led->pdata->led->led_allocation_order[1];
 	led_order[2] = led->pdata->led->led_allocation_order[2];
 	led_order[3] = led->pdata->led->led_allocation_order[3];
-	AW_LOG("[%d]: led_order=%d,%d,%d,%d.\n",led->id ,data, led_order[0],
+	AW_LOG("[%d]: led_order=%d,%d,%d,%d.\n", led->id , led_order[0],
 			led_order[1], led_order[2], led_order[3]);
 
 	for (i = 0; i < 4; i++) {
@@ -1278,7 +1324,7 @@ static ssize_t aw210xx_led_color_attr_store(struct device *dev,
 	led_order[1] = led->pdata->led->led_allocation_order[1];
 	led_order[2] = led->pdata->led->led_allocation_order[2];
 	led_order[3] = led->pdata->led->led_allocation_order[3];
-	AW_LOG("[%d]: led_order=%d,%d,%d,%d.\n",led->id ,data, led_order[0],
+	AW_LOG("[%d]: led_order=%d,%d,%d,%d.\n", led->id, led_order[0],
 			led_order[1], led_order[2], led_order[3]);
 
 	for (i = 0; i < 4; i++) {
@@ -1960,7 +2006,10 @@ static int aw210xx_parse_dt(struct device *dev, struct aw210xx *aw210xx,
 		struct device_node *np)
 {
 	int ret = -EINVAL;
+	int i = 0;
 	int led_order[4];
+	int temp_denominator[4];
+	int temp_numerator[4];
 
 	aw210xx->enable_gpio = of_get_named_gpio(np, "enable-gpio", 0);
 	if (aw210xx->enable_gpio < 0) {
@@ -2025,6 +2074,32 @@ static int aw210xx_parse_dt(struct device *dev, struct aw210xx *aw210xx,
 	if (ret < 0) {
 		AW_ERR("global current resolution unsupported\n");
 		return ret;
+	}
+
+	ret = of_property_read_u32_array(np, "led_current_denominator", temp_denominator, aw210xx->led_groups_num);
+	if (ret) {
+		for (i = 0; i < aw210xx->led_groups_num; i++) {
+			aw210xx->led_current_denominator[i] = 1;
+			AW_ERR("default set reg led_current_denominator = %d\n", aw210xx->led_current_denominator[i]);
+		}
+	} else {
+		for (i = 0; i < aw210xx->led_groups_num; i++) {
+			aw210xx->led_current_denominator[i] = temp_denominator[i];
+			AW_ERR("set reg led_current_denominator = %d\n", aw210xx->led_current_denominator[i]);
+		}
+	}
+
+	ret = of_property_read_u32_array(np, "led_current_numerator", temp_numerator, aw210xx->led_groups_num);
+	if (ret) {
+		for (i = 0; i < aw210xx->led_groups_num; i++) {
+			aw210xx->led_current_numerator[i] = 1;
+			AW_ERR("default set reg led_current_numerator = %d\n", aw210xx->led_current_numerator[i]);
+		}
+	} else {
+		for (i = 0; i < aw210xx->led_groups_num; i++) {
+			aw210xx->led_current_numerator[i] = temp_numerator[i];
+			AW_ERR("set reg led_current_numerator = %d\n", aw210xx->led_current_numerator[i]);
+		}
 	}
 
 	return 0;

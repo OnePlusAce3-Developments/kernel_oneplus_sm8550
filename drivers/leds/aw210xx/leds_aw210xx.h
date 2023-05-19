@@ -386,6 +386,8 @@ struct aw210xx {
 	int num_leds;
 	int led_groups_num;
 	int led_allocation_order[4];
+	int led_current_denominator[4];
+	int led_current_numerator[4];
 	int id;
 	int color_ratio[2];
 	uint8_t sdmd_flag;
