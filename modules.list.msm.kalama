@@ -120,7 +120,7 @@ oplus_secure_common.ko
 oplus_bsp_sched_assist.ko
 oplus_bsp_eas_opt.ko
 oplus_bsp_frame_boost.ko
-cpu_jankinfo.ko
+oplus_schedinfo.ko
 cpufreq_bouncing.ko
 oplus_omrg.ko
 cpufreq_effiency.ko
