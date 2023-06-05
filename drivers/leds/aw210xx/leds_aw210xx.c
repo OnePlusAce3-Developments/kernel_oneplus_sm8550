@@ -406,6 +406,9 @@ static void aw210xx_brightness(struct aw210xx *led)
 		else
 			led->pdata->led->rgb_isnk_on &= ~B_ISNK_ON_MASK;
 		break;
+	default:
+		AW_LOG("no define id = %d brightness = %d\n", led->id, led->cdev.brightness);
+		return;
 	}
 	AW_LOG("rgb_isnk_on = 0x%x,led_enable = 0x%x\n\n", led->pdata->led->rgb_isnk_on,led->pdata->led->led_enable);
 	if (led->cdev.brightness > 0) {
@@ -1110,8 +1113,7 @@ static ssize_t aw210xx_effect_store(struct device *dev,
 	rc = kstrtouint(buf, 10, &val);
 	if (rc < 0)
 		return rc;
-	if ((val >= (sizeof(aw210xx_cfg_array) /
-			sizeof(aw210xx_cfg_t))) || (val < 0)) {
+	if (val >= (sizeof(aw210xx_cfg_array) / sizeof(aw210xx_cfg_t))) {
 		pr_err("%s, store effect num error.\n", __func__);
 		return -EINVAL;
 	}
