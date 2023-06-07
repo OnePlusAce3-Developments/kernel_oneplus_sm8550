@@ -144,7 +144,7 @@ struct oplus_gpio_info oplus_gpio_info_table[MAX_GPIOS] = {
 		.dev_node_desc = "esim-en",
 		.gpio = -1,
 		.gpio_mode = 1,
-		.gpio_status = 1,
+		.gpio_status = 0,
 		.devt = 0,
 		.is_proc = 0,
 	}
@@ -531,11 +531,9 @@ static void init_esim_status()
 	if (strstr("saved_command_line_sandro", "esim.status=1")) {
 		oplus_gpio_info_table[GPIO_TYPE_ESIM].gpio_status = 1;
 		oplus_gpio_info_table[GPIO_TYPE_ESIM_PRESENT].gpio_status = 0;
-		oplus_gpio_info_table[GPIO_TYPE_ESIM_EN].gpio_status = 0;
 	} else {
 		oplus_gpio_info_table[GPIO_TYPE_ESIM].gpio_status = 0;
 		oplus_gpio_info_table[GPIO_TYPE_ESIM_PRESENT].gpio_status = 1;
-		oplus_gpio_info_table[GPIO_TYPE_ESIM_EN].gpio_status = 1;
 	}
 	OPLUS_GPIO_MSG(" %d", oplus_gpio_info_table[GPIO_TYPE_ESIM].gpio_status);
 }
