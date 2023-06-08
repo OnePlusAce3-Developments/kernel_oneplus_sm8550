@@ -5431,7 +5431,7 @@ static void ufs_qcom_shutdown(struct platform_device *pdev)
 	 * reset, so deassert ufs device reset line after UFS device shutdown
 	 * to ensure the UFS_RESET TLMM register value is POR value
 	 */
-	ufs_qcom_device_reset_ctrl(hba, false);
+	//ufs_qcom_device_reset_ctrl(hba, false);
 }
 
 static int ufs_qcom_system_suspend(struct device *dev)
