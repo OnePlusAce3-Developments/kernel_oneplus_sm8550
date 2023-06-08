@@ -1495,6 +1495,10 @@ out:
 	ufs_qcom_log_str(host, "$,%d,%d,%d,%d,%d,%d\n",
 			pm_op, hba->rpm_lvl, hba->spm_lvl, hba->uic_link_state,
 			hba->curr_dev_pwr_mode, err);
+	/* WangRui@BSP.Kernel.Driver, turn off clkscale need  start cpu vote after ufs resume only for msm-5.15 kernel at perf purpose.begin */
+	queue_delayed_work(host->ufs_qos->workq, &host->fwork,
+	msecs_to_jiffies(UFS_QCOM_LOAD_MON_DLY_MS));
+	/* WangRui@BSP.Kernel.Driver, turn off clkscale need  start cpu vote after ufs resume only for msm-5.15 kernel at perf purpose.end */
 	return err;
 }
 
@@ -2213,10 +2217,10 @@ static void ufs_qcom_set_caps(struct ufs_hba *hba)
 	struct ufs_qcom_host *host = ufshcd_get_variant(hba);
 
 	hba->caps |= UFSHCD_CAP_CLK_GATING | UFSHCD_CAP_HIBERN8_WITH_CLK_GATING;
-	/* Haojun.Zhang@BSP.Kernel.Driver, UFS clkscaling hungtask problem workaround begin */
+	/* Haojun.Zhang@BSP.Kernel.Driver, UFS clkscaling hungtask problem workaround && turn off clkscale begin */
 	//hba->caps |= UFSHCD_CAP_CLK_SCALING | UFSHCD_CAP_WB_WITH_CLK_SCALING;
-	hba->caps |= UFSHCD_CAP_CLK_SCALING;
-	/* Haojun.Zhang@BSP.Kernel.Driver, UFS clkscaling hungtask problem workaround end */
+	//hba->caps |= UFSHCD_CAP_CLK_SCALING;
+	/* Haojun.Zhang@BSP.Kernel.Driver, UFS clkscaling hungtask problem workaround && turn off clkscale end */
 	hba->caps |= UFSHCD_CAP_AUTO_BKOPS_SUSPEND;
 	hba->caps |= UFSHCD_CAP_WB_EN;
 	hba->caps |= UFSHCD_CAP_CRYPTO;
