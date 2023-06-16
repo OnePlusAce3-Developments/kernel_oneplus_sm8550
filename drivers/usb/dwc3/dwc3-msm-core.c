@@ -601,28 +601,6 @@ struct dwc3_msm {
 /* unfortunately, dwc3 core doesn't manage multiple dwc3 instances for trace */
 void *dwc_trace_ipc_log_ctxt;
 
-#ifdef OPLUS_FEATURE_CHG_BASIC
-static bool (*oplus_ignore_none_role)(void);
-void oplus_dwc3_config_ssr_pfunc(bool (*pfunc)(void))
-{
-	oplus_ignore_none_role = pfunc;
-}
-EXPORT_SYMBOL(oplus_dwc3_config_ssr_pfunc);
-
-static bool oplus_dwc3_get_ssr_status(void)
-{
-	bool ret = false;
-
-	if (oplus_ignore_none_role == NULL) {
-		ret = false;
-	} else {
-		ret = oplus_ignore_none_role();
-	}
-
-	return ret;
-}
-#endif
-
 static void dwc3_pwr_event_handler(struct dwc3_msm *mdwc);
 
 static inline void dwc3_msm_ep_writel(void __iomem *base, u32 offset, u32 value)
@@ -4811,12 +4789,6 @@ static int dwc3_msm_set_role(struct dwc3_msm *mdwc, enum usb_role role)
 	dev_err(mdwc->dev,
 		"%s: cur_role:%s new_role:%s\n",
 		__func__,usb_role_string(cur_role),usb_role_string(role));
-
-	if (oplus_dwc3_get_ssr_status() == true && role == USB_ROLE_NONE) {
-		pr_err("%s !!!ignore none if ssr crash\n");
-		mutex_unlock(&mdwc->role_switch_mutex);
-		return 0;
-	}
 #endif
 
 	/*
