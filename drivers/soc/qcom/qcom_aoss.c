@@ -636,7 +636,7 @@ static ssize_t aoss_proc_write(struct file *file, const char __user *userstr,
 
        struct qmp *qmp  = (struct qmp *)PDE_DATA(file_inode(file));
 
-       char buf[QMP_MSG_LEN] = {};
+       char buf[QMP_MSG_LEN] = {0};
        int ret;
 
        if (!len || len >= QMP_MSG_LEN)
