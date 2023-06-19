@@ -4,7 +4,7 @@
 #define AW210XX_I2C_NAME "aw210xx_led"
 
 #define LED_MAX_NUM							(7)
-#define AW_DEBUG 							(1)
+#define AW_DEBUG 							(0)
 
 #if AW_DEBUG
 #define AW_LOG(fmt, args...)	pr_info("[%s] %s %d: " fmt, AW210XX_I2C_NAME, \
