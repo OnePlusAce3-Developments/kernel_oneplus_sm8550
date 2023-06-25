@@ -444,6 +444,7 @@
   __traceiter_android_vh_tune_scan_type
   __traceiter_android_vh_tune_swappiness
   __traceiter_android_vh_update_page_mapcount
+  __traceiter_mm_vmscan_direct_reclaim_begin
   __traceiter_sched_stat_blocked
   __traceiter_sched_stat_iowait
   __traceiter_sched_stat_runtime
@@ -535,6 +536,7 @@
   __tracepoint_android_vh_tune_scan_type
   __tracepoint_android_vh_tune_swappiness
   __tracepoint_android_vh_update_page_mapcount
+  __tracepoint_mm_vmscan_direct_reclaim_begin
   __tracepoint_net_dev_queue
   __tracepoint_net_dev_xmit
   __tracepoint_netif_receive_skb
