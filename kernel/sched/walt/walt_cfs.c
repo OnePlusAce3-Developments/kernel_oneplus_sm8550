@@ -229,10 +229,16 @@ static void walt_get_indicies(struct task_struct *p, int *order_index,
 	for (i = *order_index ; i < num_sched_clusters - 1; i++) {
 		if (task_demand_fits(p, cpumask_first(&cpu_array[i][0])))
 #if IS_ENABLED(CONFIG_OPLUS_FEATURE_FAKE_CAP)
+		{
 			if (adjust_group_task(p, cpumask_first(&cpu_array[i][0])))
 				continue;
-#endif
+			else
+				break;
+		}
+#else
 			break;
+#endif
+
 	}
 
 	*order_index = i;
