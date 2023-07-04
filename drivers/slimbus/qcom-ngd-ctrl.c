@@ -2125,15 +2125,22 @@ static int qcom_slim_ngd_ctrl_probe(struct platform_device *pdev)
 
 	ctrl->pdr = pdr_handle_alloc(slim_pd_status, ctrl);
 	if (IS_ERR(ctrl->pdr)) {
+<<<<<<< HEAD
 		ret = PTR_ERR(ctrl->pdr);
 		dev_err(dev, "Failed to init PDR handle: %d\n", ret);
 		goto err_out;
+=======
+		dev_err(dev, "Failed to init PDR handle\n");
+		ret = PTR_ERR(ctrl->pdr);
+		goto err_pdr_alloc;
+>>>>>>> origin/android13-5.15-2023-04_r5_tmp_2023-07-04-17-37
 	}
 
 	pds = pdr_add_lookup(ctrl->pdr, "avs/audio", "msm/adsp/audio_pd");
 	if (IS_ERR(pds) && PTR_ERR(pds) != -EALREADY) {
 		ret = PTR_ERR(pds);
 		dev_err(dev, "pdr add lookup failed: %d\n", ret);
+<<<<<<< HEAD
 		goto pdr_release;
 	}
 
@@ -2159,6 +2166,19 @@ remove_ipc_sysfs:
 	if (ctrl->sysfs_created)
 		sysfs_remove_file(&pdev->dev.kobj,
 				  &dev_attr_debug_mask.attr);
+=======
+		goto err_pdr_lookup;
+	}
+
+	platform_driver_register(&qcom_slim_ngd_driver);
+	return of_qcom_slim_ngd_register(dev, ctrl);
+
+err_pdr_alloc:
+	qcom_unregister_ssr_notifier(ctrl->notifier, &ctrl->nb);
+
+err_pdr_lookup:
+	pdr_handle_release(ctrl->pdr);
+>>>>>>> origin/android13-5.15-2023-04_r5_tmp_2023-07-04-17-37
 
 	return ret;
 }

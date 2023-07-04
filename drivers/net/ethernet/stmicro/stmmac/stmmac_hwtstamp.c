@@ -53,10 +53,15 @@ static void config_sub_second_increment(void __iomem *ioaddr,
 	if (!(value & PTP_TCR_TSCTRLSSR))
 		ss_inc = div_u64((ss_inc * 1000), 465);
 
+<<<<<<< HEAD
 	ss_inc &= PTP_SSIR_SSINC_MASK;
 	sns_inc &= PTP_SSIR_SNSINC_MASK;
 
 	reg_value = ss_inc;
+=======
+	if (data > PTP_SSIR_SSINC_MAX)
+		data = PTP_SSIR_SSINC_MAX;
+>>>>>>> origin/android13-5.15-2023-04_r5_tmp_2023-07-04-17-37
 
 	if (gmac4)
 		reg_value <<= GMAC4_PTP_SSIR_SSINC_SHIFT;
