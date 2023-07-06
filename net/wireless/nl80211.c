@@ -19807,13 +19807,10 @@ int cfg80211_external_auth_request(struct net_device *dev,
 	    nla_put(msg, NL80211_ATTR_BSSID, ETH_ALEN, params->bssid) ||
 	    nla_put(msg, NL80211_ATTR_SSID, params->ssid.ssid_len,
 		    params->ssid.ssid) ||
-<<<<<<< HEAD
 	    (!is_zero_ether_addr(params->tx_addr) &&
-	     nla_put(msg, NL80211_ATTR_MAC, ETH_ALEN, params->tx_addr)))
-=======
+	     nla_put(msg, NL80211_ATTR_MAC, ETH_ALEN, params->tx_addr)) ||
 	    (!is_zero_ether_addr(params->mld_addr) &&
 	     nla_put(msg, NL80211_ATTR_MLD_ADDR, ETH_ALEN, params->mld_addr)))
->>>>>>> origin/android13-5.15-2023-04_r5_tmp_2023-07-04-17-37
 		goto nla_put_failure;
 
 	genlmsg_end(msg, hdr);
