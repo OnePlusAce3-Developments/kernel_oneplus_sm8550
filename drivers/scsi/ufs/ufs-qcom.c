@@ -5491,12 +5491,6 @@ MODULE_DEVICE_TABLE(acpi, ufs_qcom_acpi_match);
 #endif
 
 static const struct dev_pm_ops ufs_qcom_pm_ops = {
-<<<<<<< HEAD
-	SET_SYSTEM_SLEEP_PM_OPS(ufs_qcom_system_suspend, ufs_qcom_system_resume)
-	SET_RUNTIME_PM_OPS(ufshcd_runtime_suspend, ufshcd_runtime_resume, NULL)
-	.prepare	 = ufs_qcom_suspend_prepare,
-	.complete	 = ufs_qcom_resume_complete,
-=======
 	SET_RUNTIME_PM_OPS(ufshcd_runtime_suspend, ufshcd_runtime_resume, NULL)
 	.prepare	 = ufshcd_suspend_prepare,
 	.complete	 = ufshcd_resume_complete,
@@ -5507,7 +5501,6 @@ static const struct dev_pm_ops ufs_qcom_pm_ops = {
 	.restore         = ufshcd_system_restore,
 	.thaw            = ufshcd_system_thaw,
 #endif
->>>>>>> origin/android13-5.15-2023-04_r5_tmp_2023-07-04-17-37
 };
 
 static struct platform_driver ufs_qcom_pltform = {
