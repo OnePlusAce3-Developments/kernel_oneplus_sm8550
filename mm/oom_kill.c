@@ -1277,10 +1277,7 @@ void add_to_oom_reaper(struct task_struct *p)
 	p = find_lock_task_mm(p);
 	if (!p)
 		return;
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/android13-5.15-2023-04_r5_tmp_2023-07-04-17-37
 	if (task_will_free_mem(p)) {
 		__mark_oom_victim(p);
 		if (!test_and_set_bit(MMF_OOM_REAP_QUEUED,
