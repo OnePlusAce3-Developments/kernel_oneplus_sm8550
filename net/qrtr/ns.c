@@ -93,14 +93,7 @@ static struct qrtr_node *node_get(unsigned int node_id)
 	node->id = node_id;
 	xa_init(&node->servers);
 
-<<<<<<< HEAD
 	xa_store(&nodes, node_id, node, GFP_ATOMIC);
-=======
-	if (radix_tree_insert(&nodes, node_id, node)) {
-		kfree(node);
-		return NULL;
-	}
->>>>>>> origin/android13-5.15-2023-04_r5_tmp_2023-07-04-17-37
 
 	return node;
 }
