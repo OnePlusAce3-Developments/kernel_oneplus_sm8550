@@ -379,11 +379,7 @@
       <elf-symbol name='__traceiter_android_rvh_dequeue_task' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0x42677054'/>
       <elf-symbol name='__traceiter_android_rvh_dequeue_task_fair' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0x1482f614'/>
       <elf-symbol name='__traceiter_android_rvh_die_kernel_fault' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0xdd3bdf09'/>
-<<<<<<< HEAD
-	  <elf-symbol name='__traceiter_android_rvh_dma_buf_stats_teardown' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0xa268c602'/>
-=======
       <elf-symbol name='__traceiter_android_rvh_dma_buf_stats_teardown' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0xa268c602'/>
->>>>>>> origin/android13-5.15-2023-04_r5_tmp_2023-07-04-17-37
       <elf-symbol name='__traceiter_android_rvh_do_mem_abort' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0x36188649'/>
       <elf-symbol name='__traceiter_android_rvh_do_ptrauth_fault' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0x64d39689'/>
       <elf-symbol name='__traceiter_android_rvh_do_sched_yield' type='func-type' binding='global-binding' visibility='default-visibility' is-defined='yes' crc='0xe0fb88e'/>

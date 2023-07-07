@@ -830,10 +830,7 @@
   get_unused_fd_flags
   get_user_ifreq
   get_zeroed_page
-<<<<<<< HEAD
-=======
   gf128mul_lle
->>>>>>> origin/android13-5.15-2023-04_r5_tmp_2023-07-04-17-37
   gic_cpu_init
   gic_dist_init
   gic_dist_wait_for_rwp
