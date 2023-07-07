@@ -108,15 +108,6 @@ static int cti_enable_hw(struct cti_drvdata *drvdata)
 	unsigned long flags;
 	int rc = 0;
 
-<<<<<<< HEAD
-	rc = pm_runtime_get_sync(dev->parent);
-	if (rc < 0) {
-		pm_runtime_put_noidle(dev->parent);
-		return rc;
-	}
-
-=======
->>>>>>> origin/android13-5.15-2023-04_r5_tmp_2023-07-04-17-37
 	spin_lock_irqsave(&drvdata->spinlock, flags);
 
 	/* no need to do anything if enabled or unpowered*/

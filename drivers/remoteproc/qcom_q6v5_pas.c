@@ -1407,10 +1407,7 @@ static int adsp_remove(struct platform_device *pdev)
 	qcom_remove_sysmon_subdev(adsp->sysmon);
 	qcom_remove_smd_subdev(adsp->rproc, &adsp->smd_subdev);
 	qcom_remove_ssr_subdev(adsp->rproc, &adsp->ssr_subdev);
-<<<<<<< HEAD
-=======
 	adsp_pds_detach(adsp, adsp->proxy_pds, adsp->proxy_pd_count);
->>>>>>> origin/android13-5.15-2023-04_r5_tmp_2023-07-04-17-37
 	device_init_wakeup(adsp->dev, false);
 	rproc_free(adsp->rproc);
 
