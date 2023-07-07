@@ -6375,15 +6375,13 @@ enum nl80211_feature_flags {
  *	might apply, e.g. no scans in progress, no offchannel operations
  *	in progress, and no active connections.
  *
-<<<<<<< HEAD
  * @NL80211_EXT_FEATURE_AUTH_TX_RANDOM_TA: Device supports randomized TA
  *	for authentication frames in @NL80211_CMD_FRAME.
-=======
+ *
  * @NL80211_EXT_FEATURE_PUNCT: Driver supports preamble puncturing in AP mode.
  *
  * @NL80211_EXT_FEATURE_SECURE_NAN: Device supports NAN Pairing which enables
  *	authentication, data encryption and message integrity.
->>>>>>> origin/android13-5.15-2023-04_r5_tmp_2023-07-04-17-37
  *
  * @NUM_NL80211_EXT_FEATURES: number of extended features.
  * @MAX_NL80211_EXT_FEATURES: highest extended feature index.
@@ -6453,14 +6451,9 @@ enum nl80211_ext_feature_index {
 	NL80211_EXT_FEATURE_FILS_CRYPTO_OFFLOAD,
 	NL80211_EXT_FEATURE_RADAR_BACKGROUND,
 	NL80211_EXT_FEATURE_POWERED_ADDR_CHANGE,
-<<<<<<< HEAD
 	NL80211_EXT_FEATURE_AUTH_TX_RANDOM_TA,
-	NL80211_EXT_FEATURE_RESERVED_DO_NOT_USE_3 = 64,
-=======
 	NL80211_EXT_FEATURE_PUNCT,
 	NL80211_EXT_FEATURE_SECURE_NAN,
->>>>>>> origin/android13-5.15-2023-04_r5_tmp_2023-07-04-17-37
-	NL80211_EXT_FEATURE_RESERVED_DO_NOT_USE_4 = 65,
 	NL80211_EXT_FEATURE_RESERVED_DO_NOT_USE_5 = 66,
 	NL80211_EXT_FEATURE_RESERVED_DO_NOT_USE_6 = 67,
 	NL80211_EXT_FEATURE_RESERVED_DO_NOT_USE_7 = 68,
