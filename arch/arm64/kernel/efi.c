@@ -145,11 +145,7 @@ asmlinkage efi_status_t efi_handle_corrupted_x18(efi_status_t s, const char *f)
 	return s;
 }
 
-<<<<<<< HEAD
-DEFINE_SPINLOCK(efi_rt_lock);
-=======
 DEFINE_RAW_SPINLOCK(efi_rt_lock);
->>>>>>> origin/android13-5.15-2023-04_r5_tmp_2023-07-04-17-37
 
 asmlinkage u64 *efi_rt_stack_top __ro_after_init;
 
