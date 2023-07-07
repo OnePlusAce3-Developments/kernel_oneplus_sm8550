@@ -420,16 +420,12 @@ EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_encrypt_page);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_init_aes_encrypt);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_skip_swap_map_write);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_post_image_save);
-<<<<<<< HEAD
-
-=======
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_dm_update_clone_bio);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_rvh_ctl_dirty_rate);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_direct_io_update_bio);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_loop_prepare_cmd);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_psi_event);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_psi_group);
->>>>>>> origin/android13-5.15-2023-04_r5_tmp_2023-07-04-17-37
 /*
  * For type visibility
  */
