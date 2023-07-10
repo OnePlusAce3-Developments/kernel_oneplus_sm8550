@@ -1298,10 +1298,6 @@
   mmc_execute_tuning
   mmc_get_card
   mmc_get_ext_csd
-<<<<<<< HEAD
-  mmc_get_card
-=======
->>>>>>> origin/android13-5.15-2023-04_r5_tmp_2023-07-04-17-37
   mmc_hs200_tuning
   mmc_issue_type
   mmc_of_parse
@@ -1315,10 +1311,6 @@
   mmc_retune_release
   mmc_select_bus_width
   mmc_select_card
-<<<<<<< HEAD
-  mmc_select_bus_width
-=======
->>>>>>> origin/android13-5.15-2023-04_r5_tmp_2023-07-04-17-37
   mmc_select_hs
   mmc_select_hs400
   mmc_select_hs_ddr
