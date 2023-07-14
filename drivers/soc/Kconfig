@@ -107,8 +107,3 @@ source "kernel/oplus_cpu/oplus_overload/Kconfig"
 #Colin.Liu@POWER, 2023/03/09, add for freezing tasks failed logging on
 source "drivers/soc/oplus/power/freeze_debug/Kconfig"
 #endif /* OPLUS_FREEZE_DEBUG */
-
-#ifdef OPLUS_SUBSYS_SLEEP_MONITOR
-#Colin.Liu@POWER, 2023/04/12, add for qualcomm subsystem sleep monitor
-source "drivers/soc/oplus/power/subsys_sleep_monitor/Kconfig"
-#endif /* OPLUS_SUBSYS_SLEEP_MONITOR */
