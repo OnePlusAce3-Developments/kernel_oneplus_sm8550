@@ -304,8 +304,12 @@ int anon_vma_clone(struct vm_area_struct *dst, struct vm_area_struct *src)
 		 * it has self-parent reference and at least one child.
 		 */
 		if (!dst->anon_vma && src->anon_vma &&
+<<<<<<< HEAD
 		    anon_vma->num_children < 2 &&
 		    anon_vma->num_active_vmas == 0)
+=======
+		    anon_vma->num_children < 2 && anon_vma->num_active_vmas == 0)
+>>>>>>> origin/qcom/kernel.platform.2.0.r1/master
 			dst->anon_vma = anon_vma;
 	}
 	if (dst->anon_vma)
