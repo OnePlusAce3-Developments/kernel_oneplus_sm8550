@@ -42,7 +42,6 @@ struct anon_vma {
 	 */
 	atomic_t refcount;
 
-
 	unsigned degree;		/* ANDROID: KABI preservation, DO NOT USE! */
 
 	struct anon_vma *parent;	/* Parent of this anon_vma */
