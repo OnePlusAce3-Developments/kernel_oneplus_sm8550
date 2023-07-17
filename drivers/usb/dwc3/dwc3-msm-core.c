@@ -598,6 +598,15 @@ struct dwc3_msm {
 #define USB_SSPHY_1P8_VOL_MAX		1800000 /* uV */
 #define USB_SSPHY_1P8_HPM_LOAD		23000	/* uA */
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+static bool (*oplus_ignore_usb_notify)(void);
+void oplus_dwc3_config_usbphy_pfunc(bool (*pfunc)(void))
+{
+	oplus_ignore_usb_notify = pfunc;
+}
+EXPORT_SYMBOL(oplus_dwc3_config_usbphy_pfunc);
+#endif
+
 /* unfortunately, dwc3 core doesn't manage multiple dwc3 instances for trace */
 void *dwc_trace_ipc_log_ctxt;
 

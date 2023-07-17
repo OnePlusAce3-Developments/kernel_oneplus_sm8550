@@ -1173,6 +1173,20 @@ geni_i2c_gsi_xfer_out:
 
 static int (*poplus_vooc_get_fastchg_started)(void);
 static int (*poplus_vooc_get_fastchg_ing)(void);
+static int fg_device_type = 0;
+int oplus_get_fg_device_type(void)
+{
+	return fg_device_type;
+}
+EXPORT_SYMBOL(oplus_get_fg_device_type);
+
+void oplus_set_fg_device_type(int device_type)
+{
+	pr_err("oplus_set_fg_device_type fg_device_type[%d]\n", device_type);
+	fg_device_type = device_type;
+	return;
+}
+EXPORT_SYMBOL(oplus_set_fg_device_type);
 
 void oplus_vooc_get_fastchg_started_pfunc(int (*pfunc)(void))
 {
