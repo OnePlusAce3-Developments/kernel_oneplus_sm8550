@@ -202,7 +202,8 @@ static unsigned int aggr_top_load;
 static unsigned int top_load[CLUSTER_MAX];
 static unsigned int curr_cap[CLUSTER_MAX];
 static atomic_t game_status_pid;
-static bool ready_for_freq_updates;
+static atomic_t ready_for_freq_updates = ATOMIC_INIT(0);
+
 
 static int freq_qos_request_init(void)
 {
@@ -274,15 +275,15 @@ static ssize_t set_cpu_min_freq(struct kobject *kobj,
 	struct cpufreq_policy policy;
 	struct freq_qos_request *req;
 	int ret = 0;
+	int old = 0;
 
-	if (!ready_for_freq_updates) {
+	if (atomic_try_cmpxchg_acquire(&ready_for_freq_updates, &old, 1)) {
 		ret = freq_qos_request_init();
 		if (ret) {
 			pr_err("%s: Failed to init qos requests policy for ret=%d\n",
 				__func__, ret);
 			return ret;
 		}
-		ready_for_freq_updates = true;
 	}
 
 	while ((cp = strpbrk(cp + 1, " :")))
@@ -363,15 +364,15 @@ static ssize_t set_cpu_max_freq(struct kobject *kobj,
 	struct cpufreq_policy policy;
 	struct freq_qos_request *req;
 	int ret = 0;
+	int old = 0;
 
-	if (!ready_for_freq_updates) {
+	if (atomic_try_cmpxchg_acquire(&ready_for_freq_updates, &old, 1)) {
 		ret = freq_qos_request_init();
 		if (ret) {
 			pr_err("%s: Failed to init qos requests policy for ret=%d\n",
 				__func__, ret);
 			return ret;
 		}
-		ready_for_freq_updates = true;
 	}
 
 	while ((cp = strpbrk(cp + 1, " :")))
