@@ -58,6 +58,7 @@ static int aw210xx_chipen_set(struct aw210xx *aw210xx, bool flag);
 #define R_ISNK_ON_MASK					0x04
 #define G_ISNK_ON_MASK					0x02
 #define B_ISNK_ON_MASK					0x01
+#define RGB_IS_OK_MASK					0x07
 
 #define LED_SUPPORT_TYPE					"support"
 // #define BLINK_USE_AW210XX
@@ -373,6 +374,26 @@ void aw210xx_current_set(struct aw210xx *aw210xx)
 	aw210xx_i2c_write(aw210xx, AW210XX_REG_GCCR, aw210xx->set_current);
 }
 
+void aw210xx_breath_set(struct aw210xx *led)
+{
+	switch(led->id) {
+	case AW210xx_LED_RED:
+		led->pdata->led->rgb_is_ok |= R_ISNK_ON_MASK;
+		break;
+	case AW210xx_LED_GREEN:
+		led->pdata->led->rgb_is_ok |= G_ISNK_ON_MASK;
+		break;
+	case AW210xx_LED_BLUE:
+		led->pdata->led->rgb_is_ok |= B_ISNK_ON_MASK;
+		break;
+	}
+	AW_LOG("id = %d led_mode = %d rgb_is_ok = [%d]\n", led->id, led->pdata->led_mode, led->pdata->led->rgb_is_ok);
+	if (led->pdata->led->rgb_is_ok == RGB_IS_OK_MASK) {
+		aw210xx_i2c_write(led, AW210XX_REG_ABMGO, 0x00);
+		aw210xx_i2c_write(led, AW210XX_REG_ABMGO, 0x01);
+		led->pdata->led->rgb_is_ok = 0;
+	}
+}
 static void aw210xx_brightness(struct aw210xx *led)
 {
 	int i = 0;
@@ -384,6 +405,17 @@ static void aw210xx_brightness(struct aw210xx *led)
 		AW_LOG("id = %d ,return\n", led->id);
 		return ;
 	}
+
+	if (led->pdata->led->bus_ready == false) {
+		wait_event_interruptible_timeout(led->pdata->led->wait,
+						 led->pdata->led->bus_ready,
+						 msecs_to_jiffies(led->pdata->led->dev_resume_time));
+	}
+	if (led->pdata->led->bus_ready == false) {
+		AW_ERR("The device not resume %d ms!", led->pdata->led->dev_resume_time);
+		return;
+	}
+
 	switch(led->id) {
 	case AW210xx_LED_RED:
 		ledbri[0] = led->cdev.brightness;
@@ -414,7 +446,7 @@ static void aw210xx_brightness(struct aw210xx *led)
 	if (led->cdev.brightness > 0) {
 		if (!led->pdata->led->led_enable && led->pdata->led->rgb_isnk_on) {
 			aw210xx_i2c_write(led, AW210XX_REG_RESET, 0x00);
-			usleep_range(2000, 2200);
+			usleep_range(2100, 2300);
 			if (aw210xx_led_init(led->pdata->led)) {
 				AW_LOG("id = %d aw210xx active failed", led->id);
 			}
@@ -628,11 +660,7 @@ static void aw210xx_brightness(struct aw210xx *led)
 		aw210xx_i2c_write(led, AW210XX_REG_GBRH, 0xff);
 		aw210xx_i2c_write(led, AW210XX_REG_GBRL, 0x00);
 		aw210xx_i2c_write(led, AW210XX_REG_ABMCFG, 0x03);
-
-		for (i = 0; i < max_led; i++)
-			cancel_delayed_work(&(&aw210xx_glo[i])->breath_work);
-
-		schedule_delayed_work(&led->breath_work, msecs_to_jiffies(AW_START_TO_BREATH));
+		aw210xx_breath_set(led);
 	}
 
 	/*aw210xx led blink time*/
@@ -645,11 +673,7 @@ static void aw210xx_brightness(struct aw210xx *led)
 			aw210xx_i2c_write(led, AW210XX_REG_GBRL, 0x00);
 
 			aw210xx_i2c_write(led, AW210XX_REG_ABMCFG, 0x03);
-
-			for (i = 0; i < max_led; i++)
-				cancel_delayed_work(&(&aw210xx_glo[i])->breath_work);
-
-			schedule_delayed_work(&led->breath_work, msecs_to_jiffies(AW_START_TO_BREATH));
+			aw210xx_breath_set(led);
 		#else
 			aw210xx_i2c_write(led, AW210XX_REG_GBRH, 0x00);
 			aw210xx_i2c_write(led, AW210XX_REG_GBRL, 0xff);
@@ -2094,6 +2118,12 @@ static int aw210xx_parse_dt(struct device *dev, struct aw210xx *aw210xx,
 		}
 	}
 
+	ret = of_property_read_u32(np, "dev_resume_time", &aw210xx->dev_resume_time);
+	if (ret) {
+		AW_ERR("default set dev_resume_time 200ms\n");
+		aw210xx->dev_resume_time = 200;
+	}
+
 	return 0;
 }
 
@@ -2131,6 +2161,8 @@ static int aw210xx_i2c_probe(struct i2c_client *i2c,
 	aw210xx->num_leds = num_leds;
 	i2c_set_clientdata(i2c, aw210xx);
 	aw210xx->rgb_isnk_on = 0;
+	aw210xx->bus_ready = true;
+	init_waitqueue_head(&aw210xx->wait);
 
 	/* aw210xx parse device tree */
 	if (np) {
@@ -2232,6 +2264,33 @@ static int aw210xx_i2c_remove(struct i2c_client *i2c)
 	return 0;
 }
 
+static int aw210xx_i2c_suspend(struct device *dev)
+{
+	struct aw210xx *aw210xx = dev_get_drvdata(dev);
+
+	AW_LOG("is called\n");
+	aw210xx->bus_ready = false;
+	return 0;
+}
+
+static int aw210xx_i2c_resume(struct device *dev)
+{
+	struct aw210xx *aw210xx = dev_get_drvdata(dev);
+
+	AW_LOG("is called\n");
+	aw210xx->bus_ready = true;
+	if (aw210xx->led_enable) {
+		AW_LOG("wake_up_interruptible is call\n");
+		wake_up_interruptible(&aw210xx->wait);
+	}
+	return 0;
+}
+
+static const struct dev_pm_ops aw210xx_pm_ops = {
+	.suspend = aw210xx_i2c_suspend,
+	.resume = aw210xx_i2c_resume,
+};
+
 static const struct i2c_device_id aw210xx_i2c_id[] = {
 	{AW210XX_I2C_NAME, 0},
 	{}
@@ -2249,6 +2308,7 @@ static struct i2c_driver aw210xx_i2c_driver = {
 		.name = AW210XX_I2C_NAME,
 		.owner = THIS_MODULE,
 		.of_match_table = of_match_ptr(aw210xx_dt_match),
+		.pm = &aw210xx_pm_ops,
 		},
 	.probe = aw210xx_i2c_probe,
 	.remove = aw210xx_i2c_remove,
