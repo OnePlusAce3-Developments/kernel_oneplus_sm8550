@@ -315,6 +315,27 @@ void truncate_inode_pages_range(struct address_space *mapping,
 	else
 		end = (lend + 1) >> PAGE_SHIFT;
 
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+	/*
+	 * In rare cases, while removing inode of a file which can be hugepage, we should
+	 * wait for the completion of building thp from intermediate basepages
+	 */
+	if (mapping->host && mapping->host->may_cont_pte) {
+		pgoff_t s = ALIGN_DOWN(start, HPAGE_CONT_PTE_NR);
+		pgoff_t e = ALIGN_DOWN(min_t(pgoff_t, end, mapping->host->i_size / PAGE_SIZE), HPAGE_CONT_PTE_NR);
+		pgoff_t n;
+
+		for (n = s; n <= e; n += HPAGE_CONT_PTE_NR) {
+			struct page *page = find_get_entry_may_cont_pte(mapping, n);
+
+			if (page && !xa_is_value(page)) {
+				BUG_ON(PageCont(page) && !PageTransHuge(page));
+				put_page(page);
+			}
+		}
+	}
+#endif
+
 	pagevec_init(&pvec);
 	index = start;
 	while (index < end && find_lock_entries(mapping, index, end - 1,
@@ -491,6 +512,29 @@ static unsigned long __invalidate_mapping_pages(struct address_space *mapping,
 			}
 			index += thp_nr_pages(page) - 1;
 
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+			if (PageCont(page) && !PageTransCompound(page)) {
+				/*
+				 * rarely while we shrink slab by prune_icache_sb(), pagecaches of this inode
+				 * might be still forming ContPte thp. It's super hard to reproduce, thus, we
+				 * simply poll till thp is formed.
+				 */
+				unsigned long timeout = jiffies + msecs_to_jiffies(5000);
+				do {
+					if (PageCont(page) && !PageTransCompound(page)) {
+						cpu_relax();
+					} else {
+						pr_info("@@@%s formed ContPte thp, page: %pK\n", __func__, page);
+						break;
+					}
+				} while (time_before(jiffies, timeout));
+				/* this is very unlikely */
+				if (PageCont(page) && !PageTransCompound(page)) {
+					dump_page(page, "failed to become thp");
+					BUG_ON(1);
+				}
+			}
+#endif
 			ret = invalidate_inode_page(page);
 			unlock_page(page);
 			/*

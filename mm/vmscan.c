@@ -1262,6 +1262,10 @@ static enum page_references page_check_references(struct page *page,
 	bool trylock_fail = false;
 
 	trace_android_vh_page_should_be_protected(page, &should_protect);
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+	if (ContPteHugePageSkipMassiveMapped(page))
+		should_protect = 1;
+#endif
 	if (unlikely(should_protect))
 		return PAGEREF_ACTIVATE;
 
@@ -1299,6 +1303,19 @@ static enum page_references page_check_references(struct page *page,
 		 * quickly recovered.
 		 */
 		SetPageReferenced(page);
+
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+		/*
+		 * Ideally, we should have a separate LRU for 4-order cont_pte hugepages.
+		 * once the number of hugepages approach some watermarks, we reclaim them
+		 * so that the coming app can get hugepages.
+		 * Here we try to suppress hugepages in the single LRU shared by 0-order
+		 * and 4-order memory
+		 */
+		if (ContPteHugePageHead(page) && (global_node_page_state(NR_FILE_THPS) * HPAGE_CONT_PTE_SIZE >=
+						  2 * cont_pte_cma_size / 3))
+			return PAGEREF_KEEP;
+#endif
 
 		if (referenced_page || referenced_ptes > 1)
 			return PAGEREF_ACTIVATE;
@@ -1433,6 +1450,19 @@ retry:
 
 		if (!trylock_page(page))
 			goto keep;
+
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+		BUG_ON(PageCont(page) && !ContPteHugePageHead(page));
+
+		/*
+		 * because we don't split file-thp during reclamation, we have to
+		 * keep double mapped pages but they are quite few
+		 */
+		if (ContPteHugePageHead(page) && ContPteHugePageDoubleMap(page)) {
+			pr_debug("Shrink_page:Skip doublemap pages in memory reclamation- page:%p\n", page);
+			goto keep_locked;
+		}
+#endif
 
 		VM_BUG_ON_PAGE(PageActive(page), page);
 
@@ -1628,8 +1658,12 @@ retry:
 				mapping = page_mapping(page);
 			}
 		} else if (unlikely(PageTransHuge(page))) {
-			/* Split file THP */
+			/* Split file THP, for cont-pte pages, we reclaim them as a whole */
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+			if (!ContPteHugePageHead(page) && split_huge_page_to_list(page, page_list))
+#else
 			if (split_huge_page_to_list(page, page_list))
+#endif
 				goto keep_locked;
 		}
 
@@ -1802,6 +1836,10 @@ free_it:
 		 */
 		nr_reclaimed += nr_pages;
 
+		/* For debugging, detect the subpages' reclamation */
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+		WARN_ON(PageCont(page) && !PageHead(page));
+#endif
 		/*
 		 * Is there need to periodically free_page_list? It would
 		 * appear not as the counts should be low
@@ -2400,6 +2438,15 @@ static void shrink_active_list(unsigned long nr_to_scan,
 		}
 
 		trace_android_vh_page_referenced_check_bypass(page, nr_to_scan, lru, &bypass);
+
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+		if (ContPteHugePageSkipMassiveMapped(page))
+			bypass = 1;
+
+		/* DoubleMap page don't make page_referenced */
+		if (ContPteHugePageHead(page) && PageDoubleMap(page))
+			bypass = 1;
+#endif
 		if (bypass)
 			goto skip_page_referenced;
 		trace_android_vh_page_trylock_set(page);

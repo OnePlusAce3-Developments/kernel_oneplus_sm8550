@@ -728,9 +728,25 @@ static inline void free_the_page(struct page *page, unsigned int order)
  * This usage means that zero-order pages may not be compound.
  */
 
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+extern bool cma_release(struct cma *cma, const struct page *pages, unsigned int count);
+#endif
+
 void free_compound_page(struct page *page)
 {
 	mem_cgroup_uncharge(page);
+
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+	if (within_cont_pte_cma(page_to_pfn(page)) && ContPteHugePageHead(page)) {
+		if (!is_migrate_cma_page(page))
+			pr_debug("@@@%s thp in cont_pte cma isn't CMA migratetype,type:%ld\n",
+				__func__, get_pageblock_migratetype(page));
+		if (!cma_release(cont_pte_cma, page, 1 << HPAGE_CONT_PTE_ORDER))
+			pr_err("@@@%s thp in cont_pte cma fails to release\n", __func__);
+		return;
+	}
+#endif
+
 	free_the_page(page, compound_order(page));
 }
 
@@ -739,7 +755,17 @@ void prep_compound_page(struct page *page, unsigned int order)
 	int i;
 	int nr_pages = 1 << order;
 
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+	/*
+	 * for original thp, we always prepare thp immeidately after allocating
+	 * it. so there is zero user at that time. but for cont_pte, we are
+	 * setting thp afer compeleting io, filemap fault might be accessing
+	 * the page, thus we need atomic protection.
+	 */
+	PageCont(page) ? SetPageHead(page) : __SetPageHead(page);
+#else
 	__SetPageHead(page);
+#endif
 	for (i = 1; i < nr_pages; i++) {
 		struct page *p = page + i;
 		p->mapping = TAIL_MAPPING;
@@ -1343,7 +1369,12 @@ static __always_inline bool free_pages_prepare(struct page *page,
 		VM_BUG_ON_PAGE(compound && compound_order(page) != order, page);
 
 		if (compound) {
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+			if (TestClearPageDoubleMap(page))
+				atomic_long_dec(&cont_pte_double_map_count);
+#else
 			ClearPageDoubleMap(page);
+#endif
 			ClearPageHasHWPoisoned(page);
 		}
 		for (i = 1; i < (1 << order); i++) {
@@ -1403,6 +1434,20 @@ static __always_inline bool free_pages_prepare(struct page *page,
 	 * happen after this.
 	 */
 	arch_free_page(page, order);
+
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+	if (PageCont(page)) {
+		int i;
+
+		/* we never free a cont_pte separately, once it is true, sth is wrong */
+		BUG_ON(order != HPAGE_CONT_PTE_ORDER);
+
+		for (i = 0; i < (1 << order); i++) {
+			ClearPageCont(page + i);
+			ClearPageContIODoing(page + i);
+		}
+	}
+#endif
 
 	debug_pagealloc_unmap_pages(page, 1 << order);
 
@@ -1669,9 +1714,17 @@ static void __free_pages_ok(struct page *page, unsigned int order,
 	unsigned long pfn = page_to_pfn(page);
 	struct zone *zone = page_zone(page);
 	bool skip_free_unref_page = false;
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+	bool cont_pte = PageCont(page) && PageTransCompound(page) && within_cont_pte_cma(page_to_pfn(page));
+#endif
 
 	if (!free_pages_prepare(page, order, true, fpi_flags))
 		return;
+
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+	if (cont_pte && huge_page_pool_refill(page))
+		return;
+#endif
 
 	migratetype = get_pfnblock_migratetype(page, pfn);
 	trace_android_vh_free_unref_page_bypass(page, order, migratetype, &skip_free_unref_page);
@@ -3540,6 +3593,10 @@ void free_unref_page(struct page *page, unsigned int order)
 	trace_android_vh_free_unref_page_bypass(page, order, migratetype, &skip_free_unref_page);
 	if (skip_free_unref_page)
 		return;
+
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+	BUG_ON(PageCont(page));
+#endif
 
 	/*
 	 * We only track unmovable, reclaimable movable, and CMA on pcp lists.
@@ -9323,6 +9380,11 @@ int alloc_contig_range(unsigned long start, unsigned long end,
 
 	trace_android_vh_cma_drain_all_pages_bypass(migratetype,
 						&skip_drain_all_pages);
+
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+	if (within_cont_pte_cma(start))
+		skip_drain_all_pages = 1;
+#endif
 	if (!skip_drain_all_pages)
 		drain_all_pages(cc.zone);
 
@@ -9506,6 +9568,17 @@ struct page *alloc_contig_pages(unsigned long nr_pages, gfp_t gfp_mask,
 void free_contig_range(unsigned long pfn, unsigned long nr_pages)
 {
 	unsigned long count = 0;
+
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+	if (nr_pages == HPAGE_CONT_PTE_NR) {
+		struct page *page = pfn_to_page(pfn);
+
+		if (within_cont_pte_cma(pfn) && ContPteHugePageHead(page)) {
+			__free_pages_ok(page, compound_order(page), FPI_NONE);
+			return;
+		}
+	}
+#endif
 
 	for (; nr_pages--; pfn++) {
 		struct page *page = pfn_to_page(pfn);

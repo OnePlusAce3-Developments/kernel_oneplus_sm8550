@@ -134,7 +134,7 @@ static inline bool mapping_thp_support(struct address_space *mapping)
 
 static inline int filemap_nr_thps(struct address_space *mapping)
 {
-#ifdef CONFIG_READ_ONLY_THP_FOR_FS
+#if defined(CONFIG_READ_ONLY_THP_FOR_FS) || defined(CONFIG_CONT_PTE_HUGEPAGE)
 	return atomic_read(&mapping->nr_thps);
 #else
 	return 0;
@@ -143,7 +143,7 @@ static inline int filemap_nr_thps(struct address_space *mapping)
 
 static inline void filemap_nr_thps_inc(struct address_space *mapping)
 {
-#ifdef CONFIG_READ_ONLY_THP_FOR_FS
+#if defined(CONFIG_READ_ONLY_THP_FOR_FS) || defined(CONFIG_CONT_PTE_HUGEPAGE)
 	if (!mapping_thp_support(mapping))
 		atomic_inc(&mapping->nr_thps);
 #else
@@ -153,7 +153,7 @@ static inline void filemap_nr_thps_inc(struct address_space *mapping)
 
 static inline void filemap_nr_thps_dec(struct address_space *mapping)
 {
-#ifdef CONFIG_READ_ONLY_THP_FOR_FS
+#if defined(CONFIG_READ_ONLY_THP_FOR_FS) || defined(CONFIG_CONT_PTE_HUGEPAGE)
 	if (!mapping_thp_support(mapping))
 		atomic_dec(&mapping->nr_thps);
 #else
@@ -609,6 +609,19 @@ extern void unlock_page(struct page *page);
  */
 static inline int trylock_page(struct page *page)
 {
+#if defined(CONFIG_CONT_PTE_HUGEPAGE) && defined(CONFIG_CONT_PTE_HUGEPAGE_DEBUG)
+	/* for debugging, detect those gettings subpages' lock */
+#define PG_cont (__NR_PAGEFLAGS + 4)
+#define PageCont(page) test_bit(PG_cont, &(page)->flags)
+
+	if (PageCont(page) && !PageCompound(page) && !IS_ALIGNED(page_to_pfn(page), CONT_PTES)) {
+		pr_err("@@@%s on subpage index:%lx-%lx page:%lx head:%lx comm:%s\n",
+		       __func__, page->index, compound_head(page)->index,
+		       (unsigned long)page, (unsigned long)compound_head(page),
+		       current->comm);
+		WARN_ON(1);
+	}
+#endif
 	page = compound_head(page);
 	return (likely(!test_and_set_bit_lock(PG_locked, &page->flags)));
 }

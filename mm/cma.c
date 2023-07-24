@@ -445,6 +445,9 @@ struct page *cma_alloc(struct cma *cma, unsigned long count,
 	int ret = -ENOMEM;
 	int num_attempts = 0;
 	int max_retries = 5;
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+	bool lock = (cma == cont_pte_cma);
+#endif
 
 	if (!cma || !cma->count || !cma->bitmap)
 		goto out;
@@ -506,10 +509,16 @@ struct page *cma_alloc(struct cma *cma, unsigned long count,
 		spin_unlock_irq(&cma->lock);
 
 		pfn = cma->base_pfn + (bitmap_no << cma->order_per_bit);
-		mutex_lock(&cma_mutex);
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+		if (lock)
+#endif
+			mutex_lock(&cma_mutex);
 		ret = alloc_contig_range(pfn, pfn + count, MIGRATE_CMA,
 				     GFP_KERNEL | (no_warn ? __GFP_NOWARN : 0));
-		mutex_unlock(&cma_mutex);
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+		if (lock)
+#endif
+			mutex_unlock(&cma_mutex);
 		if (ret == 0) {
 			page = pfn_to_page(pfn);
 			break;
@@ -589,6 +598,16 @@ bool cma_release(struct cma *cma, const struct page *pages,
 	VM_BUG_ON(pfn + count > cma->base_pfn + cma->count);
 
 	free_contig_range(pfn, count);
+
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+	/* we have refilled this cont_pte hugepage into pool */
+	if (PageCont(pages)) {
+		BUG_ON(!IS_ALIGNED(pfn, HPAGE_CONT_PTE_NR));
+		BUG_ON(count != HPAGE_CONT_PTE_NR);
+		return true;
+	}
+#endif
+
 	cma_clear_bitmap(cma, pfn, count);
 	trace_cma_release(cma->name, pfn, pages, count);
 

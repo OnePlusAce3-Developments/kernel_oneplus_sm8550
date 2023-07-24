@@ -48,11 +48,17 @@
  * for all hugepage allocations.
  */
 unsigned long transparent_hugepage_flags __read_mostly =
+#ifndef CONFIG_CONT_PTE_HUGEPAGE
+	/* XXX:
+	 * cont_pte is thp-like and api compatible with thp, but it doesn't
+	 * require collapse and doesn't co-work with collapse either
+	 */
 #ifdef CONFIG_TRANSPARENT_HUGEPAGE_ALWAYS
 	(1<<TRANSPARENT_HUGEPAGE_FLAG)|
 #endif
 #ifdef CONFIG_TRANSPARENT_HUGEPAGE_MADVISE
 	(1<<TRANSPARENT_HUGEPAGE_REQ_MADV_FLAG)|
+#endif
 #endif
 	(1<<TRANSPARENT_HUGEPAGE_DEFRAG_REQ_MADV_FLAG)|
 	(1<<TRANSPARENT_HUGEPAGE_DEFRAG_KHUGEPAGED_FLAG)|
@@ -194,7 +200,8 @@ static ssize_t enabled_store(struct kobject *kobj,
 			     const char *buf, size_t count)
 {
 	ssize_t ret = count;
-
+	/* Read XXX */
+#ifndef CONFIG_CONT_PTE_HUGEPAGE
 	if (sysfs_streq(buf, "always")) {
 		clear_bit(TRANSPARENT_HUGEPAGE_REQ_MADV_FLAG, &transparent_hugepage_flags);
 		set_bit(TRANSPARENT_HUGEPAGE_FLAG, &transparent_hugepage_flags);
@@ -212,6 +219,7 @@ static ssize_t enabled_store(struct kobject *kobj,
 		if (err)
 			ret = err;
 	}
+#endif
 	return ret;
 }
 static struct kobj_attribute enabled_attr =
@@ -465,6 +473,8 @@ static int __init setup_transparent_hugepage(char *str)
 	int ret = 0;
 	if (!str)
 		goto out;
+	/* Read XXX */
+#ifndef CONFIG_CONT_PTE_HUGEPAGE
 	if (!strcmp(str, "always")) {
 		set_bit(TRANSPARENT_HUGEPAGE_FLAG,
 			&transparent_hugepage_flags);
@@ -484,6 +494,7 @@ static int __init setup_transparent_hugepage(char *str)
 			  &transparent_hugepage_flags);
 		ret = 1;
 	}
+#endif
 out:
 	if (!ret)
 		pr_warn("transparent_hugepage= cannot parse, ignored\n");
@@ -2293,6 +2304,50 @@ void vma_adjust_trans_huge(struct vm_area_struct *vma,
 		split_huge_pmd_if_needed(next, nstart);
 	}
 }
+
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+void vma_adjust_cont_pte_trans_huge(struct vm_area_struct *vma,
+				    unsigned long start,
+				    unsigned long end,
+				    long adjust_next)
+{
+	/*
+	 * If the new start address isn't hpage aligned and it could
+	 * previously contain an hugepage: check if we need to split
+	 * an huge pmd.
+	 */
+	if (start & ~HPAGE_CONT_PTE_MASK &&
+	    (start & HPAGE_CONT_PTE_MASK) >= vma->vm_start &&
+	    (start & HPAGE_CONT_PTE_MASK) + HPAGE_CONT_PTE_SIZE <= vma->vm_end)
+		split_huge_cont_pte_address(vma, start, false, NULL);
+
+	/*
+	 * If the new end address isn't hpage aligned and it could
+	 * previously contain an hugepage: check if we need to split
+	 * an huge pmd.
+	 */
+	if (end & ~HPAGE_CONT_PTE_MASK &&
+	    (end & HPAGE_CONT_PTE_MASK) >= vma->vm_start &&
+	    (end & HPAGE_CONT_PTE_MASK) + HPAGE_CONT_PTE_SIZE <= vma->vm_end)
+		split_huge_cont_pte_address(vma, end, false, NULL);
+
+	/*
+	 * If we're also updating the vma->vm_next->vm_start, if the new
+	 * vm_next->vm_start isn't hpage aligned and it could previously
+	 * contain an hugepage: check if we need to split an huge pmd.
+	 */
+	if (adjust_next > 0) {
+		struct vm_area_struct *next = vma->vm_next;
+		unsigned long nstart = next->vm_start;
+
+		nstart += adjust_next;
+		if (nstart & ~HPAGE_CONT_PTE_MASK &&
+		    (nstart & HPAGE_CONT_PTE_MASK) >= next->vm_start &&
+		    (nstart & HPAGE_CONT_PTE_MASK) + HPAGE_CONT_PTE_SIZE <= next->vm_end)
+			split_huge_cont_pte_address(next, nstart, false, NULL);
+	}
+}
+#endif
 
 static void unmap_page(struct page *page)
 {

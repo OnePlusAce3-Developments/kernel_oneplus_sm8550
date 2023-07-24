@@ -483,7 +483,15 @@ void workingset_refault(struct page *page, void *shadow)
 		goto out;
 
 	SetPageActive(page);
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+	/*
+	 * NOTE: The cont_pte_nr_pages is used to support
+	 * cont-pte hugepages with intermediate states!
+	 */
+	workingset_age_nonresident(lruvec, cont_pte_nr_pages(page));
+#else
 	workingset_age_nonresident(lruvec, thp_nr_pages(page));
+#endif
 	inc_lruvec_state(lruvec, WORKINGSET_ACTIVATE_BASE + file);
 
 	/* Page was active prior to eviction */

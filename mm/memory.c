@@ -1413,6 +1413,33 @@ again:
 				    details->check_mapping != page_rmapping(page))
 					continue;
 			}
+
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+			if (pte_cont(ptent)) {
+				unsigned long next = pte_cont_addr_end(addr, end);
+
+				if (next - addr != HPAGE_CONT_PTE_SIZE) {
+					__split_huge_cont_pte(vma, pte, addr, false, NULL);
+				} else {
+					cont_pte_huge_ptep_get_and_clear(mm, addr, pte);
+
+					tlb_remove_cont_pte_tlb_entry(tlb, pte, addr);
+					if (unlikely(!page))
+						continue;
+
+					rss[mm_counter(page)] -= HPAGE_CONT_PTE_NR;
+					page_remove_rmap(page, true);
+					if (unlikely(page_mapcount(page) < 0))
+						print_bad_pte(vma, addr, ptent, page);
+
+					tlb_remove_page_size(tlb, page, HPAGE_CONT_PTE_SIZE);
+				}
+				/* "do while()" will do "pte++" and "addr + PAGE_SIZE" */
+				pte += (next - PAGE_SIZE - addr)/PAGE_SIZE;
+				addr = next - PAGE_SIZE;
+				continue;
+			}
+#endif
 			ptent = ptep_get_and_clear_full(mm, addr, pte,
 							tlb->fullmm);
 			tlb_remove_tlb_entry(tlb, pte, addr);
@@ -4241,6 +4268,41 @@ void do_set_pte(struct vm_fault *vmf, struct page *page, unsigned long addr)
 	set_pte_at(vma->vm_mm, addr, vmf->pte, entry);
 }
 
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+static inline bool dump_cont_pte_around(struct page *head, pte_t *ptep)
+{
+	int i;
+	int same = true;
+
+	for (i = 0; i < HPAGE_CONT_PTE_NR; i++) {
+		pte_t pte = READ_ONCE(*(ptep + i));
+		pr_err("@@@FIXME:%s i:%d pte none:%d present:%d page:%lx head:%lx\n",
+				__func__, i, pte_none(pte), pte_present(pte),
+				pte_present(pte) ? (unsigned long)pte_page(pte) : 0,
+				(unsigned long)head );
+
+		if (pte_present(pte)) {
+			if (compound_head(pte_page(pte)) != head)
+				same = false;
+		}
+	}
+
+	return same;
+}
+
+#define cont_pte_vmf_dump(vmf, reason) do { \
+        struct vm_area_struct *vma = vmf->vma; \
+        const char *name = vma->vm_file->f_path.dentry ? (const char *)vma->vm_file->f_path.dentry->d_name.name : "NULL"; \
+                                                                                                                        \
+        pr_err("%s %s %d: filename:%s inode:%ld process:%s aligned:%d index:%lx-%lx vm_pgoff:%lx fault address:%lx vma:%lx-%lx r:%d w:%d x:%d mw:%d flags:%lx\n", \
+                        reason, __func__, __LINE__, name, vma->vm_file->f_inode->i_ino,  current->comm, transhuge_cont_pte_vma_aligned(vma), \
+                        vmf->page ? vmf->page->index : -1UL, vmf->pgoff, vma->vm_pgoff, (unsigned long)vmf->address, (unsigned long)vma->vm_start, (unsigned long)vma->vm_end, \
+                        !!(vma->vm_flags & VM_READ), !!(vma->vm_flags & VM_WRITE), !!(vma->vm_flags & VM_EXEC), \
+                        !!(vma->vm_flags & VM_MAYWRITE), vma->vm_flags);\
+        } while (0)
+
+#endif
+
 /**
  * finish_fault - finish page fault once we have prepared the page to fault
  *
@@ -4310,6 +4372,47 @@ vm_fault_t finish_fault(struct vm_fault *vmf)
 	if (!pte_map_lock(vmf))
 		return VM_FAULT_RETRY;
 	ret = 0;
+
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+	BUG_ON(vmf->page && PageCont(vmf->page) && !vmf_may_cont_pte(vmf));
+	if (ContPteHugePage(page)) {
+		unsigned long off = vmf->pgoff & (HPAGE_CONT_PTE_NR - 1);
+
+		if (vmf->flags & FAULT_FLAG_CONT_PTE) {
+			pte_t *ptep = vmf->pte - off;
+
+			BUG_ON(!IS_ALIGNED((unsigned long)ptep, sizeof(pte_t) * HPAGE_CONT_PTE_NR));
+			BUG_ON(vmf->page && ((page_to_pfn(vmf->page) & (HPAGE_CONT_PTE_NR - 1)) != off));
+			if (likely(cont_pte_none(ptep))) {
+				do_set_cont_pte(vmf, compound_head(page));
+			} else {
+				/*
+				 * assure subpage is mapped, otherwise, VM_FAULT_NOPAGE will result in
+				 * endless loop for the app
+				 */
+				if (pte_none(*vmf->pte)) {
+					bool same = dump_cont_pte_around(compound_head(page), ptep);
+
+					cont_pte_vmf_dump(vmf, "pte_none");
+					if (same)
+						goto doublemap;
+					BUG_ON(1);
+				}
+				ret = VM_FAULT_NOPAGE;
+			}
+		} else { /*double mapped */
+doublemap:
+			cont_pte_pagefault_dump(vmf, "DOUBLE-mapped");
+			if (likely(pte_none(*vmf->pte)))
+				do_set_pte(vmf, page, vmf->address);
+			else
+				ret = VM_FAULT_NOPAGE;
+		}
+		pte_unmap_unlock(vmf->pte, vmf->ptl);
+		return ret;
+	}
+#endif
+
 	/* Re-check under ptl */
 	if (likely(pte_none(*vmf->pte)))
 		do_set_pte(vmf, page, vmf->address);
@@ -4389,6 +4492,11 @@ static vm_fault_t do_fault_around(struct vm_fault *vmf)
 	int off;
 	vm_fault_t ret;
 
+#if defined(CONFIG_CONT_PTE_HUGEPAGE) && !CONFIG_CONT_PTE_FAULT_AROUND
+	if (vmf_may_cont_pte(vmf))
+		return 0;
+#endif
+
 	nr_pages = READ_ONCE(fault_around_bytes) >> PAGE_SHIFT;
 	mask = ~(nr_pages * PAGE_SIZE - 1) & PAGE_MASK;
 
@@ -4429,6 +4537,14 @@ static vm_fault_t do_fault_around(struct vm_fault *vmf)
 		 */
 	}
 #endif
+
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+	if (vmf_may_cont_pte(vmf)) {
+		end_pgoff = min(ALIGN_DOWN(start_pgoff + HPAGE_CONT_PTE_NR, HPAGE_CONT_PTE_NR) - 1, end_pgoff);
+		return cont_pte_filemap_around(vmf, start_pgoff, end_pgoff);
+	}
+#endif
+
 	ret = vmf->vma->vm_ops->map_pages(vmf, start_pgoff, end_pgoff);
 	rcu_read_unlock();
 	return ret;
@@ -4492,6 +4608,11 @@ static vm_fault_t do_cow_fault(struct vm_fault *vmf)
 		goto uncharge_out;
 	if (ret & VM_FAULT_DONE_COW)
 		return ret;
+
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+	if (ContPteHugePage(vmf->page))
+		cont_pte_pagefault_dump(vmf, "COW");
+#endif
 
 	copy_user_highpage(vmf->cow_page, vmf->page, vmf->address, vma);
 	__SetPageUptodate(vmf->cow_page);

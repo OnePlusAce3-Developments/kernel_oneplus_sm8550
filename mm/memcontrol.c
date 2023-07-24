@@ -6805,6 +6805,13 @@ static int charge_memcg(struct page *page, struct mem_cgroup *memcg, gfp_t gfp)
 	unsigned int nr_pages = thp_nr_pages(page);
 	int ret;
 
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+	if (nr_pages == 1 && PageCont(page)) {
+		BUG_ON(!IS_ALIGNED(page_to_pfn(page), HPAGE_CONT_PTE_NR));
+		nr_pages = HPAGE_CONT_PTE_NR;
+	}
+#endif
+
 	ret = try_charge(memcg, gfp, nr_pages);
 	if (ret)
 		goto out;
@@ -6992,6 +6999,13 @@ static void uncharge_page(struct page *page, struct uncharge_gather *ug)
 	}
 
 	nr_pages = compound_nr(page);
+
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+	if (nr_pages == 1 && PageCont(page)) {
+		BUG_ON(!IS_ALIGNED(page_to_pfn(page), HPAGE_CONT_PTE_NR));
+		nr_pages = HPAGE_CONT_PTE_NR;
+	}
+#endif
 
 	if (use_objcg) {
 		ug->nr_memory += nr_pages;

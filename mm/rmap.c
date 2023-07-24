@@ -817,6 +817,18 @@ static bool page_referenced_one(struct page *page, struct vm_area_struct *vma,
 				referenced++;
 			}
 
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+			if (ContPteHugePageHead(pvmw.page) &&
+			    pte_cont(READ_ONCE(*pvmw.pte))) {
+				if (cont_ptep_clear_flush_young_notify(vma, address,
+								       pvmw.pte)) {
+					if (likely(!(vma->vm_flags & VM_SEQ_READ)))
+						referenced++;
+				}
+				pra->mapcount--;
+				continue;
+			}
+#endif
 			if (ptep_clear_flush_young_notify(vma, address,
 						pvmw.pte)) {
 				/*
@@ -1068,7 +1080,7 @@ void page_move_anon_rmap(struct page *page, struct vm_area_struct *vma)
  * __page_set_anon_rmap - set up new anonymous rmap
  * @page:	Page or Hugepage to add to rmap
  * @vma:	VM area to add page to.
- * @address:	User virtual address of the mapping	
+ * @address:	User virtual address of the mapping
  * @exclusive:	the page is exclusively owned by the current process
  */
 static void __page_set_anon_rmap(struct page *page,
@@ -1278,7 +1290,12 @@ void page_add_file_rmap(struct page *page, bool compound)
 
 			VM_WARN_ON_ONCE(!PageLocked(page));
 
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+			if (!TestSetPageDoubleMap(head))
+				atomic_long_inc(&cont_pte_double_map_count);
+#else
 			SetPageDoubleMap(head);
+#endif
 			if (PageMlocked(page))
 				clear_page_mlock(head);
 		}
@@ -1497,8 +1514,18 @@ static bool try_to_unmap_one(struct page *page, struct vm_area_struct *vma,
 	if (flags & TTU_SYNC)
 		pvmw.flags = PVMW_SYNC;
 
-	if (flags & TTU_SPLIT_HUGE_PMD)
+	if (flags & TTU_SPLIT_HUGE_PMD) {
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+		if (ContPteHugePageHead(page)) {
+			if (flags & TTU_IGNORE_MLOCK || !(vma->vm_flags & VM_LOCKED))
+				split_huge_cont_pte_address(vma, address, false, page);
+		} else {
+			split_huge_pmd_address(vma, address, false, page);
+		}
+#else
 		split_huge_pmd_address(vma, address, false, page);
+#endif
+	}
 
 	/*
 	 * For THP, we have to assume the worse case ie pmd for invalidation.
@@ -1534,8 +1561,15 @@ static bool try_to_unmap_one(struct page *page, struct vm_area_struct *vma,
 			 * (which may still be PTE-mapped after DoubleMap was
 			 * cleared).  But stop unmapping even in those cases.
 			 */
+#ifndef CONFIG_CONT_PTE_HUGEPAGE
 			if (!PageTransCompound(page) || (PageHead(page) &&
 			     !PageDoubleMap(page) && !PageAnon(page)))
+#else
+			if (!PageTransCompound(page) || (PageHead(page) &&
+			     !PageDoubleMap(page) && !PageAnon(page)) ||
+				(ContPteHugePage(page) && !PageDoubleMap(page)))
+
+#endif
 				mlock_vma_page(page);
 			page_vma_mapped_walk_done(&pvmw);
 			ret = false;

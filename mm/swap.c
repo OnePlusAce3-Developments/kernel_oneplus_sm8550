@@ -108,6 +108,9 @@ static void __put_compound_page(struct page *page)
 	 */
 	if (!PageHuge(page))
 		__page_cache_release(page);
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+	BUG_ON(PageCont(page) && !PageError(page) && !PageUptodate(page));
+#endif
 	destroy_compound_page(page);
 }
 
@@ -291,8 +294,15 @@ void lru_note_cost(struct lruvec *lruvec, bool file, unsigned int nr_pages)
 
 void lru_note_cost_page(struct page *page)
 {
+	/* NOTE: The cont_pte_nr_pages is used to support
+	 * cont-pte hugepages with intermediate states! */
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+	lru_note_cost(mem_cgroup_page_lruvec(page),
+		      page_is_file_lru(page), cont_pte_nr_pages(page));
+#else
 	lru_note_cost(mem_cgroup_page_lruvec(page),
 		      page_is_file_lru(page), thp_nr_pages(page));
+#endif
 }
 
 static void __activate_page(struct page *page, struct lruvec *lruvec)

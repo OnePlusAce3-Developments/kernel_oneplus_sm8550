@@ -291,6 +291,12 @@ static long madvise_willneed(struct vm_area_struct *vma,
 		return -EBADF;
 #endif
 
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+	/* Fixme: bringup hugepage in madvise for odex and oat */
+	if (file_inode(file)->may_cont_pte)
+		return 0;
+#endif
+
 	if (IS_DAX(file_inode(file))) {
 		/* no bad return value, but ignore advice */
 		return 0;
@@ -421,6 +427,42 @@ regular_page:
 		if (!pte_present(ptent))
 			continue;
 
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+		if (pte_cont(ptent)) {
+			unsigned long next = pte_cont_addr_end(addr, end);
+
+			if (next - addr != HPAGE_CONT_PTE_SIZE) {
+				goto skip;  /* ignore PAGEOUT for partial cont_pte */
+			} else {
+				page = vm_normal_page(vma, addr, ptent);
+				if (!page)
+					goto skip;
+
+				/* Do not interfere with other mappings of this page */
+				if (page_mapcount(page) != 1)
+					goto skip;
+
+				cont_ptep_clear_flush_young_full(vma, addr, pte);
+
+				ClearPageReferenced(page);
+				test_and_clear_page_young(page);
+				if (pageout) {
+					if (!isolate_lru_page(page)) {
+						if (PageUnevictable(page))
+							putback_lru_page(page);
+						else
+							list_add(&page->lru, &page_list);
+					}
+				} else {
+					deactivate_page(page);
+				}
+			}
+skip:
+			pte += (next - PAGE_SIZE - addr)/PAGE_SIZE;
+			addr = next - PAGE_SIZE;
+			continue;
+		}
+#endif
 		page = vm_normal_page(vma, addr, ptent);
 		if (!page)
 			continue;
