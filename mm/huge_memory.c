@@ -102,7 +102,11 @@ retry:
 		return true;
 
 	zero_page = alloc_pages((GFP_TRANSHUGE | __GFP_ZERO) & ~__GFP_MOVABLE,
+#ifndef CONFIG_CONT_PTE_HUGEPAGE
 			HPAGE_PMD_ORDER);
+#else
+			HPAGE_CONT_PTE_ORDER);
+#endif
 	if (!zero_page) {
 		count_vm_event(THP_ZERO_PAGE_ALLOC_FAILED);
 		return false;
@@ -151,6 +155,7 @@ void mm_put_huge_zero_page(struct mm_struct *mm)
 		put_huge_zero_page();
 }
 
+#ifndef CONFIG_CONT_PTE_HUGEPAGE
 static unsigned long shrink_huge_zero_page_count(struct shrinker *shrink,
 					struct shrink_control *sc)
 {
@@ -177,6 +182,7 @@ static struct shrinker huge_zero_page_shrinker = {
 	.scan_objects = shrink_huge_zero_page_scan,
 	.seeks = DEFAULT_SEEKS,
 };
+#endif
 
 #ifdef CONFIG_SYSFS
 static ssize_t enabled_show(struct kobject *kobj,
@@ -433,12 +439,14 @@ static int __init hugepage_init(void)
 	if (err)
 		goto err_slab;
 
+#ifndef CONFIG_CONT_PTE_HUGEPAGE
 	err = register_shrinker(&huge_zero_page_shrinker);
 	if (err)
 		goto err_hzp_shrinker;
 	err = register_shrinker(&deferred_split_shrinker);
 	if (err)
 		goto err_split_shrinker;
+#endif
 
 	/*
 	 * By default disable transparent hugepages on smaller systems,
@@ -456,10 +464,12 @@ static int __init hugepage_init(void)
 
 	return 0;
 err_khugepaged:
+#ifndef CONFIG_CONT_PTE_HUGEPAGE
 	unregister_shrinker(&deferred_split_shrinker);
 err_split_shrinker:
 	unregister_shrinker(&huge_zero_page_shrinker);
 err_hzp_shrinker:
+#endif
 	khugepaged_destroy();
 err_slab:
 	hugepage_exit_sysfs(hugepage_kobj);
@@ -535,8 +545,9 @@ void prep_transhuge_page(struct page *page)
 	 * we use page->mapping and page->indexlru in second tail page
 	 * as list_head: assuming THP order >= 2
 	 */
-
+#ifndef CONFIG_CONT_PTE_HUGEPAGE
 	INIT_LIST_HEAD(page_deferred_list(page));
+#endif
 	set_compound_page_dtor(page, TRANSHUGE_PAGE_DTOR);
 }
 
@@ -678,7 +689,6 @@ release:
 		pte_free(vma->vm_mm, pgtable);
 	put_page(page);
 	return ret;
-
 }
 
 /*
@@ -2681,7 +2691,9 @@ bool can_split_huge_page(struct page *page, int *pextra_pins)
 int split_huge_page_to_list(struct page *page, struct list_head *list)
 {
 	struct page *head = compound_head(page);
+#ifndef CONFIG_CONT_PTE_HUGEPAGE
 	struct deferred_split *ds_queue = get_deferred_split_queue(head);
+#endif
 	struct anon_vma *anon_vma = NULL;
 	struct address_space *mapping = NULL;
 	int extra_pins, ret;
@@ -2698,6 +2710,11 @@ int split_huge_page_to_list(struct page *page, struct list_head *list)
 
 	if (PageWriteback(head))
 		return -EBUSY;
+
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+	dump_page(head, "split hugepage");
+	CHP_BUG_ON(1);
+#endif
 
 	if (PageAnon(head)) {
 		/*
@@ -2765,14 +2782,18 @@ int split_huge_page_to_list(struct page *page, struct list_head *list)
 			goto fail;
 	}
 
+#ifndef CONFIG_CONT_PTE_HUGEPAGE
 	/* Prevent deferred_split_scan() touching ->_refcount */
 	spin_lock(&ds_queue->split_queue_lock);
+#endif
 	if (page_ref_freeze(head, 1 + extra_pins)) {
+#ifndef CONFIG_CONT_PTE_HUGEPAGE
 		if (!list_empty(page_deferred_list(head))) {
 			ds_queue->split_queue_len--;
 			list_del(page_deferred_list(head));
 		}
 		spin_unlock(&ds_queue->split_queue_lock);
+#endif
 		if (mapping) {
 			int nr = thp_nr_pages(head);
 
@@ -2789,7 +2810,9 @@ int split_huge_page_to_list(struct page *page, struct list_head *list)
 		__split_huge_page(page, list, end);
 		ret = 0;
 	} else {
+#ifndef CONFIG_CONT_PTE_HUGEPAGE
 		spin_unlock(&ds_queue->split_queue_lock);
+#endif
 fail:
 		if (mapping)
 			xa_unlock(&mapping->i_pages);
@@ -2812,6 +2835,7 @@ out:
 
 void free_transhuge_page(struct page *page)
 {
+#ifndef CONFIG_CONT_PTE_HUGEPAGE
 	struct deferred_split *ds_queue = get_deferred_split_queue(page);
 	unsigned long flags;
 
@@ -2821,6 +2845,7 @@ void free_transhuge_page(struct page *page)
 		list_del(page_deferred_list(page));
 	}
 	spin_unlock_irqrestore(&ds_queue->split_queue_lock, flags);
+#endif
 	free_compound_page(page);
 }
 

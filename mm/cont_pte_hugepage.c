@@ -19,6 +19,7 @@
 #include <linux/cpumask.h>
 #include <linux/delay.h>
 #include <linux/page_owner.h>
+#include <linux/swapops.h>
 #include <uapi/linux/sched/types.h>
 
 #include <linux/mm_types.h>
@@ -27,47 +28,577 @@
 #include <linux/cma.h>
 #include <linux/memblock.h>
 #include <linux/sched/mm.h>
+#include <linux/oom.h>
+#include <linux/psi.h>
 
 #include "cma.h"
+#include "chp_ext.h"
 #include "internal.h"
+#include <trace/hooks/sched.h>
 
 #define endio_spinlock android_kabi_reserved2
 
-#define M2N(SZ) (SZ / HPAGE_CONT_PTE_SIZE)
-#define MAX_POOL_ALLOC_RETRIES (2)
-
-DEFINE_STATIC_KEY_FALSE(cont_pte_huge_page_enabled_key);
-
-struct cont_pte_huge_page_stat {
-	/* reserved last index for alloc fail */
-	atomic64_t alloc_retries[MAX_POOL_ALLOC_RETRIES + 1 + 1];
-	atomic64_t direct_alloc[2];
-	atomic64_t direct_alloc_fail[2];
-};
-
-struct huge_page_pool {
-	int low, high, max, count;
-	struct list_head item;
-	spinlock_t spinlock;
-	struct task_struct *refill_worker;
-	int tot_count;
-};
-
-struct cont_pte_huge_page_stat perf_stat;
-struct huge_page_pool cont_pte_huge_page_pool;
-
+#define M2N(SZ) ((SZ) / HPAGE_CONT_PTE_SIZE)
+#define HIGH_ORDER_GFP ((GFP_HIGHUSER | __GFP_ZERO | __GFP_NOWARN \
+			 | __GFP_NORETRY) & ~__GFP_RECLAIM & ~__GFP_MOVABLE)
+#define CONT_PTE_SUP_MEM_SIZE (8ul * SZ_1G)
+#define MEM_SIZE_8G  (8ul * SZ_1G)
+#define MEM_SIZE_12G (12ul * SZ_1G)
+#define MEM_SIZE_16G (16ul * SZ_1G)
+/* The default chunk size is 64M, avg cma chunk refill time 747ms */
+#define CONT_PTE_CMA_CHUNK_ORDER	14
+#define CONT_PTE_CMA_CHUNK_SIZE		(1 << (CONT_PTE_CMA_CHUNK_ORDER + PAGE_SHIFT))
+#define CONT_PTE_PAGES_PER_CHUNK	(1 << CONT_PTE_CMA_CHUNK_ORDER)
 /* map up to 8 hugepages in case we are eligible for hugepage mapping */
 #define MAX_HUGEPAGE_MAPAROUND 8
 #define NR_FAULT_AROUND_STAT_ITEMS (MAX_HUGEPAGE_MAPAROUND + 1)
 
+#define ROOT_APP_UID KUIDT_INIT(0)
+#define SYSTEM_APP_UID KUIDT_INIT(1000)
+#define AUDIOSERVER_UID KUIDT_INIT(1041)    /* audioserver process */
+
+#define DALVIK_MAIN_HEAP "dalvik-main space (region space)"
+#define NATIVE_HEAP "libc_malloc"
+#define MAX_LEN_CHP_VMA_NAME (sizeof(DALVIK_MAIN_HEAP) + 1)
+#define DALVIK_MAIN_HEAP_BIT (1ul << 63)
+
+DEFINE_STATIC_KEY_FALSE(cont_pte_huge_page_enabled_key);
+
+struct vm_chp_event_state {
+	unsigned long event[NR_VM_CHP_EVENT_ITEMS];
+};
+DEFINE_PER_CPU(struct vm_chp_event_state, vm_chp_event_states) = {{0}};
+
+static DEFINE_SPINLOCK(uid_blacklist_lock);
+#define MAX_UID_BLACKLIST_SIZE 96
+struct uid_blacklist {
+	uid_t array[MAX_UID_BLACKLIST_SIZE];
+	short size;
+};
+struct uid_blacklist *ub;
+
+static bool config_anon_enable = true;
+static bool config_alloc_oom;
+bool config_bug_on = false;
+bool supported_oat_hugepage;
+
+struct cma *cont_pte_cma;
+struct huge_page_pool g_cont_pte_pool;
+struct cont_pte_huge_page_stat perf_stat;
+
+static unsigned long sysctl_max_chp_buddy_count;
+
+/* cmdline */
+unsigned long cont_pte_pool_cma_size;
+static unsigned long cmdline_cont_pte_sup_mem = CONT_PTE_SUP_MEM_SIZE;
+static bool cmdline_cont_pte_sup_prjname;
+static bool cmdline_cont_pte_hugepage_enable = true;
+bool cma_chunk_refill_ready;
+
 static atomic64_t fault_around_stat[NR_FAULT_AROUND_STAT_ITEMS] __cacheline_aligned_in_smp;
 
+unsigned long swap_cluster_double_mapped;
 atomic_long_t cont_pte_double_map_count;
+atomic64_t thp_swpin_hit_swapcache;
+atomic64_t thp_cow;
+atomic64_t thp_cow_fallback;
+
+/* this must be equal to size of chp_special_processes */
+#define NR_SPECIAL_PROCESSES (4)
+
+static const char *chp_special_processes[NR_SPECIAL_PROCESSES] = {
+	"/system/bin/app_process64",
+	"/system/bin/surfaceflinger",
+	"/vendor/bin/hw/android.hardware.audio.service_64",
+	"/vendor/bin/hw/vendor.qti.hardware.AGMIPC@1.0-service",
+};
+
+static const char *vm_chp_event_text[NR_VM_CHP_EVENT_ITEMS] = {
+	"page_alloc_slow_path",
+	"page_alloc_failed",
+
+	"madv_free",
+	"madv_dont_need_unaligned",
+
+	"refill_kworker_wake_up",
+	"refill_kworker_alloc_success",
+
+	"refill_extalloc",
+	"zsmalloc",
+	"gpu",
+	"dmabuf",
+	"alloc_from_pool_buddy",
+
+	"thp_do_anon_pages",
+	"thp_do_anon_pages_fallback",
+
+	"thp_swpin_no_swapcache_entry",
+	"thp_swpin_no_swapcache_alloc_success",
+	"thp_swpin_no_swapcache_alloc_fail",
+	"thp_swpin_no_swapcache_fallback_entry",
+	"thp_swpin_no_swapcache_fallback_alloc_success",
+	"thp_swpin_no_swapcache_fallback_alloc_fail",
+	"thp_swpin_swapcache_entry",
+	"thp_swpin_swapcache_alloc_success",
+	"thp_swpin_swapcache_prepare_fail",
+	"thp_swpin_swapcache_fallback_entry",
+	"thp_swpin_swapcache_fallback_alloc_success",
+	"thp_swpin_swapcache_fallback_alloc_fail",
+
+	"thp_file_entry",
+	"thp_file_alloc_success",
+	"thp_file_alloc_fail",
+
+	"thp_swpin_critical_entry",
+	"thp_swpin_critical_fallback"
+};
+
+char *thp_read_swpcache_ret_status_string[RET_STATUS_NR] = {
+	"ret_status_alloc_thp_success",
+	"ret_status_no_swp_info",
+	"ret_status_hit_swpcache",
+	"ret_status_no_cluster_info",
+	"ret_status_zero_swpcount",
+	"ret_status_alloc_thp_fail",
+	"ret_status_swpcache_prepare_fail",
+	"ret_status_add_to_swpcache_fail",
+	"ret_status_memcg_charge_fail",
+	"ret_status_other_fail",
+};
+
+char *wp_reuse_fail_text[WP_REUSE_FAIL_NR] = {
+	"wp_reuse_fail_total",
+	"pte_no_same",
+	"pte_no_readonly",
+	"zero_ref_count",
+};
+
+#if CONFIG_REUSE_SWP_ACCOUNT_DEBUG
+char *reuse_swp_text[REUSE_SWP_NR] = {
+	"normal_reuse_swp_wb",
+	"normal_reuse_swp_no_wb",
+	"normal_reuse_swp_wb_err",
+	"chp_reuse_swp_wb",
+	"chp_reuse_swp_no_wb",
+	"chp_reuse_swp_wb_err",
+};
+#endif
+
+enum huge_page_pool_flags {
+	HPP_WORKER_RUNNING,
+};
+
+#if CONFIG_POOL_ASYNC_RECLAIM
+wait_queue_head_t pool_direct_reclaim_wait[MAX_NUMNODES];
+#endif
+
+#define DEFINE_CHP_SYSFS_ATTRIBUTE(__name)				\
+static ssize_t __name ## _show(struct kobject *kobj,			\
+			       struct kobj_attribute *attr, char *buf)	\
+{									\
+	return scnprintf(buf, PAGE_SIZE, "%d\n", config_ ## __name);	\
+}									\
+									\
+static ssize_t __name ## _store(struct kobject *kobj,			\
+				struct kobj_attribute *attr,		\
+				const char *buf, size_t count)		\
+{									\
+	int val, ret;							\
+									\
+	ret = kstrtoint(buf, 10, &val);					\
+	if (ret)							\
+		return ret;						\
+									\
+	config_ ## __name = !!val;					\
+	chp_logi("write val:%d\n", config_ ## __name);			\
+	return count;							\
+}									\
+									\
+static struct kobj_attribute __name ## _attr =				\
+	__ATTR(__name, 0644, __name ## _show,  __name ## _store);	\
+
+inline bool current_is_hybridswapd(void)
+{
+	if (unlikely(!(current->flags & PF_KTHREAD)))
+		return false;
+
+	return strncmp(current->comm, "hybridswapd",
+		       sizeof("hybridswapd") - 1) == 0;
+}
+
+static bool find_uid_in_blacklist(uid_t uid);
+
+static inline bool __is_critical_task_uid(kuid_t uid)
+{
+	return uid_eq(uid, ROOT_APP_UID) || uid_eq(uid, SYSTEM_APP_UID) || uid_eq(uid, AUDIOSERVER_UID);
+}
+
+inline bool cont_pte_huge_page_enabled(void)
+{
+	return static_branch_likely(&cont_pte_huge_page_enabled_key);
+}
+
+inline void count_vm_chp_events(enum vm_chp_event_item item, long delta)
+{
+	this_cpu_add(vm_chp_event_states.event[item], delta);
+}
+
+inline void count_vm_chp_event(enum vm_chp_event_item item)
+{
+	count_vm_chp_events(item, 1);
+}
+
+static void all_vm_chp_events(unsigned long *ret)
+{
+	int cpu;
+	int i;
+
+	memset(ret, 0, NR_VM_CHP_EVENT_ITEMS * sizeof(unsigned long));
+
+	cpus_read_lock();
+	for_each_online_cpu(cpu) {
+		struct vm_chp_event_state *this = &per_cpu(vm_chp_event_states,
+							   cpu);
+
+		for (i = 0; i < NR_VM_CHP_EVENT_ITEMS; i++)
+			ret[i] += this->event[i];
+	}
+	cpus_read_unlock();
+}
+
+inline void mod_chp_page_state(struct page *page, long delta)
+{
+	int inx = HPAGE_POOL_CMA;
+
+	if (!within_cont_pte_cma(page_to_pfn(page)))
+		inx = HPAGE_POOL_BUDDY;
+	atomic64_add(delta, &perf_stat.usage[inx]);
+}
+
+inline unsigned long chp_page_state(enum hpage_type t)
+{
+	return atomic64_read(&perf_stat.usage[t]);
+}
+
+inline bool is_thp_swap(struct swap_info_struct *si)
+{
+	return si && si->prio == THP_SWAP_PRIO_MAGIC;
+}
+
+inline bool is_cont_pte_cma(struct cma *cma)
+{
+	return cma == cont_pte_cma;
+}
 
 inline bool within_cont_pte_cma(unsigned long pfn)
 {
 	return cont_pte_cma && pfn >= cont_pte_cma->base_pfn &&
 		pfn < cont_pte_cma->base_pfn + cont_pte_cma->count;
+}
+
+int huge_page_pool_count(struct huge_page_pool *pool, int inx)
+{
+	if (inx >= NR_HPAGE_POOL_TYPE)
+		return pool->count[HPAGE_POOL_CMA] +
+			pool->count[HPAGE_POOL_BUDDY];
+
+	return pool->count[inx];
+}
+
+static void huge_page_pool_add(struct huge_page_pool *pool, struct page *page, int inx)
+{
+	CHP_BUG_ON(!IS_ALIGNED(page_to_pfn(page), HPAGE_CONT_PTE_NR));
+
+#ifdef CONFIG_CONT_PTE_HUGEPAGE_DEBUG_VERBOSE
+	int i;
+
+	for (i = 0; i < HPAGE_CONT_PTE_NR; i++) {
+		CHP_BUG_ON(atomic_read(&page[i]._refcount) != 1 && !refill);
+		CHP_BUG_ON(atomic_read(&page[i]._mapcount) + 1);
+		CHP_BUG_ON(PageCompound(&page[i]));
+		WARN_ON_ONCE(page[i].flags); /* some new pages have 4000 0000 0000 0000, why? */
+		WARN_ON_ONCE(page[i].private);
+	}
+#endif
+
+	spin_lock(&pool->spinlock);
+	list_add_tail(&page->lru, &pool->items[inx]);
+	pool->count[inx]++;
+	spin_unlock(&pool->spinlock);
+}
+
+static struct page *huge_page_pool_remove(struct huge_page_pool *pool, int inx)
+{
+	struct page *page;
+
+	if (!cont_pte_huge_page_enabled())
+		return NULL;
+
+	spin_lock(&pool->spinlock);
+	page = list_first_entry_or_null(&pool->items[inx], struct page, lru);
+	if (page) {
+		pool->count[inx]--;
+		list_del(&page->lru);
+	}
+	spin_unlock(&pool->spinlock);
+
+	if (page && inx == HPAGE_POOL_BUDDY)
+		count_vm_chp_event(CHP_ALLOC_FROM_BUDDY_POOL);
+
+	if (chp_page_state(HPAGE_POOL_BUDDY) < sysctl_max_chp_buddy_count &&
+	    pool->count[HPAGE_POOL_BUDDY] < pool->min_buddy / 2 &&
+	    !test_bit(HPP_WORKER_RUNNING, &pool->flags)) {
+		wake_up_process(pool->refill_worker);
+	}
+	return page;
+}
+
+#if !CONFIG_POOL_ASYNC_RECLAIM
+static struct page *huge_page_pool_fetch(struct huge_page_pool *pool)
+{
+	struct page *page;
+
+	page = huge_page_pool_remove(pool, HPAGE_POOL_CMA);
+	if (!page)
+		page = huge_page_pool_remove(pool, HPAGE_POOL_BUDDY);
+	return page;
+}
+#endif
+
+static unsigned long peak_chp_nr;
+static struct page *alloc_chp_from_buddy(void)
+{
+	struct page *page;
+	int i;
+	unsigned long nr = chp_page_state(HPAGE_POOL_BUDDY);
+	static unsigned long peak_jiffies;
+
+	if (nr > sysctl_max_chp_buddy_count)
+		return NULL;
+
+#define STABLE_MAX_BUDDY_USAGE M2N(300 * SZ_1M)
+	/*
+	 * at boot stage, we allow more buddy memory to be used as hugepages.
+	 * once it reaches the peak, we lower the size to the number a stable
+	 * fragmentized buddy can lend to hugepages
+	 */
+	if (sysctl_max_chp_buddy_count != STABLE_MAX_BUDDY_USAGE) {
+		if (nr > STABLE_MAX_BUDDY_USAGE && nr > peak_chp_nr) {
+			peak_jiffies = jiffies;
+			peak_chp_nr = nr;
+		}
+
+		/*
+		 * we have used up the budget for boot
+		 * peak durates for 10s
+		 */
+		if ((nr >= sysctl_max_chp_buddy_count) ||
+		    (peak_jiffies != 0 && (jiffies - peak_jiffies) > 10 * HZ)) {
+			sysctl_max_chp_buddy_count = STABLE_MAX_BUDDY_USAGE;
+			pr_info("cont_pte_hugepage: lower max buddy usage to %ld from peak %ld\n",
+				sysctl_max_chp_buddy_count, peak_chp_nr);
+		}
+	}
+
+	/* The slow path of the pool doesn't do any reclamation */
+	page = alloc_pages(HIGH_ORDER_GFP, HPAGE_CONT_PTE_ORDER);
+	if (page) {
+		split_page(page, HPAGE_CONT_PTE_ORDER);
+		/* alloc pages only set the 1st page's private to 0 */
+		for (i = 0; i < HPAGE_CONT_PTE_NR; i++)
+			set_page_private(&page[i], 0);
+	}
+
+	return page;
+}
+
+static inline void huge_page_pool_chunk_refill(struct huge_page_pool *pool)
+{
+	int i, j;
+	struct page *page;
+	unsigned long nr_chunk;
+
+	nr_chunk = cont_pte_pool_cma_size / CONT_PTE_CMA_CHUNK_SIZE;
+	for (i = 0; i < nr_chunk; i++) {
+		page = cma_alloc(cont_pte_cma, CONT_PTE_PAGES_PER_CHUNK,
+				 HPAGE_CONT_PTE_ORDER,
+				 GFP_KERNEL | __GFP_NOWARN);
+		if (!page) {
+			if (!atomic64_read(&perf_stat.chunk_refill_fail_count))
+				perf_stat.chunk_refill_first_fail_num = i + 1; /* num + 1, differentiate init value */
+			atomic64_inc(&perf_stat.chunk_refill_fail_count);
+			pr_err("@@@%s fail to cma_alloc:%d\n", __func__, i);
+			continue;
+		}
+
+		/*
+		 * Fill in the list by cutting 64k page.
+		 * For cma, split_page and set_page_private
+		 * are already done.
+		 */
+		for (j = 0; j < CONT_PTE_PAGES_PER_CHUNK; j += HPAGE_CONT_PTE_NR)
+			huge_page_pool_add(pool, &page[j], HPAGE_POOL_CMA);
+	}
+	cma_chunk_refill_ready = true;
+
+	for (i = 0; i < pool->min_buddy; i++) {
+		page = alloc_chp_from_buddy();
+		if (!page)
+			break;
+		huge_page_pool_add(pool, page, HPAGE_POOL_BUDDY);
+	}
+
+	chp_logi("pool_cma: %d pool_buddy: %d\n",
+		 pool->count[HPAGE_POOL_CMA],
+		 pool->count[HPAGE_POOL_BUDDY]);
+}
+
+static int huge_page_pool_refill_worker(void *data)
+{
+	struct huge_page_pool *pool = data;
+	struct page *page;
+	s64 time;
+	int expect, i, retries, max_retries = 100;
+
+	time = ktime_to_ms(ktime_get());
+	huge_page_pool_chunk_refill(pool);
+	perf_stat.chunk_refill_time = ktime_to_ms(ktime_get()) - time;
+
+	for (;;) {
+		time = ktime_to_ms(ktime_get());
+		expect = max(pool->min_buddy -
+			     huge_page_pool_count(pool, HPAGE_POOL_BUDDY), 0);
+		retries = i = 0;
+		count_vm_chp_event(CHP_REFILL_WORKER_WAKE_UP);
+
+		set_bit(HPP_WORKER_RUNNING, &pool->flags);
+		while (i < expect) {
+			page = alloc_chp_from_buddy();
+			if (!page) {
+				if (retries++ >= max_retries) {
+					pr_err("refill page timeout\n");
+					break;
+				}
+
+				set_current_state(TASK_INTERRUPTIBLE);
+				schedule_timeout(msecs_to_jiffies(100));
+				continue;
+			}
+
+			huge_page_pool_add(pool, page, HPAGE_POOL_BUDDY);
+			retries = 0;
+			i++;
+		}
+
+		if (i > expect / 2)
+			count_vm_chp_event(CHP_REFILL_WORKER_ALLOC_SUCCESS);
+
+		set_current_state(TASK_INTERRUPTIBLE);
+		if (unlikely(kthread_should_stop())) {
+			set_current_state(TASK_RUNNING);
+			break;
+		}
+		clear_bit(HPP_WORKER_RUNNING, &pool->flags);
+		schedule();
+
+		set_current_state(TASK_RUNNING);
+	}
+	return 0;
+}
+
+static int huge_page_pool_init(struct huge_page_pool *pool)
+{
+	const char *kworker_name = "khpage_poold";
+	struct cpumask cpu_mask = { CPU_BITS_NONE };
+	int i;
+
+	for (i = 0; i < NR_HPAGE_POOL_TYPE; i++) {
+		pool->count[i] = 0;
+		INIT_LIST_HEAD(&pool->items[i]);
+	}
+
+	spin_lock_init(&pool->spinlock);
+	pool->cma_count = (cont_pte_pool_cma_size >> PAGE_SHIFT) / HPAGE_CONT_PTE_NR;
+#ifdef CONFIG_CONT_PTE_HUGEPAGE_ON_QEMU
+	pool->high = M2N(SZ_4M);
+#else
+	pool->high = M2N(90 * SZ_1M);
+#endif
+	pool->min_buddy = M2N(32 * SZ_1M);
+	sysctl_max_chp_buddy_count = M2N(3 * SZ_512M);
+	/* wakeup kthread on count < low, low = 3/4 high */
+	pool->low = pool->high * 3 / 4;
+#if CONFIG_POOL_ASYNC_RECLAIM
+	pool->wmark[POOL_WMARK_MIN] = pool->high * 3 / 10; /* trigger direct reclaim at min/2 */
+	pool->wmark[POOL_WMARK_LOW] = pool->high * 7 / 10; /* trigger kswapd */
+	pool->wmark[POOL_WMARK_HIGH] = pool->high; /* stop reclaim order 4 pages */
+#endif
+
+	pool->refill_worker = kthread_run(huge_page_pool_refill_worker, pool,
+					  kworker_name);
+	/* TDOO if failed */
+	if (IS_ERR(pool->refill_worker)) {
+		chp_loge("failed to start %s\n", kworker_name);
+		return -ENOMEM;
+	}
+
+	/* TODO: move this to userspace, debug only */
+	for (i = 0; i < 4; i++)
+		cpumask_set_cpu(i, &cpu_mask);
+	set_cpus_allowed_ptr(pool->refill_worker, &cpu_mask);
+
+	chp_logi("success.\n");
+	return 0;
+}
+
+struct huge_page_pool *cont_pte_pool(void)
+{
+	return &g_cont_pte_pool;
+}
+
+int cont_pte_pool_total_pages(void)
+{
+	struct huge_page_pool *pool = cont_pte_pool();
+
+	return (pool->count[HPAGE_POOL_CMA] +
+		pool->count[HPAGE_POOL_BUDDY]) * HPAGE_CONT_PTE_NR;
+}
+
+int cont_pte_pool_high(void)
+{
+	struct huge_page_pool *pool = cont_pte_pool();
+
+	return pool->high * HPAGE_CONT_PTE_NR;
+}
+
+bool cont_pte_pool_add(struct page *page)
+{
+	struct huge_page_pool *pool = cont_pte_pool();
+	int inx;
+
+	if (within_cont_pte_cma(page_to_pfn(page)))
+		inx = HPAGE_POOL_CMA;
+	else
+		inx = HPAGE_POOL_BUDDY;
+
+	huge_page_pool_add(pool, page, inx);
+	return true;
+}
+
+/* copied from set_pte_at */
+static inline void cset_pte_at(struct mm_struct *mm, unsigned long addr,
+			      pte_t *ptep, pte_t pte)
+{
+	if (pte_present(pte) && pte_user_exec(pte) && !pte_special(pte))
+		__sync_icache_dcache(pte);
+
+	if (system_supports_mte() &&
+	    pte_present(pte) && pte_tagged(pte) && !pte_special(pte))
+		mte_sync_tags(READ_ONCE(*ptep), pte);
+
+	__check_racy_pte_update(mm, ptep, pte);
+
+	set_pte(ptep, pte);
 }
 
 inline bool transhuge_cont_pte_vma_suitable(struct vm_area_struct *vma,
@@ -99,237 +630,735 @@ inline bool transhuge_cont_pte_vma_suitable(struct vm_area_struct *vma,
 
 		if (inode_is_open_for_write(inode))
 			return false;
+	} else {
+#ifndef CONFIG_CONT_PTE_HUGEPAGE_ON_QEMU
+		if (!vma_is_chp_anonymous(vma))
+			return false;
+#endif
 
-		return transhuge_cont_pte_addr_suitable(vma, haddr);
+		if (vma->vm_start >= vma->vm_mm->start_brk &&
+			vma->vm_end <= vma->vm_mm->brk)
+			return false;
+
+		if (vma->vm_flags & (VM_GROWSDOWN | VM_GROWSUP))
+			return false;
+	}
+
+	return transhuge_cont_pte_addr_suitable(vma, haddr);
+}
+
+void __free_cont_pte_hugepages(struct page *page)
+{
+	int i;
+
+	CHP_BUG_ON(page_ref_count(page) != 1);
+
+	mod_chp_page_state(page, -1);
+	/* try to refill pool before releasing */
+	if (within_cont_pte_cma(page_to_pfn(page))) {
+		cont_pte_pool_add(page);
+	} else {
+		for (i = 0; i < HPAGE_CONT_PTE_NR; i++)
+			__free_page(&page[i]);
+	}
+}
+
+bool handle_chp_prctl_user_addrs(const char __user *name, unsigned long start,
+				 unsigned long len)
+{
+	int i;
+	u64 rsv = current->mm->android_kabi_reserved1;
+	unsigned long name_addr = untagged_addr((unsigned long)name);
+	unsigned long native_addr = rsv & ~(DALVIK_MAIN_HEAP_BIT);
+	unsigned long page_start_vaddr;
+	unsigned long page_offset;
+	unsigned long num_pages;
+	unsigned long max_len = MAX_LEN_CHP_VMA_NAME - 1;
+	char buf[MAX_LEN_CHP_VMA_NAME] = {0};
+	unsigned long buf_offs = 0;
+	struct mm_struct *mm = current->mm;
+
+	if (!cont_pte_huge_page_enabled())
+		return false;
+
+	if (unlikely(!config_anon_enable || !name_addr ||
+		     test_thread_flag(TIF_32BIT)))
+		return false;
+
+	if (len < SZ_2M)
+		return false;
+
+	if (find_uid_in_blacklist(from_kuid(&init_user_ns, task_uid(current))))
+		return false;
+
+	if (native_addr) {
+		if (native_addr == name_addr)
+			return true;
+
+		if (DALVIK_MAIN_HEAP_BIT & rsv)
+			return false;
+	}
+
+	/* slow path */
+	mmap_read_lock(mm);
+	page_start_vaddr = name_addr & PAGE_MASK;
+	page_offset = name_addr - page_start_vaddr;
+	num_pages = DIV_ROUND_UP(page_offset + max_len, PAGE_SIZE);
+
+	for (i = 0; i < num_pages; i++) {
+		int len;
+		int write_len;
+		const char *kaddr;
+		long pages_pinned;
+		struct page *page;
+
+		pages_pinned = get_user_pages_remote(mm, page_start_vaddr, 1, 0,
+						     &page, NULL, NULL);
+		if (pages_pinned < 1) {
+			mmap_read_unlock(mm);
+			return false;
+		}
+
+		kaddr = (const char *)kmap(page);
+		len = min(max_len, PAGE_SIZE - page_offset);
+		write_len = strnlen(kaddr + page_offset, len);
+		memcpy(buf + buf_offs, kaddr + page_offset, write_len);
+		kunmap(page);
+		/* put_user_page(page); */ /* kernel-5.15 doesn't have this func */
+		put_page(page);
+
+		/* if strnlen hit a null terminator then we're done */
+		if (write_len != len)
+			break;
+
+		buf_offs += write_len;
+		max_len -= len;
+		page_offset = 0;
+		page_start_vaddr += PAGE_SIZE;
+	}
+	mmap_read_unlock(mm);
+
+	if (strcmp(NATIVE_HEAP, buf) == 0) {
+		struct vm_area_struct *vma;
+		bool ret = false;
+
+		if (unlikely(native_addr && native_addr != name_addr))
+			return ret;
+
+		mmap_read_lock(mm);
+		/*
+		 * uid == 0 /system/lib64/bootstrap/libc.so
+		 * uid == 1000 /apex/com.android.runtime/lib64/bionic/libc.so
+		 */
+		vma = find_vma(mm, name_addr);
+		if (vma && !vma_is_anonymous(vma) && vma->vm_file &&
+		    (i_uid_read(vma->vm_file->f_inode) == 1000 ||
+		     i_uid_read(vma->vm_file->f_inode) == 0) &&
+		    strcmp(vma->vm_file->f_path.dentry->d_name.name,
+			   "libc.so") == 0) {
+			current->mm->android_kabi_reserved1 |= name_addr;
+			ret = true;
+		} else {
+			if (vma && !(vma_is_anonymous(vma) && vma->vm_file))
+				chp_loge("vma %s ineligible %lx %s\n",
+					 NATIVE_HEAP,
+					 (unsigned long)name_addr,
+					 vma->vm_file->f_path.dentry->d_name.name);
+		}
+		mmap_read_unlock(mm);
+		return ret;
+	} else if (strcmp(DALVIK_MAIN_HEAP, buf) == 0) {
+		current->mm->android_kabi_reserved1 |= DALVIK_MAIN_HEAP_BIT;
+		return true;
 	}
 
 	return false;
 }
 
-static inline bool is_cont_pte_cma_full(void);
-
-int read_huge_page_pool_pages(void)
+/*
+ * for gki or oki, use si->procs == THP_SWAP_PRIO_MAGIC as a magic,
+ * si->totalhigh as a cmd, si->freehigh as a result
+ */
+bool handle_chp_ext_cmd(struct sysinfo *si)
 {
-	return (cont_pte_huge_page_pool.count) * HPAGE_CONT_PTE_NR;
-}
-
-static inline struct page *huge_page_pool_alloc_pages(void)
-{
-	struct page *page;
-	int i;
-	struct huge_page_pool *pool = &cont_pte_huge_page_pool;
-
-	/*
-	 * at the boot stage, buddy is likely to have 4-order memory.
-	 * some of them might be mlocked or permanently hot in LRU.
-	 * so we try to get memory from buddy and easy the runtime
-	 * pressure for cma. In rush hour of launching apps using lots
-	 * of hugpages, they are easier to get 64KB pages from cma
-	 */
-	if (pool->max) {
-		page = alloc_pages((GFP_HIGHUSER | __GFP_ZERO | __GFP_NOWARN |
-					__GFP_NORETRY) & ~__GFP_RECLAIM, HPAGE_CONT_PTE_ORDER);
-		if (page) {
-			split_page(page, HPAGE_CONT_PTE_ORDER);
-			goto out;
-		}
-	}
-
-	page = cma_alloc(cont_pte_cma, 1 << HPAGE_CONT_PTE_ORDER, HPAGE_CONT_PTE_ORDER,
-			 GFP_KERNEL | __GFP_NOWARN);
-	if (page)
-		goto out;
-
-	page = alloc_pages((GFP_HIGHUSER | __GFP_ZERO | __GFP_NOWARN |
-			   __GFP_NORETRY) & ~__GFP_RECLAIM, HPAGE_CONT_PTE_ORDER);
-	if (page)
-		split_page(page, HPAGE_CONT_PTE_ORDER);
-
-out:
-	if (page) {
-		/* alloc pages only set the 1st page's private to 0 */
-		for (i = 0; i < HPAGE_CONT_PTE_NR; i++)
-			set_page_private(&page[i], 0);
-	}
-
-	return page;
-}
-
-static void huge_page_pool_add(struct page *page, bool refill)
-{
-	struct huge_page_pool *pool = &cont_pte_huge_page_pool;
-
-#ifdef CONFIG_CONT_PTE_HUGEPAGE_DEBUG_VERBOSE
-	int i;
-
-	for (i = 0; i < HPAGE_CONT_PTE_NR; i++) {
-		BUG_ON(atomic_read(&page[i]._refcount) != 1 && !refill);
-		BUG_ON(atomic_read(&page[i]._mapcount) + 1);
-		BUG_ON(PageCompound(&page[i]));
-		WARN_ON_ONCE(page[i].flags); /* some new pages have 4000 0000 0000 0000, why? */
-		WARN_ON_ONCE(page[i].private);
-	}
-#endif
-
-	spin_lock(&pool->spinlock);
-	/* re-mark this so that cma_release can skip clearing bitmap */
-	if (refill)
-		SetPageCont(page);
-	list_add_tail(&page->lru, &pool->item);
-	pool->count++;
-	spin_unlock(&pool->spinlock);
-}
-
-bool huge_page_pool_refill(struct page *page)
-{
-	struct huge_page_pool *pool = &cont_pte_huge_page_pool;
-
-	if (pool->count >= pool->high)
+	if (likely(si->procs != THP_SWAP_PRIO_MAGIC))
 		return false;
 
-	BUG_ON(!IS_ALIGNED(page_to_pfn(page), HPAGE_CONT_PTE_NR));
-
-	huge_page_pool_add(page, true);
+	si->freehigh = 0;
+	switch (si->totalhigh) {
+	case CHP_EXT_CMD_KERNEL_SUPPORT_CHP:
+		si->freehigh = cont_pte_huge_page_enabled();
+		break;
+	case CHP_EXT_CMD_CHP_POOL:
+		if (cont_pte_huge_page_enabled())
+			si->freehigh = (u64)&g_cont_pte_pool;
+		break;
+	}
 	return true;
 }
 
-static struct page *huge_page_pool_remove(void)
+inline void handle_chp_get_unmapped_area(struct vm_unmapped_area_info *info,
+					 struct file *filp, unsigned long pgoff)
 {
-	struct huge_page_pool *pool = &cont_pte_huge_page_pool;
-	struct page *page;
+	if (!cont_pte_huge_page_enabled()) {
+		info->align_mask = 0;
+		return;
+	}
+
+	/* don't change alignment for 32bit non-file pages */
+	if (test_thread_flag(TIF_32BIT) &&
+	    (!filp || CONFIG_CONT_PTE_FILE_HUGEPAGE_DISABLE))
+		info->align_mask = 0;
+	else
+		info->align_mask = CONT_PTE_SIZE - 1;
+
+	if (filp && file_inode(filp) && file_inode(filp)->may_cont_pte)
+		info->align_offset = (pgoff & (HPAGE_CONT_PTE_NR - 1)) * PAGE_SIZE;
+}
+
+inline bool handle_chp_fs_supported(struct inode *inode)
+{
+	if (CONFIG_CONT_PTE_FILE_HUGEPAGE_DISABLE)
+		return false;
+
+	if (!cont_pte_huge_page_enabled())
+		return false;
+
+	if (inode->i_sb->s_magic == EROFS_SUPER_MAGIC_V1)
+		return true;
+
+	if (IS_ENABLED(CONFIG_CONT_PTE_HUGEPAGE_ON_EXT4) &&
+			inode->i_sb->s_magic == EXT4_SUPER_MAGIC)
+		return true;
+	return false;
+}
+
+void handle_chp_load_elf_binary(const char *filename)
+{
 	int i;
 
-	spin_lock(&pool->spinlock);
-	page = list_first_entry_or_null(&pool->item, struct page, lru);
-	if (page) {
-		pool->count--;
-		list_del(&page->lru);
-	}
-	spin_unlock(&pool->spinlock);
+	if (!filename || test_thread_flag(TIF_32BIT) ||
+	    !__is_critical_task_uid(current_uid()))
+		return;
 
-	if (pool->count < pool->low)
-		wake_up_process(pool->refill_worker);
+	for (i = 0; i < NR_SPECIAL_PROCESSES && chp_special_processes[i]; i++) {
+		if (!strcmp(chp_special_processes[i], filename)) {
+			chp_logi("update chp_special %s pid: %d\n",
+				 chp_special_processes[i], current->pid);
+
+			current->signal->flags |= SIGNAL_CHP_SPECIAL;
+			return;
+		}
+	}
+}
+
+static inline bool current_is_fg(void)
+{
+	bool is_ux = false;
+
+	/*
+	 * This hook is not used in our project.
+	 * We use it to get ux stats,for fix a trouble of GKI.
+	 */
+	trace_android_vh_pcplist_add_cma_pages_bypass(CHP_VH_CURRENT_IS_UX,
+						      &is_ux);
+	return is_ux;
+}
+
+static inline bool free_zram_is_ok(void)
+{
+	bool b = true;
+
+	trace_android_vh_pcplist_add_cma_pages_bypass(CHP_VH_FREE_ZRAM_IS_OK,
+						      &b);
+	return b;
+}
+
+#if CONFIG_POOL_ASYNC_RECLAIM
+#define POOL_ALLOC_WMARK_MIN         POOL_WMARK_MIN
+#define POOL_ALLOC_WMARK_LOW         POOL_WMARK_LOW
+#define POOL_ALLOC_WMARK_HIGH        POOL_WMARK_HIGH
+#define POOL_ALLOC_NO_WATERMARKS     0x04 /* don't check watermarks at all */
+/* Mask to get the watermark bits */
+#define POOL_ALLOC_WMARK_MASK        (POOL_ALLOC_NO_WATERMARKS-1)
+
+
+#define POOL_ALLOC_OOM		0x08 /* from oom path */
+#define POOL_ALLOC_HARDER	0x10 /* try to alloc harder */
+#define POOL_ALLOC_HIGH		0x20 /* eg: from rt thread */
+#define POOL_ALLOC_ALL		0x40 /* alloc till 0 */
+
+static inline unsigned int get_pool_alloc_flags(gfp_t gfp_mask)
+{
+	unsigned int alloc_flags = POOL_ALLOC_WMARK_MIN;
+	struct task_struct *tsk = current;
+
+	/*
+	 * we are only setting direct reclaim in tough cases like swapcache swapin,
+	 * we'd like to try our best to get hugepages to decrease fallbacks
+	 */
+	if (gfp_mask & ___GFP_DIRECT_RECLAIM)
+		alloc_flags |= POOL_ALLOC_HARDER;
+
+	if (rt_task(tsk) || current_is_fg() || (gfp_mask & __GFP_HIGH))
+		alloc_flags |= POOL_ALLOC_HIGH;
+
+	if (gfp_mask & __GFP_MEMALLOC)
+		alloc_flags |= POOL_ALLOC_ALL;
+
+	return alloc_flags;
+}
+
+static inline unsigned long prepare_pool_wmark(struct huge_page_pool *pool,
+		unsigned int alloc_flags,
+		gfp_t gfp_mask)
+{
+	unsigned long wmark;
+	const bool alloc_harder = (alloc_flags & (POOL_ALLOC_HARDER | POOL_ALLOC_OOM));
+
+	wmark = pool->wmark[alloc_flags & POOL_ALLOC_WMARK_MASK];
+
+	if (alloc_harder)
+		wmark -= wmark / 2;
+
+	if (alloc_flags & POOL_ALLOC_HIGH)
+		wmark -= wmark / 2;
+
+	if (alloc_flags & POOL_ALLOC_ALL)
+		wmark = 0;
+
+	return wmark;
+}
+
+static struct page *get_page_from_huge_pool(struct huge_page_pool *pool,
+				     unsigned int alloc_flags,
+				     gfp_t gfp_mask)
+{
+	unsigned long wmark;
+	struct page *page = NULL;
+
+	wmark = prepare_pool_wmark(pool, alloc_flags, gfp_mask);
+
+	if (huge_page_pool_count(pool, HPAGE_POOL_CMA) > wmark)
+		page = huge_page_pool_remove(pool, HPAGE_POOL_CMA);
+
+	if (!page)
+		page = huge_page_pool_remove(pool, HPAGE_POOL_BUDDY);
+
+	return page;
+}
+
+/* from mm/page_alloc.c */
+static void wake_all_kswapds(unsigned int order, gfp_t gfp_mask,
+		const struct alloc_context *ac)
+{
+	struct zoneref *z;
+	struct zone *zone;
+	pg_data_t *last_pgdat = NULL;
+	enum zone_type highest_zoneidx = ac->highest_zoneidx;
+
+	for_each_zone_zonelist_nodemask(zone, z, ac->zonelist, highest_zoneidx,
+			ac->nodemask) {
+		if (last_pgdat != zone->zone_pgdat)
+			wakeup_kswapd(zone, gfp_mask, order, highest_zoneidx);
+		last_pgdat = zone->zone_pgdat;
+	}
+}
+
+/* For use only in non-NUMA system mobile scenarios */
+static inline void pool_try_to_wakeup_kswapd(struct huge_page_pool *pool, gfp_t gfp_mask)
+{
+	int order;
+	struct alloc_context ac = { };
+
+	/* Tell kswapd we're from the cont-pte hugepage pool */
+	order = HPAGE_CONT_PTE_ORDER;
+	gfp_mask |= POOL_USER_ALLOC;
+
+	ac.highest_zoneidx = gfp_zone(gfp_mask);
+	ac.zonelist = node_zonelist(numa_node_id(), gfp_mask);
+	ac.nodemask = NULL;
+	ac.migratetype = gfp_migratetype(gfp_mask);
+	ac.preferred_zoneref = first_zones_zonelist(ac.zonelist,
+			ac.highest_zoneidx, ac.nodemask);
+	ac.spread_dirty_pages = false;
+
+	wake_all_kswapds(order, gfp_mask, &ac);
+
+	atomic64_add(1, &perf_stat.wmark_count[POOL_WMARK_LOW]);
+}
+
+extern unsigned long try_to_free_cont_pte_hugepages(struct zonelist *zonelist,
+		gfp_t gfp_mask, nodemask_t *nodemask, unsigned long nr_reclaim);
+
+static struct page *__try_to_cont_pte_hugepages_direct_reclaim(unsigned long *did_some_progress,
+							struct huge_page_pool *pool,
+							unsigned int alloc_flags,
+							gfp_t gfp_mask)
+{
+	struct zonelist *zonelist = node_zonelist(numa_node_id(), gfp_mask);
+	nodemask_t *nodemask = NULL;
+	struct page *page = NULL;
+	unsigned long nr_reclaim = POOL_DIRECT_RECLAIM_NR * HPAGE_CONT_PTE_NR;
+	unsigned long pflags; /* FIXME: add psi for lmdk? */
+	s64 time;
+	s64 reclaim_seq;
+
+	time = ktime_to_ms(ktime_get());
+	atomic64_add(1, &perf_stat.wmark_count[POOL_WMARK_MIN]);
+	reclaim_seq = atomic64_add_return(1, &perf_stat.reclaim_seq[POOL_DIRECT_RECLAIM]);
+
+	psi_memstall_enter(&pflags);
+	*did_some_progress = try_to_free_cont_pte_hugepages(zonelist, gfp_mask, nodemask, nr_reclaim);
+
+	atomic64_set(&perf_stat.reclaim_count[POOL_DIRECT_RECLAIM][reclaim_seq % POOL_RECLAIM_SEQ_ITEM], *did_some_progress);
+	perf_stat.reclaim_time[POOL_DIRECT_RECLAIM][reclaim_seq % POOL_RECLAIM_SEQ_ITEM] = ktime_to_ms(ktime_get()) - time;
+
+	if (*did_some_progress < HPAGE_CONT_PTE_NR) {
+		pr_err_ratelimited("@%s:%d fail to try_to_free_cont_pte_hugepages @\n",
+				__func__, __LINE__);
+		goto out;
+	}
+
+	page = get_page_from_huge_pool(pool, alloc_flags, gfp_mask);
+out:
+	psi_memstall_leave(&pflags);
+	return page;
+}
+
+static inline struct page *
+huge_page_pool_removes_may_oom(struct huge_page_pool *pool,
+				    gfp_t gfp_mask,
+				    unsigned long *did_some_progress)
+{
+	struct zonelist *zonelist = node_zonelist(numa_node_id(), gfp_mask);
+	nodemask_t *nodemask = NULL;
+	struct page *page = NULL;
+	struct oom_control oc = {
+		.zonelist = zonelist,
+		.nodemask = nodemask,
+		.memcg = NULL,
+		.gfp_mask = gfp_mask,
+		.order = HPAGE_CONT_PTE_ORDER,
+	};
+
+	*did_some_progress = 0;
+	atomic64_add(1, &perf_stat.oom_stat[POOL_OOM_ENTER]);
+	/*
+	 * Acquire the oom lock.  If that fails, somebody else is
+	 * making progress for us.
+	 */
+	if (!mutex_trylock(&oom_lock)) {
+		*did_some_progress = 1;
+		schedule_timeout_uninterruptible(1);
+		return NULL;
+	}
+
+	if (out_of_memory(&oc)) {
+		if (tsk_is_oom_victim(current))
+			goto out;
+
+		*did_some_progress = 1;
+		page = get_page_from_huge_pool(pool,
+					       POOL_ALLOC_WMARK_MIN | POOL_ALLOC_OOM,
+					       gfp_mask);
+	}
+
+out:
+	mutex_unlock(&oom_lock);
+	return page;
+}
+#endif
+
+static struct page *__alloc_cont_pte_hugepage(gfp_t gfp_mask)
+{
+	bool can_direct_reclaim = false;
+	struct huge_page_pool *pool = cont_pte_pool();
+	gfp_t gfp_zero = gfp_mask & __GFP_ZERO;
+	struct page *page = NULL;
+	int i;
+
+	/* fast path: count > wmark_low */
+#if CONFIG_POOL_ASYNC_RECLAIM
+	int retry_count = 0;
+	unsigned long did_some_progress = 0;
+	unsigned int alloc_flags = POOL_ALLOC_WMARK_LOW;
+
+	page = get_page_from_huge_pool(pool, alloc_flags, gfp_mask);
+	if (page)
+		goto get;
+#else
+	page = huge_page_pool_fetch(pool);
+#endif
+
+#if CONFIG_POOL_DIRECT_RECLAIM
+	can_direct_reclaim = gfp_mask & __GFP_DIRECT_RECLAIM;
+#endif
+
+	/*
+	 * slow path 1: count < wmark_low
+	 * wakeup kswapd & refill_worker
+	 */
+#if CONFIG_POOL_ASYNC_RECLAIM
+	/*
+	 * Apply scoped allocation constraints. This is mainly about GFP_NOFS
+	 * resp. GFP_NOIO which has to be inherited for all allocation requests
+	 * from a particular context which has been marked by
+	 * memalloc_no{fs,io}_{save,restore}.
+	 */
+	gfp_mask = current_gfp_context(gfp_mask);
+	alloc_flags = get_pool_alloc_flags(gfp_mask);
+retry:
+	if ((gfp_mask & __GFP_KSWAPD_RECLAIM) && free_zram_is_ok())
+		pool_try_to_wakeup_kswapd(pool, gfp_mask);
+
+	page = get_page_from_huge_pool(pool, alloc_flags, gfp_mask);
+	if (page)
+		goto get;
+
+	if (!can_direct_reclaim)
+		return NULL;
+	/*
+	 * slow path 2: count < wmark_min
+	 * direct reclaim
+	 */
+	page = __try_to_cont_pte_hugepages_direct_reclaim(&did_some_progress,
+							  pool, alloc_flags,
+							  gfp_mask);
+	if (!page) {
+		atomic64_add(1, &perf_stat.direct_reclaim_stat[POOL_DIRECT_RECLAIM_FAIL]);
+		pr_err_ratelimited("@%s:%d fail to __try_to_cont_pte_hugepages_direct_reclaim@\n",
+				__func__, __LINE__);
+	} else {
+		atomic64_add(1, &perf_stat.direct_reclaim_stat[POOL_DIRECT_RECLAIM_SUCCESS]);
+		goto get;
+	}
+
+	if (!config_alloc_oom)
+		return NULL;
+	page = huge_page_pool_removes_may_oom(pool, gfp_mask, &did_some_progress);
+	if (!page) {
+		atomic64_add(1, &perf_stat.oom_stat[POOL_OOM_FAIL]);
+		pr_err_ratelimited("@%s:%d fail to @huge_page_pool_removes_may_oom\n",
+				__func__, __LINE__);
+
+		if (did_some_progress) {
+			did_some_progress = 0;
+			/* Only one attempt is allowed */
+			if (retry_count)
+				return NULL;
+			retry_count++;
+			alloc_flags |= POOL_ALLOC_HARDER;
+			pr_err_ratelimited("@%s:%d retry slow path! @\n", __func__, __LINE__);
+			goto retry;
+		}
+		return NULL;
+	}
+	atomic64_add(1, &perf_stat.oom_stat[POOL_OOM_SUCCESS]);
+
+get:
+#endif
 
 	/* a refilled hugepage from free_compound_page */
-	if (page && PageCont(page)) {
-		for (i = 0; i < HPAGE_CONT_PTE_NR; i++)
-			post_alloc_hook(&page[i], 0, GFP_KERNEL);
+	if (page) {
+		if (TestClearPageContRefill(page)) {
+			for (i = 0; i < HPAGE_CONT_PTE_NR; i++)
+				post_alloc_hook(&page[i], 0, GFP_KERNEL | gfp_zero);
+		} else if (!static_branch_unlikely(&init_on_alloc) && gfp_zero) {
+			for (i = 0; i < HPAGE_CONT_PTE_NR; i++)
+				clear_highpage(&page[i]);
+		}
 	}
 
 	return page;
 }
 
-static int huge_page_pool_refill_worker(void *data)
-{
-	struct huge_page_pool *pool = data;
-	struct page *page;
-	s64 time;
-	int expect, i, retries, max_retries = 100;
-
-	for (;;) {
-		time = ktime_to_ms(ktime_get());
-		expect = pool->max ?: pool->high;
-		expect = max(expect - pool->count, 0);
-		retries = i = 0;
-
-		while (i < expect) {
-			if (!pool->max && pool->count >= pool->high)
-				break;
-
-			page = huge_page_pool_alloc_pages();
-			if (!page) {
-				if (retries++ >= max_retries) {
-					pr_err("refill page timeout\n");
-					break;
-				}
-
-				set_current_state(TASK_INTERRUPTIBLE);
-				schedule_timeout(msecs_to_jiffies(20));
-				continue;
-			}
-
-			huge_page_pool_add(page, false);
-			retries = 0;
-			i++;
-		}
-
-		if (unlikely(pool->max))
-			pool->max = 0;
-
-		pr_info("%s prealloc expect: %d fact: %d cur: %d, completed in %lldms...\n",
-			__func__, expect, i, pool->count,
-			ktime_to_ms(ktime_get()) - time);
-
-		set_current_state(TASK_INTERRUPTIBLE);
-		if (unlikely(kthread_should_stop())) {
-			set_current_state(TASK_RUNNING);
-			break;
-		}
-		schedule();
-
-		set_current_state(TASK_RUNNING);
-	}
-	return 0;
-}
-
-static struct page *alloc_cont_pte_hugepage(void)
+/*
+ * For the passed gfp_mask, the following is an example:
+ * <- application ->
+ * 1) Allow kswapd and direct reclaim
+ * gfp_t gfp_mask = (GFP_TRANSHUGE_LIGHT | __GFP_RECLAIM) & ~__GFP_MOVABLE & ~__GFP_COMP;
+ *
+ * 2) Allow kswapd reclaim
+ * gfp_mask = (GFP_TRANSHUGE_LIGHT  | __GFP_KSWAPD_RECLAIM) & ~__GFP_MOVABLE & ~__GFP_COMP;
+ *
+ * 3) Not allowed to reclaim
+ * gfp_mask = GFP_TRANSHUGE_LIGHT & ~__GFP_MOVABLE & ~__GFP_COMP;
+ *
+ * <- kernel ->
+ * NOTE: Without __GFP_COMP
+ * gfp_mask = xxx; (no __GFP_COMP)
+ * page = alloc_cont_pte_hugepage(gfp_mask);
+ * __SetPageUptodate(page);
+ * ...
+ * __free_cont_pte_hugepages(page); //page_ref_count must be 1
+ */
+struct page *alloc_cont_pte_hugepage(gfp_t gfp_mask)
 {
 	struct page *page = NULL;
-	int retries = 0;
 	static bool first_alloc = true;
-	bool enable_direct_alloc = false;
 
 	if (unlikely(first_alloc)) {
 		pr_info("%s: Initial hugepage pool size: %lu MiB\n", __func__,
-			cont_pte_huge_page_pool.count * HPAGE_CONT_PTE_SIZE / SZ_1M);
+			huge_page_pool_count(cont_pte_pool(), NR_HPAGE_POOL_TYPE) *
+			HPAGE_CONT_PTE_SIZE / SZ_1M);
 		first_alloc = false;
 	}
 
-retry:
-	page = huge_page_pool_remove();
+	if (current->group_leader && current->group_leader->signal &&
+	    (current->group_leader->signal->flags & SIGNAL_CHP_SPECIAL))
+		return NULL;
 
-	/* enter slow path */
-	if (!page && enable_direct_alloc) {
-		unsigned long long start, end;
-		int inx = 0;
-		atomic64_t *arr;
-
-		start = sched_clock();
-		page = huge_page_pool_alloc_pages();
-		end = sched_clock();
-
-		/* over than 64ms */
-		if (end - start > 64000000ULL) {
-			pr_warn_ratelimited("%s %s:%d direct alloc usage %lld, ret: %d\n",
-					    __func__, current->comm, current->tgid,
-					    end - start, !!page);
-			inx = 1;
-		}
-		arr = page ? perf_stat.direct_alloc : perf_stat.direct_alloc_fail;
-
-		atomic64_add(1, arr + inx);
-	}
-
-	/* wait for a sec */
+	/* enter fast path or slow path 1/2 */
+	page = __alloc_cont_pte_hugepage(gfp_mask);
+	/*
+	 * slow path 3: use buddy
+	 */
 	if (!page) {
-		if (is_cont_pte_cma_full()) {
-			retries = MAX_POOL_ALLOC_RETRIES + 1;
-			goto out;
+		/* slow path almost always fails once system gets stable */
+		if (sysctl_max_chp_buddy_count != STABLE_MAX_BUDDY_USAGE) {
+			count_vm_chp_event(CHP_PAGE_ALLOC_SLOWPATH);
+			page = alloc_chp_from_buddy();
 		}
-
-		if (retries < MAX_POOL_ALLOC_RETRIES) {
-			retries++;
-			set_current_state(TASK_INTERRUPTIBLE);
-			schedule_timeout(msecs_to_jiffies(16));
-			goto retry;
-		}
-
-		retries++;
-		pr_err_ratelimited("%s FIXME: %s %d Failed to alloc cont-pte pages\n",
-				   __func__, current->comm, current->pid);
+		if (!page)
+			count_vm_chp_event(CHP_PAGE_ALLOC_FAILED);
 	}
-out:
-	atomic64_add(1, perf_stat.alloc_retries + retries);
+
+	if (page)
+		mod_chp_page_state(page, 1);
+
+	return page;
+}
+
+static bool is_zygote_process(struct task_struct *t)
+{
+	const struct cred *tcred = __task_cred(t);
+
+	if (!strcmp(t->comm, "main") && (tcred->uid.val == 0) &&
+		(t->parent != 0 && !strcmp(t->parent->comm, "init")))
+		return true;
+	else
+		return false;
+}
+
+static inline bool is_native_task(struct task_struct *tsk)
+{
+	return (tsk->signal->oom_score_adj == OOM_SCORE_ADJ_MIN);
+}
+
+static bool is_critical_system_task(struct task_struct *tsk)
+{
+	if (!strcmp(tsk->comm, "system_server") ||
+	    !strcmp(tsk->comm, "surfaceflinger") ||
+	    !strcmp(tsk->comm, "servicemanager") ||
+	    !strcmp(tsk->comm, "init") || is_zygote_process(tsk))
+		return true;
+
+	return false;
+}
+
+void update_task_hugepage_critical_flag(struct task_struct *tsk)
+{
+	if (!__is_critical_task_uid(current_uid()))
+		return;
+
+	if (current->group_leader && current->group_leader->signal &&
+	    !(current->group_leader->signal->flags & SIGNAL_CHP_SPECIAL) &&
+	    !strcmp(tsk->group_leader->comm, "system_server")) {
+		chp_logi("update chp_special %s pid: %d\n",
+			 current->comm, current->pid);
+		current->group_leader->signal->flags |= SIGNAL_CHP_SPECIAL;
+	}
+
+	if (is_critical_system_task(tsk))
+		tsk->signal->flags |= SIGNAL_HUGEPAGE_CRITICAL;
+	else
+		tsk->signal->flags |= SIGNAL_HUGEPAGE_NOT_CRITICAL;
+}
+
+bool is_critical_native(struct task_struct *tsk)
+{
+	if (!is_native_task(tsk))
+		return false;
+
+	if (!__is_critical_task_uid(current_uid()))
+		return false;
+
+	if (tsk->signal->flags & SIGNAL_HUGEPAGE_CRITICAL)
+		return true;
+	else if (tsk->signal->flags & SIGNAL_HUGEPAGE_NOT_CRITICAL)
+		return false;
+
+	if (is_critical_system_task(tsk)) {
+		tsk->signal->flags |= SIGNAL_HUGEPAGE_CRITICAL;
+		return true;
+	}
+
+	return false;
+}
+
+/*
+ * This function will be call by alloc_pages when order >= MAX_ORDER
+ * It support alloc page from huge_page_pool for driver as zsmalloc/dma-buf/gpu.
+ * the following is an example:
+ *
+ *	 struct chp_ext_order ce_order = {
+ *		 .order = HPAGE_CONT_PTE_ORDER,
+ *		 .magic = THP_SWAP_PRIO_MAGIC,
+ *		 .type = CHP_ZSMALLOC,
+ *	 };
+ *   page = alloc_pages(gfp_mask | __GFP_COMP, ce_order.nr);
+ *   ......
+ *   put_page(page);
+ */
+struct page *alloc_chp_ext(gfp_t gfp_mask, int *order)
+{
+	struct page *page = NULL;
+	struct huge_page_pool *pool = cont_pte_pool();
+	gfp_t gfp_zero = gfp_mask & __GFP_ZERO;
+	struct chp_ext_order ceo = { .nr = *order, };
+	int i;
+
+	/* sanity check */
+	if (ceo.magic != THP_SWAP_PRIO_MAGIC ||
+	    ceo.order != HPAGE_CONT_PTE_ORDER ||
+	    ceo.type >= NR_CHP_EXT_TYPES ||
+	     !(gfp_mask & __GFP_COMP))
+		return NULL;
+
+	/* decode to real order */
+	*order = ceo.order;
+	/* zsmalloc can use both cma and buddy */
+	if (ceo.type == CHP_EXT_ZSMALLOC) {
+		page = alloc_cont_pte_hugepage(gfp_mask);
+	} else if (huge_page_pool_count(pool, HPAGE_POOL_CMA) > M2N(SZ_128M)) {
+		page = huge_page_pool_remove(pool, HPAGE_POOL_CMA);
+		if (page) {
+			mod_chp_page_state(page, 1);
+			if (TestClearPageContRefill(page)) {
+				for (i = 0; i < HPAGE_CONT_PTE_NR; i++)
+					post_alloc_hook(&page[i], 0, GFP_KERNEL | gfp_zero);
+			} else if (!static_branch_unlikely(&init_on_alloc) && gfp_zero) {
+				for (i = 0; i < HPAGE_CONT_PTE_NR; i++)
+					clear_highpage(&page[i]);
+			}
+		}
+	}
+
+	if (page) {
+		for (i = 0; i < HPAGE_CONT_PTE_NR; i++)
+			SetPageCont(&page[i]);
+		prep_compound_page(page, ceo.order);
+		/*
+		 * 5.10 set subpages' refcount to 0 in prep_compound_page,
+		 * but 5.15 doesn't
+		 */
+		for (i = 1; i < HPAGE_CONT_PTE_NR; i++)
+			page_ref_add_unless(&page[i], -1, 0);
+		SetPageContExtAlloc(page);
+		SetPageUptodate(page);
+		count_vm_chp_event(CHP_ALLOC_ZSMALLOC + ceo.type);
+	}
 	return page;
 }
 
@@ -349,7 +1378,8 @@ static pte_t get_clear_flush(struct mm_struct *mm,
 	for (i = 0; i < ncontig; i++, addr += pgsize, ptep++) {
 		pte_t pte = ptep_get_and_clear(mm, addr, ptep);
 
-		WARN_ON(pte_dirty(pte));
+		if (pte_dirty(pte))
+			orig_pte = pte_mkdirty(orig_pte);
 
 		if (pte_young(pte))
 			orig_pte = pte_mkyoung(orig_pte);
@@ -380,9 +1410,9 @@ static inline pte_t __cont_pte_huge_ptep_get_and_clear_flush(struct mm_struct *m
 {
 	pte_t orig_pte = ptep_get(ptep);
 
-	BUG_ON(!pte_cont(orig_pte));
-	BUG_ON(!IS_ALIGNED(addr, HPAGE_CONT_PTE_SIZE));
-	BUG_ON(!IS_ALIGNED(pte_pfn(orig_pte), HPAGE_CONT_PTE_NR));
+	CHP_BUG_ON(!pte_cont(orig_pte));
+	CHP_BUG_ON(!IS_ALIGNED(addr, HPAGE_CONT_PTE_SIZE));
+	CHP_BUG_ON(!IS_ALIGNED(pte_pfn(orig_pte), HPAGE_CONT_PTE_NR));
 
 	return get_clear_flush(mm, addr, ptep, PAGE_SIZE, CONT_PTES, flush);
 }
@@ -427,14 +1457,69 @@ void cont_pte_set_huge_pte_at(struct mm_struct *mm, unsigned long addr,
 	dpfn = pgsize >> PAGE_SHIFT;
 	hugeprot = pte_pgprot(pte);
 
-	BUG_ON(!IS_ALIGNED(pfn, HPAGE_CONT_PTE_NR));
-	BUG_ON(!IS_ALIGNED(addr, HPAGE_CONT_PTE_SIZE));
-	BUG_ON(!pte_cont(pte));
+	CHP_BUG_ON(!IS_ALIGNED(pfn, HPAGE_CONT_PTE_NR));
+	CHP_BUG_ON(!IS_ALIGNED(addr, HPAGE_CONT_PTE_SIZE));
+	CHP_BUG_ON(!pte_cont(pte));
 
 	clear_flush(mm, addr, ptep, pgsize, CONT_PTES);
 
 	for (i = 0; i < CONT_PTES; i++, ptep++, addr += pgsize, pfn += dpfn)
-		set_pte_at(mm, addr, ptep, pfn_pte(pfn, hugeprot));
+		cset_pte_at(mm, addr, ptep, pfn_pte(pfn, hugeprot));
+}
+
+void cont_pte_set_huge_pte_wrprotect(struct mm_struct *mm, unsigned long addr,
+			      pte_t *ptep)
+{
+	size_t pgsize = PAGE_SIZE;
+	unsigned long pfn, dpfn;
+	pgprot_t hugeprot;
+	int i;
+	pte_t pte;
+
+	CHP_BUG_ON(!pte_cont(READ_ONCE(*ptep)));
+
+	pte = get_clear_flush(mm, addr, ptep, PAGE_SIZE, CONT_PTES, true);
+	pte = pte_wrprotect(pte);
+
+	hugeprot = pte_pgprot(pte);
+	pfn = pte_pfn(pte);
+	dpfn = pgsize >> PAGE_SHIFT;
+
+	for (i = 0; i < CONT_PTES; i++, ptep++, addr += PAGE_SIZE, pfn += dpfn)
+		cset_pte_at(mm, addr, ptep, pfn_pte(pfn, hugeprot));
+}
+
+void cont_pte_set_huge_pte_clean(struct mm_struct *mm, unsigned long addr,
+			      pte_t *ptep)
+{
+	size_t pgsize = PAGE_SIZE;
+	unsigned long pfn, dpfn;
+	pgprot_t hugeprot;
+	int i;
+	pte_t pte;
+
+	CHP_BUG_ON(!pte_cont(READ_ONCE(*ptep)));
+
+	/* is hugepage clean ? */
+	for (i = 0; i < CONT_PTES; i++) {
+		pte_t pte = READ_ONCE(*(ptep + i));
+
+		if (pte_dirty(pte) || pte_young(pte))
+			break;
+	}
+	if (i >= CONT_PTES)
+		return;
+
+	pte = get_clear_flush(mm, addr, ptep, PAGE_SIZE, CONT_PTES, true);
+	pte = pte_mkold(pte);
+	pte = pte_mkclean(pte);
+
+	hugeprot = pte_pgprot(pte);
+	pfn = pte_pfn(pte);
+	dpfn = pgsize >> PAGE_SHIFT;
+
+	for (i = 0; i < CONT_PTES; i++, ptep++, addr += PAGE_SIZE, pfn += dpfn)
+		cset_pte_at(mm, addr, ptep, pfn_pte(pfn, hugeprot));
 }
 
 static inline void __do_set_cont_pte_with_addr(struct vm_fault *vmf,
@@ -470,29 +1555,6 @@ void do_set_cont_pte_with_addr(struct vm_fault *vmf,
 	__do_set_cont_pte_with_addr(vmf, page, addr);
 }
 
-void __split_huge_cont_pte(struct vm_area_struct *vma, pte_t *pte,
-			   unsigned long address, bool freeze,
-			   struct page *page)
-{
-	struct mm_struct *mm = vma->vm_mm;
-	struct page *head = compound_head(pte_page(*pte));
-	unsigned long haddr = address & HPAGE_CONT_PTE_MASK;
-
-	BUG_ON(page && (page != head));
-
-#define THP_SPLIT_CONT_PTE THP_SPLIT_PMD	/* we are leveraging PMD count for CONT_PTE */
-	count_vm_event(THP_SPLIT_CONT_PTE);
-
-	if (!vma_is_anonymous(vma)) {
-		cont_pte_huge_ptep_get_and_clear_flush(vma->vm_mm, haddr,
-						       pte - (address - haddr) / PAGE_SIZE);
-		page_remove_rmap(head, true);
-		put_page(head);
-		add_mm_counter(mm, mm_counter_file(head), -HPAGE_CONT_PTE_NR);
-		return;
-	}
-}
-
 void change_huge_cont_pte(struct vm_area_struct *vma, pte_t *pte,
 			  unsigned long addr, pgprot_t newprot,
 			  unsigned long cp_flags)
@@ -507,64 +1569,240 @@ void change_huge_cont_pte(struct vm_area_struct *vma, pte_t *pte,
 	cont_pte_set_huge_pte_at(mm, addr, pte, ptent);
 }
 
+void __split_huge_zero_page_pte(struct vm_area_struct *vma,
+		unsigned long haddr, pte_t *pte)
+{
+	int i;
+	struct mm_struct *mm = vma->vm_mm;
+
+	cont_pte_huge_ptep_get_and_clear_flush(vma->vm_mm, haddr, pte);
+	for (i = 0; i < HPAGE_CONT_PTE_NR; i++, haddr += PAGE_SIZE, pte++) {
+		pte_t entry;
+
+		entry = pfn_pte(my_zero_pfn(haddr), vma->vm_page_prot);
+		entry = pte_mkspecial(entry);
+		CHP_BUG_ON(!pte_none(*pte));
+		cset_pte_at(mm, haddr, pte, entry);
+	}
+	smp_wmb();
+}
+
+extern unsigned long huge_zero_pfn;
+
+static inline bool is_huge_zero_cont_pte(pte_t pte)
+{
+	return READ_ONCE(huge_zero_pfn) == pte_pfn(pte) && pte_present(pte);
+}
+
+static void __split_huge_cont_pte_locked(struct vm_area_struct *vma, pte_t *pte,
+		unsigned long haddr, bool freeze)
+{
+	int i;
+	struct mm_struct *mm = vma->vm_mm;
+	struct page *head = compound_head(pte_page(*pte));
+	pte_t ptent = *pte;
+	bool write;
+	pte_t old_ptes[HPAGE_CONT_PTE_NR];
+
+	CHP_BUG_ON(haddr & ~HPAGE_CONT_PTE_MASK);
+	VM_BUG_ON_VMA(vma->vm_start > haddr, vma);
+	VM_BUG_ON_VMA(vma->vm_end < haddr + HPAGE_CONT_PTE_SIZE, vma);
+	CHP_BUG_ON(!pte_cont(*pte));
+
+#define THP_SPLIT_CONT_PTE THP_SPLIT_PMD       /* we are leveraging PMD count for CONT_PTE */
+	count_vm_event(THP_SPLIT_CONT_PTE);
+
+	if (!vma_is_anonymous(vma)) {
+		cont_pte_huge_ptep_get_and_clear_flush(vma->vm_mm, haddr, pte);
+		page_remove_rmap(head, true);
+		put_page(head);
+
+		add_mm_counter(mm, mm_counter_file(head), -HPAGE_CONT_PTE_NR);
+		return;
+	}
+
+	if (is_huge_zero_cont_pte(*pte))
+		return __split_huge_zero_page_pte(vma, haddr, pte);
+
+	write = pte_write(*pte);
+	page_ref_add(head, HPAGE_CONT_PTE_NR - 1);
+
+	for (i = 0; i < HPAGE_CONT_PTE_NR; i++)
+		old_ptes[i] = READ_ONCE(*(pte + i));
+	cont_pte_huge_ptep_get_and_clear_flush(vma->vm_mm, haddr, pte);
+	for (i = 0; i < HPAGE_CONT_PTE_NR; i++, haddr += PAGE_SIZE, pte++) {
+		if (freeze) {
+			swp_entry_t swp_entry;
+
+			/* swp_entry = make_migration_entry(head + i, write); */
+			if (write)
+				swp_entry = make_writable_migration_entry(page_to_pfn(head + i));
+			else
+				swp_entry = make_readable_migration_entry(page_to_pfn(head + i));
+			ptent = swp_entry_to_pte(swp_entry);
+		} else {
+			ptent = old_ptes[i];
+			ptent = pte_mknoncont(ptent);
+		}
+		cset_pte_at(vma->vm_mm, haddr, pte, ptent);
+		atomic_inc(&head[i]._mapcount);
+	}
+
+	if (compound_mapcount(head) > 1 && !TestSetPageDoubleMap(head)) {
+		for (i = 0; i < HPAGE_CONT_PTE_NR; i++)
+			atomic_inc(&head[i]._mapcount);
+		atomic_long_inc(&cont_pte_double_map_count);
+	}
+
+	lock_page_memcg(head);
+	if (atomic_add_negative(-1, compound_mapcount_ptr(head))) {
+		/* Last compound_mapcount is gone. */
+		__mod_lruvec_page_state(head, NR_ANON_THPS, -HPAGE_CONT_PTE_NR);
+		if (TestClearPageDoubleMap(head)) {
+			atomic_long_dec(&cont_pte_double_map_count);
+			/* No need in mapcount reference anymore */
+			for (i = 0; i < HPAGE_CONT_PTE_NR; i++)
+				atomic_dec(&head[i]._mapcount);
+		}
+	}
+	unlock_page_memcg(head);
+
+	if (freeze) {
+		for (i = 0; i < HPAGE_CONT_PTE_NR; i++) {
+			page_remove_rmap(head + i, false);
+			put_page(head + i);
+		}
+	}
+}
+
+void __split_huge_cont_pte(struct vm_area_struct *vma, pte_t *pte,
+			   unsigned long address, bool freeze,
+			   struct page *page, spinlock_t *ptl)
+{
+	bool do_unlock_page = false;
+	unsigned long haddr = address & HPAGE_CONT_PTE_MASK;
+	pte_t _pte;
+
+	CHP_BUG_ON(!ptl);
+
+	if (address != haddr)
+		pte -= (address - haddr)/PAGE_SIZE;
+
+	CHP_BUG_ON(freeze && !page);
+	if (page) {
+		VM_WARN_ON_ONCE(!PageLocked(page));
+		if (page != pte_page(*pte))
+			goto out;
+	}
+repeat:
+	if (pte_cont(*pte)) {
+		/* FIXME: Probes whether all 16 ptes are pte_cont */
+		CHP_BUG_ON(!cont_pte_trans_huge(pte));
+
+		if (!page) {
+			page = pte_page(*pte);
+			CHP_BUG_ON(!page);
+			if (PageAnon(page)) {
+				if (unlikely(!trylock_page(page))) {
+					get_page(page);
+					_pte = *pte;
+					spin_unlock(ptl);
+					lock_page(page);
+					spin_lock(ptl);
+					if (unlikely(!pte_same(*pte, _pte))) {
+						unlock_page(page);
+						put_page(page);
+						page = NULL;
+						goto repeat;
+					}
+					put_page(page);
+				}
+
+				do_unlock_page = true;
+			}
+		}
+
+		if (PageMlocked(page))
+			clear_page_mlock(page);
+	} else {
+		/*
+		 * we don't have migration entry on cont pte, this migration entry is likely to
+		 * be a basepage
+		 */
+		WARN_ON(is_migration_entry(pte_to_swp_entry(*pte)));
+		goto out;
+	}
+
+	__split_huge_cont_pte_locked(vma, pte, haddr, freeze);
+out:
+	if (do_unlock_page)
+		unlock_page(page);
+}
+
 void split_huge_cont_pte_address(struct vm_area_struct *vma,
 				 unsigned long address,
 				 bool freeze, struct page *page)
 {
-	if (!vma_is_anonymous(vma)) {
-		unsigned long haddr = address & HPAGE_CONT_PTE_MASK;
-		struct mmu_notifier_range range;
-		spinlock_t *ptl;
-		pgd_t *pgdp;
-		p4d_t *p4dp;
-		pud_t *pudp;
-		pmd_t *pmdp;
-		pte_t *ptep;
+	unsigned long haddr = address & HPAGE_CONT_PTE_MASK;
+	struct mmu_notifier_range range;
+	spinlock_t *ptl;
+	pgd_t *pgdp;
+	p4d_t *p4dp;
+	pud_t *pudp;
+	pmd_t *pmdp;
+	pte_t *ptep;
 
-		if (vma_is_special_huge(vma))
-			return;
+	if (vma_is_special_huge(vma))
+		return;
 
-		pgdp = pgd_offset(vma->vm_mm, haddr);
-		if (!pgd_present(*pgdp))
-			return;
+	pgdp = pgd_offset(vma->vm_mm, haddr);
+	if (!pgd_present(*pgdp))
+		return;
 
-		p4dp = p4d_offset(pgdp, haddr);
-		if (!p4d_present(*p4dp))
-			return;
+	p4dp = p4d_offset(pgdp, haddr);
+	if (!p4d_present(*p4dp))
+		return;
 
-		pudp = pud_offset(p4dp, haddr);
-		if (!pud_present(*pudp))
-			return;
+	pudp = pud_offset(p4dp, haddr);
+	if (!pud_present(*pudp))
+		return;
 
-		pmdp = pmd_offset(pudp, haddr);
-		if (!pmd_present(*pmdp))
-			return;
+	pmdp = pmd_offset(pudp, haddr);
+	if (!pmd_present(*pmdp))
+		return;
 
-		ptep = pte_offset_map(pmdp, haddr);
-		if (!pte_present(*ptep))
-			return;
+	ptep = pte_offset_map(pmdp, haddr);
+	if (!pte_present(*ptep))
+		return;
 
-		mmu_notifier_range_init(&range, MMU_NOTIFY_CLEAR, 0, vma, vma->vm_mm,
-				haddr, haddr + HPAGE_CONT_PTE_SIZE);
-		mmu_notifier_invalidate_range_start(&range);
+	mmu_notifier_range_init(&range, MMU_NOTIFY_CLEAR, 0, vma, vma->vm_mm,
+			haddr, haddr + HPAGE_CONT_PTE_SIZE);
+	mmu_notifier_invalidate_range_start(&range);
 
-		ptl = pte_lockptr(vma->vm_mm, pmdp);
-		spin_lock(ptl);
-		/*
-		 * NOTE: After obtaining the pte lock we need
-		 * to check the pte again!
-		 */
-		if (!pte_cont(*ptep) || (page && page != pte_page(*ptep)))
-			goto out;
-		/* FIXME: Probes whether all 16 ptes are pte_cont */
-		BUG_ON(!cont_pte_trans_huge(ptep));
-		__split_huge_cont_pte(vma, ptep, haddr, freeze, page);
+	ptl = pte_lockptr(vma->vm_mm, pmdp);
+	spin_lock(ptl);
 
-out:
-		spin_unlock(ptl);
+	__split_huge_cont_pte(vma, ptep, haddr, freeze, page, ptl);
 
-		mmu_notifier_invalidate_range_only_end(&range);
-	}
+	spin_unlock(ptl);
+	mmu_notifier_invalidate_range_only_end(&range);
+}
+
+bool set_cont_pte_huge_zero_page(struct mm_struct *mm,
+		struct vm_area_struct *vma, unsigned long faddr, pte_t *pte,
+		struct page *zero_page)
+{
+	pte_t entry;
+	unsigned long haddr = faddr & HPAGE_CONT_PTE_MASK;
+	pte_t *ptep = pte - (faddr - haddr)/PAGE_SIZE;
+
+	entry = mk_pte(zero_page, vma->vm_page_prot);
+	entry = pte_mkyoung(entry);
+	entry = pte_mkhuge(entry);
+	entry = pte_mkcont(entry);
+	cont_pte_set_huge_pte_at(vma->vm_mm, haddr, ptep, entry);
+
+	return true;
 }
 
 static struct page *build_cont_pte_thp(struct address_space *mapping,
@@ -587,7 +1825,7 @@ static struct page *build_cont_pte_thp(struct address_space *mapping,
 				     __func__, __LINE__,
 				     atomic_read(&page[i]._mapcount),
 				     (unsigned long)&page[i]);
-				BUG_ON(1);
+				CHP_BUG_ON(1);
 				spin_unlock_irq(&mapping->i_pages.xa_lock);
 				return ERR_PTR(-EBUSY);
 			}
@@ -598,7 +1836,7 @@ static struct page *build_cont_pte_thp(struct address_space *mapping,
 				     (unsigned long)&page[i],
 				     page_to_pfn(&page[i]),
 				     within_cont_pte_cma(page_to_pfn(&page[i])));
-				BUG_ON(1);
+				CHP_BUG_ON(1);
 				spin_unlock_irq(&mapping->i_pages.xa_lock);
 				return ERR_PTR(-EBUSY);
 			}
@@ -696,7 +1934,7 @@ out:
 	/* almost always false, to be compatible with potential atomic context */
 	while (page && !xa_is_value(page) && PageCont(page) && !PageTransCompound(page))
 		cpu_relax();
-	BUG_ON(page && !xa_is_value(page) && PageCont(page) && !PageHead(page));
+	CHP_BUG_ON(page && !xa_is_value(page) && PageCont(page) && !PageHead(page));
 
 	return page;
 }
@@ -856,7 +2094,7 @@ static int cont_add_to_page_cache_locked(struct page *page,
 						__func__, __LINE__, (unsigned long)offset, j, (unsigned long)mapping,
 						(unsigned long)old, PageCompound((struct page *)old),
 						PageCont((struct page *)old), PageHead((struct page *)old));
-				BUG_ON(1);
+				CHP_BUG_ON(1);
 				goto error;
 			}
 		}
@@ -914,18 +2152,21 @@ static bool alloc_contpages_and_add_xa(struct address_space *mapping,
 	int i;
 	struct page *page;
 	void *shadow = NULL;
-	struct huge_page_pool *pool = &cont_pte_huge_page_pool;
 	int ret;
 
 	/*
 	 * we only support fs without readpages which are real for
 	 * ext4, erofs and f2fs
 	 */
-	BUG_ON(mapping->a_ops->readpages);
+	CHP_BUG_ON(mapping->a_ops->readpages);
 
-	page = alloc_cont_pte_hugepage();
-	if (!page)
+	count_vm_chp_event(THP_FILE_ENTRY);
+	page = alloc_cont_pte_hugepage((GFP_TRANSHUGE_LIGHT | __GFP_RECLAIM | __GFP_HIGH) & ~__GFP_MOVABLE & ~__GFP_COMP);
+	if (!page) {
+		count_vm_chp_event(THP_FILE_ALLOC_FAIL);
 		goto fail_alloc;
+	}
+	count_vm_chp_event(THP_FILE_ALLOC_SUCCESS);
 
 	for (i = 0; i < HPAGE_CONT_PTE_NR; i++) {
 		/* FIXME: we need this before we fix endio on THP */
@@ -960,13 +2201,7 @@ fail_charge:
 		ClearPageCont(&page[i]);
 	}
 
-	/* try to refill pool before releasing */
-	if (within_cont_pte_cma(page_to_pfn(page)) && pool->count < pool->high) {
-		huge_page_pool_add(page, false);
-	} else if (!cma_release(cont_pte_cma, page, 1 << HPAGE_CONT_PTE_ORDER)) {
-		for (i = 0; i < HPAGE_CONT_PTE_NR; i++)
-			__free_page(&page[i]);
-	}
+	__free_cont_pte_hugepages(page);
 
 fail_alloc:
 	*ret_page = NULL;
@@ -996,7 +2231,7 @@ static void read_pages(struct readahead_control *rac,
 						within_cont_pte_cma(page_to_pfn(page)));
 				dump_page(page, "THP readahead_page");
 				dump_page(compound_head(page), "THP readahead_page head");
-				BUG_ON(1);
+				CHP_BUG_ON(1);
 			}
 			unlock_page(page);
 			put_page(page);
@@ -1017,8 +2252,8 @@ static void read_pages(struct readahead_control *rac,
 
 	blk_finish_plug(&plug);
 
-	BUG_ON(!list_empty(pages));
-	BUG_ON(readahead_count(rac));
+	CHP_BUG_ON(!list_empty(pages));
+	CHP_BUG_ON(readahead_count(rac));
 
  out:
 	if (skip_page)
@@ -1120,7 +2355,7 @@ struct file *do_cont_pte_async_mmap_readahead(struct vm_fault *vmf, struct page 
 	unsigned int size = 0;
 	int i;
 
-	BUG_ON(PageWriteback(page));
+	CHP_BUG_ON(PageWriteback(page));
 
 	ClearPageReadahead(page);
 
@@ -1253,7 +2488,7 @@ void init_cont_endio_spinlock(struct inode *inode)
 #if !defined(CONFIG_DEBUG_LOCK_ALLOC)
 	spinlock_t *sp = (spinlock_t *)&inode->i_mapping->endio_spinlock;
 	/* we are using android reserve2-4 */
-	BUG_ON(sizeof(spinlock_t) > 3 * sizeof(unsigned long));
+	CHP_BUG_ON(sizeof(spinlock_t) > 3 * sizeof(unsigned long));
 	spin_lock_init(sp);
 #endif
 }
@@ -1271,7 +2506,7 @@ void set_cont_pte_uptodate_and_unlock(struct page *page)
 
 	pfn = page_to_pfn(page);
 	head = (struct page *)pfn_to_page(ALIGN_DOWN(pfn, HPAGE_CONT_PTE_NR));
-	BUG_ON(!PageCont(head) || !PageCont(page));
+	CHP_BUG_ON(!PageCont(head) || !PageCont(page));
 
 	mapping = page->mapping;
 
@@ -1282,7 +2517,7 @@ void set_cont_pte_uptodate_and_unlock(struct page *page)
 				head->mapping, pfn, within_cont_pte_cma(pfn), PageTransCompound(page), PageUptodate(head));
 		return;
 	}
-	BUG_ON(!mapping || ((mapping != head->mapping) && !PageCompound(page)));
+	CHP_BUG_ON(!mapping || ((mapping != head->mapping) && !PageCompound(page)));
 	SetPageContUptodate(page);
 
 #if defined(CONFIG_DEBUG_LOCK_ALLOC)
@@ -1292,7 +2527,7 @@ void set_cont_pte_uptodate_and_unlock(struct page *page)
 #endif
 	spin_lock_irqsave(sp, flags);
 	for (i = 0; i < HPAGE_CONT_PTE_NR; i++) {
-		BUG_ON(!PageCont(&head[i]));
+		CHP_BUG_ON(!PageCont(&head[i]));
 		if (!PageContUptodate(&head[i])) {
 			page_uptodate = false;
 			break;
@@ -1324,195 +2559,6 @@ void set_cont_pte_uptodate_and_unlock(struct page *page)
 		__build_thp(head->mapping, head);
 	}
 }
-
-struct cma *cont_pte_cma;
-unsigned long cont_pte_cma_size;
-unsigned long cont_pte_sup_mem;
-bool cont_pte_sup_prjname;
-#define CONT_PTE_CMA_SIZE (768 * SZ_1M)
-#define CONT_PTE_SUP_MEM_SIZE (8ul * SZ_1G)
-
-static inline bool is_cont_pte_cma_full(void)
-{
-	return global_node_page_state(NR_FILE_THPS) * HPAGE_CONT_PTE_SIZE >=
-		(cont_pte_cma_size - (cont_pte_cma_size >> 5));
-}
-
-static int __init cmdline_parse_cont_pte_cma(char *p)
-{
-	cont_pte_cma_size = memparse(p, &p);
-	return 0;
-}
-early_param("cont_pte_cma", cmdline_parse_cont_pte_cma);
-
-static int __init cmdline_parse_cont_pte_sup_mem(char *p)
-{
-	cont_pte_sup_mem = memparse(p, &p);
-	return 0;
-}
-early_param("cont_pte_sup_mem", cmdline_parse_cont_pte_sup_mem);
-
-static int __init cmdline_parse_prjname(char *p)
-{
-	const char *prjs[] = {
-		"22803", "22881", NULL,
-	};
-	int i = 0;
-
-	for (i = 0; prjs[i] && p; i++) {
-		if (!strcmp(p, prjs[i])) {
-			pr_info("%s support\n", prjs[i]);
-			cont_pte_sup_prjname = true;
-			break;
-		}
-	}
-	return 0;
-}
-early_param("oplusboot.prjname", cmdline_parse_prjname);
-
-inline bool cont_pte_huge_page_enabled(void)
-{
-	return static_branch_likely(&cont_pte_huge_page_enabled_key);
-}
-
-void __init cont_pte_cma_reserve(void)
-{
-	int res;
-
-	/* default size */
-	if (cont_pte_cma_size == 0)
-		cont_pte_cma_size = CONT_PTE_CMA_SIZE;
-
-	if (cont_pte_sup_mem == 0)
-		cont_pte_sup_mem = CONT_PTE_SUP_MEM_SIZE;
-
-	if (!cont_pte_sup_prjname ||
-	    memblock_phys_mem_size() - memblock_reserved_size() < cont_pte_sup_mem) {
-		pr_info("device does not support cont_pte_huge_page\n");
-		return;
-	}
-
-	res = cma_declare_contiguous(0, cont_pte_cma_size, 0, 0,
-			HPAGE_CONT_PTE_ORDER, false, "cont_pte",
-			&cont_pte_cma);
-	if (unlikely(res)) {
-		pr_warn("cont_pte_cma: reservation failed: err %d", res);
-		return;
-	}
-
-	static_branch_enable(&cont_pte_huge_page_enabled_key);
-	pr_info("cont_pte_cma: reserved %lu MiB\n", cont_pte_cma_size / SZ_1M);
-}
-
-static int __init huge_page_pool_init(void)
-{
-	struct huge_page_pool *pool = &cont_pte_huge_page_pool;
-	struct sched_attr attr = { .sched_nice = 10 };
-	const char *kworker_name = "kcont_hugepaged";
-	struct cpumask cpu_mask = { CPU_BITS_NONE };
-	int ret, i;
-
-	if (!cont_pte_huge_page_enabled())
-		return -ENOMEM;
-
-	build_thp_wq = create_singlethread_workqueue("build_thp");
-	if (!build_thp_wq) {
-		pr_warn("failed to create build_thp workqueue\n");
-		return -ENOMEM;
-	}
-
-	INIT_LIST_HEAD(&pool->item);
-	pool->count = 0;
-#ifdef CONFIG_CONT_PTE_HUGEPAGE_ON_QEMU
-	/* on qemu, we have much less memory */
-	pool->max = M2N(cont_pte_cma_size * 3 / 2);
-	pool->high = M2N(SZ_4M);
-#else
-	pool->max = M2N(cont_pte_cma_size);
-	pool->high = M2N(80 * SZ_1M);
-#endif
-	/* wakeup kthread on count < low, low = 3/4 high */
-	pool->low = pool->high * 3 / 4;
-	spin_lock_init(&pool->spinlock);
-	pool->refill_worker = kthread_run(huge_page_pool_refill_worker, pool,
-					  kworker_name);
-	/* TDOO if failed */
-	if (IS_ERR(pool->refill_worker)) {
-		pr_err("failed to start %s\n", kworker_name);
-		return 1;
-	}
-
-	ret = sched_setattr(pool->refill_worker, &attr);
-	if (ret)
-		pr_warn("failed to set priority for %s ret=%d\n",
-			kworker_name, ret);
-
-	/* TODO: move this to userspace, debug only */
-	for (i = 0; i < 4; i++)
-		cpumask_set_cpu(i, &cpu_mask);
-	set_cpus_allowed_ptr(pool->refill_worker, &cpu_mask);
-
-	pr_info("%s low: %d high:%d max: %d",
-		__func__, pool->low, pool->high, pool->max);
-	return ret;
-}
-core_initcall(huge_page_pool_init);
-
-static int proc_stat_show(struct seq_file *s, void *v)
-{
-	int i = 0;
-	struct huge_page_pool *pool = &cont_pte_huge_page_pool;
-
-	seq_printf(s, "cont_pte_cma_size %lu\n", cont_pte_cma_size);
-	seq_printf(s, "cont_pte_sup_mem %lu\n", cont_pte_sup_mem);
-	seq_printf(s, "cont_cma_size %d\n", CONT_PTE_CMA_SIZE >> PAGE_SHIFT);
-	seq_printf(s, "cont_page_flag 0x%lx\n",
-		   1ul << PG_cont | 1ul << PG_cont_uptodate);
-
-	seq_printf(s, "pool_low %d\n", pool->low * CONT_PTES);
-	seq_printf(s, "pool_high %d\n", pool->high * CONT_PTES);
-	seq_printf(s, "pool_cur %d\n", pool->count * CONT_PTES);
-
-
-	seq_printf(s, "alloc %llu\n",
-		   atomic64_read(perf_stat.alloc_retries + i));
-	i++;
-
-	for (; i <= MAX_POOL_ALLOC_RETRIES; i++)
-		seq_printf(s, "alloc_%d %llu\n", i,
-			   atomic64_read(perf_stat.alloc_retries + i));
-	seq_printf(s, "alloc_fail %llu\n",
-		   atomic64_read(perf_stat.alloc_retries + i));
-
-	seq_printf(s, "direct_alloc: %llu\n",
-		   atomic64_read(perf_stat.direct_alloc));
-	seq_printf(s, "direct_alloc_slow: %llu\n",
-		   atomic64_read(perf_stat.direct_alloc + 1));
-
-	seq_printf(s, "direct_alloc_fail: %llu\n",
-		   atomic64_read(perf_stat.direct_alloc_fail));
-	seq_printf(s, "direct_alloc_fail_slow: %llu\n",
-		   atomic64_read(perf_stat.direct_alloc_fail + 1));
-	return 0;
-}
-
-#if CONFIG_CONT_PTE_HUGEPAGE_DEBUG
-static int proc_fault_around_stat_show(struct seq_file *s, void *v)
-{
-	int i = 0;
-	s64 counter, total = 0;
-
-	seq_puts(s, "fault around stat:\n");
-	for (; i < NR_FAULT_AROUND_STAT_ITEMS; i++) {
-		counter = atomic64_read(&fault_around_stat[i]);
-		total += counter;
-		seq_printf(s, "fault-around[%d] %llu\n", i, counter);
-	}
-	seq_printf(s, "fault-around total %llu\n", total);
-
-	return 0;
-}
-#endif
 
 vm_fault_t cont_pte_filemap_around(struct vm_fault *vmf, pgoff_t start_pgoff, pgoff_t end_pgoff)
 {
@@ -1550,7 +2596,7 @@ vm_fault_t cont_pte_filemap_around(struct vm_fault *vmf, pgoff_t start_pgoff, pg
 	if (pmd_none(*vmf->pmd)) {
 		struct mm_struct *mm = vmf->vma->vm_mm;
 
-		BUG_ON(pmd_trans_huge(*vmf->pmd));
+		CHP_BUG_ON(pmd_trans_huge(*vmf->pmd));
 
 		if (vmf->flags & FAULT_FLAG_SPECULATIVE)
 			return VM_FAULT_RETRY;
@@ -1641,12 +2687,545 @@ out:
 	return ret;
 }
 
+#if CONFIG_POOL_ASYNC_RECLAIM
+static int proc_pool_async_reclaim_stat_show(struct seq_file *s, void *v)
+{
+	int i, j;
+	struct huge_page_pool *pool = cont_pte_pool();
+	s64 reclaim_count[POOL_RECLAIM_ITEM][POOL_RECLAIM_SEQ_ITEM];
+	s64 reclaim_time[POOL_RECLAIM_ITEM][POOL_RECLAIM_SEQ_ITEM];
+	s64 avg_reclaim_count[POOL_RECLAIM_ITEM] = {0};
+	s64 avg_reclaim_time[POOL_RECLAIM_ITEM] = {0};
+
+	seq_puts(s, "*************************** Pool Async Statistics ******************************\n");
+	for (i = 0; i < POOL_RECLAIM_ITEM; i++) {
+		for (j = 0; j < POOL_RECLAIM_SEQ_ITEM; j++) {
+			if (!j) {
+				seq_printf(s, "\n%s\n", i ? "direct reclaim count: " : "kswapd reclaim count: ");
+				seq_printf(s, " reclaim_seq: %llu real_seq:%llu\n",
+						atomic64_read(&perf_stat.reclaim_seq[i]),
+						atomic64_read(&perf_stat.reclaim_seq[i]) % POOL_RECLAIM_SEQ_ITEM);
+			}
+
+			reclaim_time[i][j] = perf_stat.reclaim_time[i][j];
+			reclaim_count[i][j] = atomic64_read(&perf_stat.reclaim_count[i][j]);
+			seq_printf(s, "  count[%d]:%llu page(%llu hpage) time:%llums\n",
+					j, reclaim_count[i][j], reclaim_count[i][j] / HPAGE_CONT_PTE_NR,
+					reclaim_time[i][j]);
+			avg_reclaim_count[i] += reclaim_count[i][j];
+			avg_reclaim_time[i] += reclaim_time[i][j];
+		}
+
+		if (atomic64_read(&perf_stat.reclaim_seq[i]) > POOL_RECLAIM_SEQ_ITEM) {
+			avg_reclaim_count[i] /= POOL_RECLAIM_SEQ_ITEM;
+			avg_reclaim_time[i] /= POOL_RECLAIM_SEQ_ITEM;
+		} else {
+			avg_reclaim_count[i] /= atomic64_read(&perf_stat.reclaim_seq[i]);
+			avg_reclaim_time[i] /= atomic64_read(&perf_stat.reclaim_seq[i]);
+		}
+	}
+
+	seq_printf(s, "cma pageblock count: %u\n", pool->count[HPAGE_POOL_CMA]);
+	seq_printf(s, "buddy pageblock count: %u\n", pool->count[HPAGE_POOL_BUDDY]);
+	seq_printf(s, "wmark_min: %lu\n", pool->wmark[POOL_WMARK_MIN]);
+	seq_printf(s, "wmark_low: %lu\n", pool->wmark[POOL_WMARK_LOW]);
+	seq_printf(s, "wmark_high: %lu\n", pool->wmark[POOL_WMARK_HIGH]);
+	seq_printf(s, "entry wmark_min count: %llu\n",
+			atomic64_read(&perf_stat.wmark_count[POOL_WMARK_MIN]));
+	seq_printf(s, "entry wmark_low count: %llu\n",
+			atomic64_read(&perf_stat.wmark_count[POOL_WMARK_LOW]));
+	seq_printf(s, "entry direct reclaim count: %llu\n",
+			atomic64_read(&perf_stat.direct_reclaim_stat[POOL_DIRECT_RECLAIM_ENTER]));
+	seq_printf(s, "direct reclaim success count: %llu\n",
+			atomic64_read(&perf_stat.direct_reclaim_stat[POOL_DIRECT_RECLAIM_SUCCESS]));
+	seq_printf(s, "direct reclaim fail count: %llu\n",
+			atomic64_read(&perf_stat.direct_reclaim_stat[POOL_DIRECT_RECLAIM_FAIL]));
+	seq_printf(s, "entry oom count: %llu\n",
+			atomic64_read(&perf_stat.oom_stat[POOL_OOM_ENTER]));
+	seq_printf(s, "oom success count: %llu\n",
+			atomic64_read(&perf_stat.oom_stat[POOL_OOM_SUCCESS]));
+	seq_printf(s, "oom fail count: %llu\n",
+			atomic64_read(&perf_stat.oom_stat[POOL_OOM_FAIL]));
+	seq_printf(s, "kswapd_wakeup_count: %llu\n",
+			atomic64_read(&perf_stat.kswapd_wakeup_count));
+
+	seq_printf(s, "\nnumber of observations: %d\n"
+			"direct reclaim threshold: %d page(%d hpage)\n"
+			"direct reclaim avg reclaim count: %llu page(%llu hpage)\n"
+			"direct reclaim avg reclaim time: %llu ms\n"
+			"direct reclaim efficiency: %llu (0-10000)\n"
+			"kswapd reclaim threshold: %lu page(%lu hpage)\n"
+			"kswapd reclaim avg reclaim count: %llu page(%llu hpage)\n"
+			"kswapd reclaim avg reclaim time: %llu ms\n"
+			"kswapd reclaim efficiency: %llu (0-10000)\n",
+			POOL_RECLAIM_SEQ_ITEM,
+			POOL_DIRECT_RECLAIM_NR * HPAGE_CONT_PTE_NR, POOL_DIRECT_RECLAIM_NR,
+			avg_reclaim_count[POOL_DIRECT_RECLAIM], avg_reclaim_count[POOL_DIRECT_RECLAIM] / HPAGE_CONT_PTE_NR,
+			avg_reclaim_time[POOL_DIRECT_RECLAIM],
+			(avg_reclaim_count[POOL_DIRECT_RECLAIM] / HPAGE_CONT_PTE_NR) * 10000 / POOL_DIRECT_RECLAIM_NR,
+			(pool->wmark[POOL_WMARK_HIGH] * HPAGE_CONT_PTE_NR) / 2, pool->wmark[POOL_WMARK_HIGH] / 2,
+			avg_reclaim_count[POOL_KSWAPD_RECLAIM], avg_reclaim_count[POOL_KSWAPD_RECLAIM] / HPAGE_CONT_PTE_NR,
+			avg_reclaim_time[POOL_KSWAPD_RECLAIM],
+			(avg_reclaim_count[POOL_KSWAPD_RECLAIM] / HPAGE_CONT_PTE_NR) * 10000 / pool->wmark[POOL_WMARK_HIGH]);
+
+	return 0;
+}
+#endif
+
+static int proc_stat_show(struct seq_file *s, void *v)
+{
+	int i, j;
+	struct huge_page_pool *pool = cont_pte_pool();
+	unsigned long events[NR_VM_CHP_EVENT_ITEMS];
+#if CONFIG_MAPPED_WALK_MIDDLE_CONT_PTE_DEBUG || CONFIG_NON_SPF_FAULT_RETRY_DEBUG
+	u64 cnt;
+#endif
+
+	all_vm_chp_events(events);
+
+	seq_printf(s, "cont_pte_cma_size %lu\n", cont_pte_pool_cma_size);
+	seq_printf(s, "cmdline_cont_pte_sup_mem %lu\n", cmdline_cont_pte_sup_mem);
+	seq_printf(s, "cont_page_flag 0x%lx\n",
+		   1ul << PG_cont | 1ul << PG_cont_uptodate);
+
+	seq_printf(s, "pool_low %d\n", pool->low * HPAGE_CONT_PTE_NR);
+	seq_printf(s, "pool_high %d\n", pool->high * HPAGE_CONT_PTE_NR);
+	seq_printf(s, "pool_cma_count %d\n",
+		   pool->count[HPAGE_POOL_CMA] * HPAGE_CONT_PTE_NR);
+	seq_printf(s, "pool_buddy_count %d\n",
+		   pool->count[HPAGE_POOL_BUDDY] * HPAGE_CONT_PTE_NR);
+
+	seq_printf(s, "usage_cma %lu\n",
+		   chp_page_state(HPAGE_POOL_CMA) * HPAGE_CONT_PTE_NR);
+	seq_printf(s, "usage_buddy %lu\n",
+		   chp_page_state(HPAGE_POOL_BUDDY) * HPAGE_CONT_PTE_NR);
+	seq_printf(s, "peak_usage_buddy %lu\n", peak_chp_nr * HPAGE_CONT_PTE_NR);
+
+	seq_printf(s, "thp_swpin_swapcache_hit %llu\n",
+		   atomic64_read(&thp_swpin_hit_swapcache));
+	seq_printf(s, "swap_cluster_double_mapped %lu\n",
+		   swap_cluster_double_mapped);
+	seq_printf(s, "thp_cow %llu\n", atomic64_read(&thp_cow));
+	seq_printf(s, "thp_cow_fallback %llu\n", atomic64_read(&thp_cow_fallback));
+
+	for (i = 0; i < THP_SWPIN_NO_SWAPCACHE_ENTRY; i++)
+		seq_printf(s, "%s %lu\n", vm_chp_event_text[i], events[i]);
+
+	for (; i < NR_VM_CHP_EVENT_ITEMS; i++) {
+		if (i != THP_SWPIN_NO_SWAPCACHE_ENTRY &&
+		    i != THP_SWPIN_NO_SWAPCACHE_FALLBACK_ENTRY &&
+		    i != THP_SWPIN_SWAPCACHE_ENTRY &&
+		    i != THP_SWPIN_SWAPCACHE_FALLBACK_ENTRY &&
+		    i != THP_FILE_ENTRY &&
+		    i != THP_SWPIN_CRITICAL_ENTRY)
+			seq_puts(s, "  ");
+
+		seq_printf(s, "%s %lu\n", vm_chp_event_text[i], events[i]);
+
+		if (i == THP_SWPIN_SWAPCACHE_PREPARE_FAIL) {
+			for (j = 1; j < RET_STATUS_NR; j++) {
+				seq_printf(s, "    %s %llu\n", thp_read_swpcache_ret_status_string[j],
+						atomic64_read(&perf_stat.thp_read_swpcache_ret_status_stat[j]));
+			}
+		}
+	}
+
+	seq_printf(s, "chunk_refill_info\n  time: %llums\n  fail_count: %llu\n  first_fail_num: %llu\n  cma_steal_count: %llu\n",
+			perf_stat.chunk_refill_time,
+			atomic64_read(&perf_stat.chunk_refill_fail_count),
+			perf_stat.chunk_refill_first_fail_num,
+			atomic64_read(&perf_stat.cma_steal_count));
+
+	for (i = 0; i < WP_REUSE_FAIL_NR; i++)
+		seq_printf(s, "%s%s: %llu\n", i ? "  " : "", wp_reuse_fail_text[i],
+				atomic64_read(&perf_stat.wp_reuse_fail_count[i]));
+
+#if CONFIG_REUSE_SWP_ACCOUNT_DEBUG
+	seq_puts(s, "reuse_swp_page_stat\n");
+	for (i = 0; i < REUSE_SWP_NR; i++)
+		seq_printf(s, "  %s: %llu\n", reuse_swp_text[i],
+				atomic64_read(&perf_stat.reuse_swp_count[i]));
+#endif
+
+	seq_printf(s, "truncate_hit_middle_page_cnt %llu\n",
+		atomic64_read(&perf_stat.truncate_hit_middle_page_cnt));
+
+	seq_printf(s, "cp_cont_pte_split_count: %llu\n",
+		atomic64_read(&perf_stat.cp_cont_pte_split_count));
+
+#if CONFIG_MAPPED_WALK_MIDDLE_CONT_PTE_DEBUG
+	cnt = atomic64_read(&perf_stat.mapped_walk_middle_cont_pte_cnt);
+
+	seq_puts(s, "mapped_walk_middle_cont_pte_stat\n");
+	seq_printf(s, "  mapped_walk_middle_cont_pte_cnt: %llu\n", cnt);
+	for (i = 0; i < MAPPED_WALK_HIT_SEQ; i++) {
+		if (perf_stat.mapped_walk_stat[i].ori_addr) {
+			seq_printf(s, "  seq: %llu  ori_addr:%lx addr:%lx page:%lx page_pfn:%lx pte_pfn:%lx\n",
+					i, perf_stat.mapped_walk_stat[i].ori_addr,
+					perf_stat.mapped_walk_stat[i].addr,
+					perf_stat.mapped_walk_stat[i].page,
+					perf_stat.mapped_walk_stat[i].page_pfn,
+					perf_stat.mapped_walk_stat[i].pte_pfn);
+			for (j = 0; j < HPAGE_CONT_PTE_NR; j++)
+				seq_printf(s, "    pte%d: 0x%llx\n", j, perf_stat.mapped_walk_stat[i].pte[j]);
+		}
+	}
+
+	cnt = atomic64_read(&perf_stat.mapped_walk_start_from_non_head);
+	seq_printf(s, "mapped_walk_start_from_non_head: %llu\n", cnt);
+	cnt = atomic64_read(&perf_stat.mapped_walk_lastmoment_doublemap);
+	seq_printf(s, "mapped_walk_lastmoment_doublemap: %llu\n", cnt);
+#endif
+
+#if CONFIG_NON_SPF_FAULT_RETRY_DEBUG
+	seq_puts(s, "non_sfp_fault_retry\n");
+	cnt = atomic64_read(&perf_stat.non_sfp_fault_retry_cnt[SWPIN_CHP_FAULT_RETRY]);
+	seq_printf(s, "  swpin_chp_fault_retry: %llu\n", cnt);
+	cnt = atomic64_read(&perf_stat.non_sfp_fault_retry_cnt[SWPIN_FALLBACK_FAULT_RETRY]);
+	seq_printf(s, "  swpin_fallback_fault_retry: %llu\n", cnt);
+#endif
+
+	return 0;
+}
+
+static int proc_csv_stat_show(struct seq_file *s, void *v)
+{
+	unsigned long events[NR_VM_EVENT_ITEMS];
+	unsigned long pages[NR_LRU_LISTS];
+	int lru;
+	struct huge_page_pool *pool = cont_pte_pool();
+
+	all_vm_events(events);
+	for (lru = LRU_BASE; lru < NR_LRU_LISTS; lru++)
+		pages[lru] = global_node_page_state(NR_LRU_BASE + lru);
+	events[PGPGIN] /= 2;		/* sectors -> kbytes */
+	events[PGPGOUT] /= 2;		/* sectors -> kbytes */
+
+	seq_printf(s, "%10s,%10s,%10s,%10s,%10s,%10s,%10s,%10s,%10s,%10s,%10s,%10s\n",
+		   "mem_avail", "file", "chp_file", "anon", "chp_anon",
+		   "cma", "buddy",
+		   "zram0", "zram1",
+		   "pool",
+		   "pgpgin", "pgpgout");
+	seq_printf(s, "%10lu,%10lu,%10lu,%10lu,%10lu,%10lu,%10lu,%10lu,%10lu,%10d,%10lu,%10lu\n",
+		   si_mem_available(),
+		   pages[LRU_ACTIVE_FILE] + pages[LRU_INACTIVE_FILE],
+		   global_node_page_state(NR_FILE_PMDMAPPED) * HPAGE_CONT_PTE_NR,
+		   pages[LRU_ACTIVE_ANON] + pages[LRU_INACTIVE_ANON],
+		   global_node_page_state(NR_ANON_THPS) * HPAGE_CONT_PTE_NR,
+		   chp_page_state(HPAGE_POOL_CMA) * HPAGE_CONT_PTE_NR,
+		   chp_page_state(HPAGE_POOL_BUDDY) * HPAGE_CONT_PTE_NR,
+		   0,
+		   0,
+		   pool->count[HPAGE_POOL_CMA] * HPAGE_CONT_PTE_NR +
+		   pool->count[HPAGE_POOL_BUDDY] * HPAGE_CONT_PTE_NR,
+		   events[PGPGIN], events[PGPGOUT]);
+	return 0;
+}
+
+#if CONFIG_CONT_PTE_HUGEPAGE_DEBUG
+static int proc_fault_around_stat_show(struct seq_file *s, void *v)
+{
+	int i = 0;
+	s64 counter, total = 0;
+
+	seq_puts(s, "fault around stat:\n");
+	for (; i < NR_FAULT_AROUND_STAT_ITEMS; i++) {
+		counter = atomic64_read(&fault_around_stat[i]);
+		total += counter;
+		seq_printf(s, "fault-around[%d] %llu\n", i, counter);
+	}
+	seq_printf(s, "fault-around total %llu\n", total);
+
+	return 0;
+}
+#endif
+
+static int __init cmdline_parse_disable(char *p)
+{
+	int ret;
+
+	ret = kstrtobool(p, &cmdline_cont_pte_hugepage_enable);
+	if (!ret && !cmdline_cont_pte_hugepage_enable)
+		chp_logi("cont_pte_hugepage is disabled\n");
+	return 0;
+}
+early_param("cont_pte_hugepage", cmdline_parse_disable);
+
+static int __init cmdline_parse_cont_pte_cma(char *p)
+{
+	cont_pte_pool_cma_size = ALIGN_DOWN(memparse(p, &p), CONT_PTE_CMA_CHUNK_SIZE);
+	return 0;
+}
+early_param("cont_pte_cma", cmdline_parse_cont_pte_cma);
+
+static int __init cmdline_parse_cont_pte_sup_mem(char *p)
+{
+	cmdline_cont_pte_sup_mem = memparse(p, &p);
+	return 0;
+}
+early_param("cmdline_cont_pte_sup_mem", cmdline_parse_cont_pte_sup_mem);
+
+static int __init cmdline_parse_prjname(char *p)
+{
+	static const char *cn_prjs[] = {
+		"22803", "21001", "22091", "22047", "22811", NULL,
+	};
+	static const char *other_prjs[] = {
+		"22881", "22227", "21201", NULL,
+	};
+	int i = 0;
+
+	cmdline_cont_pte_sup_prjname = false;
+	supported_oat_hugepage = false;
+
+	for (i = 0; cn_prjs[i] && p; i++) {
+		if (!strcmp(p, cn_prjs[i])) {
+			cmdline_cont_pte_sup_prjname = true;
+			supported_oat_hugepage = true;
+			goto out;
+		}
+	}
+
+	for (i = 0; other_prjs[i] && p; i++) {
+		if (!strcmp(p, other_prjs[i])) {
+			cmdline_cont_pte_sup_prjname = true;
+			supported_oat_hugepage = false;
+			goto out;
+		}
+	}
+out:
+	chp_logi("support prj:%s oat_supported:%d\n",
+		 p, supported_oat_hugepage);
+	return 0;
+}
+early_param("oplusboot.prjname", cmdline_parse_prjname);
+
+void __init cont_pte_cma_reserve(void)
+{
+	int res;
+	unsigned long phys_mem_sub_reserved_size = memblock_phys_mem_size() -
+		memblock_reserved_size();
+
+	if (cont_pte_pool_cma_size == 0) {
+		/*setup cont_pte_pool_cma_size by ddr size*/
+		if ((phys_mem_sub_reserved_size > MEM_SIZE_8G) && (phys_mem_sub_reserved_size <  MEM_SIZE_12G)) {
+			cont_pte_pool_cma_size = ALIGN_DOWN(phys_mem_sub_reserved_size * 1 / 4 - SZ_512M,
+							    CONT_PTE_CMA_CHUNK_SIZE);
+			if (supported_oat_hugepage)
+				cont_pte_pool_cma_size += SZ_512M;
+		} else if ((phys_mem_sub_reserved_size > MEM_SIZE_12G) && (phys_mem_sub_reserved_size <  MEM_SIZE_16G)) {
+			cont_pte_pool_cma_size = ALIGN_DOWN(phys_mem_sub_reserved_size * 1 / 4,
+							    CONT_PTE_CMA_CHUNK_SIZE);
+		} else {
+			cont_pte_pool_cma_size = ALIGN_DOWN(phys_mem_sub_reserved_size * 1 / 4 + SZ_1G,
+							    CONT_PTE_CMA_CHUNK_SIZE);
+		}
+	}
+
+	if (cmdline_cont_pte_sup_mem == 0)
+		cmdline_cont_pte_sup_mem = CONT_PTE_SUP_MEM_SIZE;
+
+	if (!cmdline_cont_pte_sup_prjname || !cmdline_cont_pte_hugepage_enable ||
+	    phys_mem_sub_reserved_size < cmdline_cont_pte_sup_mem) {
+		chp_logi("device does not support cont_pte_huge_page\n");
+		return;
+	}
+
+	res = cma_declare_contiguous(0, cont_pte_pool_cma_size, 0, 0,
+			HPAGE_CONT_PTE_ORDER, false, "cont_pte",
+			&cont_pte_cma);
+	if (unlikely(res)) {
+		pr_warn("cont_pte_cma: reservation failed: err %d", res);
+		return;
+	}
+
+	static_branch_enable(&cont_pte_huge_page_enabled_key);
+	chp_logi("cont_pte_cma: reserved %lu MiB\n",
+		 cont_pte_pool_cma_size / SZ_1M);
+}
+
+static bool __find_uid_in_blacklist(uid_t uid)
+{
+	int left, right;
+
+	if (ub == NULL || ub->size == 0)
+		return false;
+
+	left = 0;
+	right = ub->size - 1;
+
+	while (left <= right) {
+		int mid = left + (right - left) / 2;
+
+		if (ub->array[mid] == uid)
+			return true;
+		else if (ub->array[mid] < uid)
+			left = mid + 1;
+		else
+			right = mid - 1;
+	}
+	return false;
+}
+
+static bool find_uid_in_blacklist(uid_t uid)
+{
+	bool ret;
+
+	spin_lock(&uid_blacklist_lock);
+	ret = __find_uid_in_blacklist(uid);
+	spin_unlock(&uid_blacklist_lock);
+	return ret;
+}
+
+static void uid_blacklist_update(size_t uid)
+{
+	bool update = false;
+	int i;
+
+	spin_lock(&uid_blacklist_lock);
+	if (unlikely(!ub)) {
+		ub = kzalloc(sizeof(struct uid_blacklist), GFP_ATOMIC);
+		if (!ub) {
+			chp_loge("failed to alloc uid_blacklist");
+			goto unlock;
+		}
+	}
+
+	if (ub->size == MAX_UID_BLACKLIST_SIZE) {
+		chp_logi("uid_blacklist array oversize\n");
+		goto unlock;
+	}
+
+	if (ub->size == 0) {
+		update = true;
+		ub->array[ub->size] = uid;
+		ub->size += 1;
+		goto unlock;
+	}
+
+	if (__find_uid_in_blacklist(uid))
+		goto unlock;
+
+	i = ub->size - 1;
+	while (i >= 0 && ub->array[i] > uid) {
+		ub->array[i + 1] = ub->array[i];
+		i -= 1;
+	}
+	update = true;
+	ub->array[i + 1] = uid;
+	ub->size += 1;
+unlock:
+	spin_unlock(&uid_blacklist_lock);
+	if (update)
+		chp_logi("update uid_t:%d\n", uid);
+}
+
+void chp_uid_blacklist_update(void)
+{
+	uid_t uid = from_kuid(&init_user_ns, task_uid(current));
+
+	if (uid < 10000) {
+		chp_logi("kernel space do not block any uid:%d below 10000\n",
+			 uid);
+		return;
+	}
+	uid_blacklist_update(uid);
+}
+
+static ssize_t uid_blacklist_show(struct kobject *kobj,
+				  struct kobj_attribute *attr, char *buf)
+{
+	struct uid_blacklist *p;
+	size_t off = 0, size = PAGE_SIZE;
+	int i;
+
+	spin_lock(&uid_blacklist_lock);
+	if (!ub) {
+		spin_unlock(&uid_blacklist_lock);
+		return scnprintf(buf, size, "<none>\n");
+	}
+	p = kzalloc(sizeof(struct uid_blacklist), GFP_ATOMIC);
+	if (!p) {
+		spin_unlock(&uid_blacklist_lock);
+		return -ENOMEM;
+	}
+	memcpy(p, ub, sizeof(struct uid_blacklist));
+	spin_unlock(&uid_blacklist_lock);
+
+	for (i = 0; i < p->size; i++) {
+		off += scnprintf(buf + off, size - off, "%d\n", p->array[i]);
+		if (off >= size)
+			break;
+	}
+	buf[off] = '\0';
+	kfree(p);
+	return off;
+}
+
+static ssize_t uid_blacklist_store(struct kobject *kobj,
+				   struct kobj_attribute *attr,
+				   const char *buf, size_t count)
+{
+	unsigned long uid;
+	int ret;
+
+	ret = kstrtoul(buf, 10, &uid);
+	if (ret)
+		return ret;
+
+	if (uid < 0)
+		return -EINVAL;
+
+	uid_blacklist_update((uid_t)uid);
+	return count;
+}
+
+static ssize_t enabled_show(struct kobject *kobj,
+			    struct kobj_attribute *attr, char *buf)
+{
+	size_t off = 0, size = PAGE_SIZE;
+
+	if (CONFIG_CONT_PTE_FILE_HUGEPAGE_DISABLE)
+		off += scnprintf(buf + off, size - off, "file");
+	else
+		off += scnprintf(buf + off, size - off, "[file]");
+
+
+	off += scnprintf(buf + off, size - off, " [anon]\n");
+	return off;
+}
+
+DEFINE_CHP_SYSFS_ATTRIBUTE(alloc_oom);
+DEFINE_CHP_SYSFS_ATTRIBUTE(anon_enable);
+DEFINE_CHP_SYSFS_ATTRIBUTE(bug_on);
+
+static struct kobj_attribute uid_blacklist_attr =
+	__ATTR(uid_blacklist, 0644, uid_blacklist_show, uid_blacklist_store);
+static struct kobj_attribute enabled_attr =
+	__ATTR(enabled, 0444, enabled_show, NULL);
+
+static struct attribute *chp_attr[] = {
+	&uid_blacklist_attr.attr,
+	&anon_enable_attr.attr,
+	&alloc_oom_attr.attr,
+	&bug_on_attr.attr,
+	&enabled_attr.attr,
+	NULL,
+};
+
+static const struct attribute_group chp_attr_group = {
+	.attrs = chp_attr,
+};
+
 static int __init proc_fs_pte_huge_page_init(void)
 {
 	struct proc_dir_entry *root_dir;
+	struct kobject *chp_kobj;
+	int err;
 
 	if (!cont_pte_huge_page_enabled())
-		return -ENOMEM;
+		return 0;
 
 	/* create base info */
 	root_dir = proc_mkdir(KBUILD_MODNAME, NULL);
@@ -1655,9 +3234,46 @@ static int __init proc_fs_pte_huge_page_init(void)
 		return -ENOMEM;
 
 	proc_create_single("stat", 0, root_dir, proc_stat_show);
+	proc_create_single("csv_stat", 0, root_dir, proc_csv_stat_show);
 #if CONFIG_CONT_PTE_HUGEPAGE_DEBUG
 	proc_create_single("fault_around_stat", 0, root_dir, proc_fault_around_stat_show);
 #endif
+
+#if CONFIG_POOL_ASYNC_RECLAIM
+	proc_create_single("pool_async_reclaim_stat", 0, root_dir, proc_pool_async_reclaim_stat_show);
+#endif
+
+	chp_kobj = kobject_create_and_add("chp", mm_kobj);
+	if (unlikely(!chp_kobj)) {
+		chp_loge("failed to create chp kobject\n");
+		return -ENOMEM;
+	}
+
+	err = sysfs_create_group(chp_kobj, &chp_attr_group);
+	if (err) {
+		chp_loge("failed to register chp group\n");
+		kobject_put(chp_kobj);
+		return -ENOMEM;
+	}
 	return 0;
 }
 fs_initcall(proc_fs_pte_huge_page_init);
+
+static int __init cont_pte_huge_page_init(void)
+{
+	if (!cont_pte_huge_page_enabled())
+		return -ENOMEM;
+
+	if (huge_page_pool_init(cont_pte_pool())) {
+		chp_loge("failed to create huge_page_pool\n");
+		return -ENOMEM;
+	}
+
+	build_thp_wq = create_singlethread_workqueue("build_thp");
+	if (!build_thp_wq) {
+		pr_warn("failed to create build_thp workqueue\n");
+		return -ENOMEM;
+	}
+	return 0;
+}
+core_initcall(cont_pte_huge_page_init);

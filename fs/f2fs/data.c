@@ -137,7 +137,7 @@ static void f2fs_finish_read_bio(struct bio *bio, bool in_task)
 		if (f2fs_is_compressed_page(page)) {
 #ifdef CONFIG_CONT_PTE_HUGEPAGE
 			/*NOTE: This scenario does not support PageCont!*/
-			BUG_ON(PageCont(page));
+			CHP_BUG_ON(PageCont(page));
 #endif
 			if (bio->bi_status)
 				f2fs_end_read_compressed_page(page, true, 0,

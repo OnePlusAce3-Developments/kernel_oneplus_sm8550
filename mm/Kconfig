@@ -988,4 +988,12 @@ config CONT_PTE_HUGEPAGE_ON_QEMU
 	help
 	  QEMU debugging of ContPte hugepage
 
+config CONT_PTE_HUGEPAGE_64K_ZRAM
+	bool "Cont Pte Hugepage support 64K ZRAM"
+	default y
+	depends on CONT_PTE_HUGEPAGE
+
+	help
+	  Cont Pte Hugepage support 64K ZRAM
+
 endmenu

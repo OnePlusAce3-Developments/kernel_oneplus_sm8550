@@ -329,7 +329,7 @@ void truncate_inode_pages_range(struct address_space *mapping,
 			struct page *page = find_get_entry_may_cont_pte(mapping, n);
 
 			if (page && !xa_is_value(page)) {
-				BUG_ON(PageCont(page) && !PageTransHuge(page));
+				CHP_BUG_ON(PageCont(page) && !PageTransHuge(page));
 				put_page(page);
 			}
 		}
@@ -515,24 +515,11 @@ static unsigned long __invalidate_mapping_pages(struct address_space *mapping,
 #ifdef CONFIG_CONT_PTE_HUGEPAGE
 			if (PageCont(page) && !PageTransCompound(page)) {
 				/*
-				 * rarely while we shrink slab by prune_icache_sb(), pagecaches of this inode
-				 * might be still forming ContPte thp. It's super hard to reproduce, thus, we
-				 * simply poll till thp is formed.
+				 * NOTE: The odds of getting here are low, so we're not going to reclaim
+				 * the middle page that's being transformed.
 				 */
-				unsigned long timeout = jiffies + msecs_to_jiffies(5000);
-				do {
-					if (PageCont(page) && !PageTransCompound(page)) {
-						cpu_relax();
-					} else {
-						pr_info("@@@%s formed ContPte thp, page: %pK\n", __func__, page);
-						break;
-					}
-				} while (time_before(jiffies, timeout));
-				/* this is very unlikely */
-				if (PageCont(page) && !PageTransCompound(page)) {
-					dump_page(page, "failed to become thp");
-					BUG_ON(1);
-				}
+				atomic64_inc(&perf_stat.truncate_hit_middle_page_cnt);
+				continue;
 			}
 #endif
 			ret = invalidate_inode_page(page);

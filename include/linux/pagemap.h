@@ -679,6 +679,35 @@ static inline __sched int lock_page_or_retry(struct page *page, struct mm_struct
 	return trylock_page(page) || __lock_page_or_retry(page, mm, flags);
 }
 
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+static inline __sched int lock_nr_pages_or_retry(struct page **page, struct mm_struct *mm,
+				     unsigned int flags, int nr)
+{
+	int i, ret;
+
+	might_sleep();
+
+	for (i = 0; i < nr; i++) {
+		ret = trylock_page(page[i]);
+		if (ret)
+			continue;
+
+		ret = __lock_page_or_retry(page[i], mm, flags);
+		if (!ret)
+			break;
+	}
+
+	if (!ret && i) {
+		for (i--; i >= 0; i--) {
+			CHP_BUG_ON(!PageLocked(page[i]));
+			unlock_page(page[i]);
+		}
+	}
+
+	return ret;
+}
+#endif
+
 /*
  * This is exported only for wait_on_page_locked/wait_on_page_writeback, etc.,
  * and should not be used directly.
@@ -686,7 +715,7 @@ static inline __sched int lock_page_or_retry(struct page *page, struct mm_struct
 extern void wait_on_page_bit(struct page *page, int bit_nr);
 extern int wait_on_page_bit_killable(struct page *page, int bit_nr);
 
-/* 
+/*
  * Wait for a page to be unlocked.
  *
  * This must be called with the caller "holding" the page,

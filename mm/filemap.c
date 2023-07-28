@@ -1418,7 +1418,7 @@ repeat:
 				within_cont_pte_cma(page_to_pfn(page)));
 		dump_page(page, "THP subpage");
 		dump_page(compound_head(page), "THP subpage head");
-		BUG_ON(1);
+		CHP_BUG_ON(1);
 	}
 #endif
 
@@ -1556,6 +1556,30 @@ void unlock_page(struct page *page)
 		wake_up_page_bit(page, PG_locked);
 }
 EXPORT_SYMBOL(unlock_page);
+
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+void unlock_nr_pages(struct page **page, int nr)
+{
+	int i;
+
+	BUILD_BUG_ON(PG_waiters != 7);
+
+	for (i = 0; i < nr; i++) {
+		VM_BUG_ON_PAGE(!PageLocked(page[i]), page[i]);
+
+#if defined(CONFIG_CONT_PTE_HUGEPAGE) && defined(CONFIG_CONT_PTE_HUGEPAGE_DEBUG_VERBOSE)
+		if (!PageLocked(page[i])) {
+			pr_err("@@@Fixme: unlocking an unlocked page %s page:%lx flags:%lx pfn:%lx\n",
+					__func__, page[i], page[i]->flags, page_to_pfn(page[i]));
+			WARN_ON(1);
+		}
+#endif
+		if (clear_bit_unlock_is_negative_byte(PG_locked, &page[i]->flags))
+			wake_up_page_bit(page[i], PG_locked);
+
+	}
+}
+#endif
 
 /**
  * end_page_private_2 - Clear PG_private_2 and release any waiters
@@ -3261,7 +3285,7 @@ retry_find:
 							FGP_CREAT|FGP_FOR_MMAP,
 							vmf->gfp_mask);
 				/* pagecache_get_page should never return intermediate cont-pte page */
-				BUG_ON(page && PageCont(page) && !PageTransCompound(page));
+				CHP_BUG_ON(page && PageCont(page) && !PageTransCompound(page));
 
 				if (page && !PageCont(page))
 					vmf->flags &= ~FAULT_FLAG_CONT_PTE;
@@ -3283,7 +3307,7 @@ retry_find:
 						__func__, current->comm, current->pid, retries,
 						global_node_page_state(NR_FILE_THPS) * HPAGE_CONT_PTE_SIZE / SZ_1M,
 						global_node_page_state(NR_FILE_PMDMAPPED) * HPAGE_CONT_PTE_SIZE / SZ_1M,
-						read_huge_page_pool_pages() * PAGE_SIZE / SZ_1M);
+						cont_pte_pool_total_pages() * PAGE_SIZE / SZ_1M);
 					vmf->flags &= ~FAULT_FLAG_CONT_PTE;
 				}
 				goto retry_readahead;
@@ -3305,8 +3329,8 @@ retry_find:
 		goto out_retry;
 
 #ifdef CONFIG_CONT_PTE_HUGEPAGE
-	BUG_ON(PageCont(page) && !PageHead(page));
-	BUG_ON(PageCont(page) && !PageLocked(page));
+	CHP_BUG_ON(PageCont(page) && !PageHead(page));
+	CHP_BUG_ON(PageCont(page) && !PageLocked(page));
 	page = ContPteHugePageHead(page) ? page + (offset & (HPAGE_CONT_PTE_NR - 1)) : page;
 	/*
 	 * we were falling back to basepage, but the other threads might still succeed on
@@ -3538,7 +3562,7 @@ vm_fault_t filemap_map_pages(struct vm_fault *vmf,
 		return ret;
 
 #ifdef CONFIG_CONT_PTE_HUGEPAGE
-	BUG_ON(!ContPteHugePage(head) && PageCont(head));
+	CHP_BUG_ON(!ContPteHugePage(head) && PageCont(head));
 #endif
 
 	if (!(vmf->flags & FAULT_FLAG_SPECULATIVE) &&
@@ -3573,7 +3597,7 @@ vm_fault_t filemap_map_pages(struct vm_fault *vmf,
 			ret = VM_FAULT_NOPAGE;
 
 #ifdef CONFIG_CONT_PTE_HUGEPAGE
-		BUG_ON(!ContPteHugePage(page) && PageCont(page));
+		CHP_BUG_ON(!ContPteHugePage(page) && PageCont(page));
 #endif
 		do_set_pte(vmf, page, addr);
 		/* no need to invalidate: a not-present page won't be cached */

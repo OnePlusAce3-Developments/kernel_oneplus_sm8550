@@ -457,7 +457,7 @@ int erofs_try_to_free_all_cached_pages(struct erofs_sb_info *sbi,
 		WRITE_ONCE(pcl->compressed_pages[i], NULL);
 		detach_page_private(page);
 #ifdef CONFIG_CONT_PTE_HUGEPAGE
-		BUG_ON(PageCont(page));
+		CHP_BUG_ON(PageCont(page));
 #endif
 		unlock_page(page);
 	}
@@ -998,7 +998,7 @@ static void z_erofs_decompressqueue_endio(struct bio *bio)
 
 		if (erofs_page_is_managed(EROFS_SB(q->sb), page)) {
 #ifdef CONFIG_CONT_PTE_HUGEPAGE
-			BUG_ON(PageCont(page));
+			CHP_BUG_ON(PageCont(page));
 #endif
 			if (!err)
 				SetPageUptodate(page);
@@ -1320,7 +1320,7 @@ repeat:
 		/* no need to submit io if it is already up-to-date */
 		if (PageUptodate(page)) {
 #ifdef CONFIG_CONT_PTE_HUGEPAGE
-			BUG_ON(PageCont(page));
+			CHP_BUG_ON(PageCont(page));
 #endif
 			unlock_page(page);
 			page = NULL;
@@ -1337,7 +1337,7 @@ repeat:
 
 	tocache = true;
 #ifdef CONFIG_CONT_PTE_HUGEPAGE
-	BUG_ON(PageCont(page));
+	CHP_BUG_ON(PageCont(page));
 #endif
 	unlock_page(page);
 	put_page(page);
@@ -1638,10 +1638,10 @@ static int z_erofs_readpage(struct file *file, struct page *page)
 #ifdef CONFIG_CONT_PTE_HUGEPAGE
 	/* FIXME: Probe the page twice readpage! */
 	if (PageCont(page))
-		BUG_ON(TestSetPageContIODoing(page));
+		CHP_BUG_ON(TestSetPageContIODoing(page));
 
 	/* FIXME: Detected the endio bug twice! */
-	BUG_ON(ContPteHugePage(page) || PageContUptodate(page));
+	CHP_BUG_ON(ContPteHugePage(page) || PageContUptodate(page));
 #endif
 
 	trace_erofs_readpage(page, false);
@@ -1687,10 +1687,10 @@ static void z_erofs_readahead(struct readahead_control *rac)
 #ifdef CONFIG_CONT_PTE_HUGEPAGE
 		/* FIXME: Probe the page twice readpage! */
 		if (PageCont(page))
-			BUG_ON(TestSetPageContIODoing(page));
+			CHP_BUG_ON(TestSetPageContIODoing(page));
 
 		/* FIXME: Detected the endio bug twice! */
-		BUG_ON(ContPteHugePage(page) || PageContUptodate(page));
+		CHP_BUG_ON(ContPteHugePage(page) || PageContUptodate(page));
 #endif
 		set_page_private(page, (unsigned long)head);
 		head = page;

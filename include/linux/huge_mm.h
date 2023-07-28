@@ -159,6 +159,7 @@ static inline bool __transparent_hugepage_enabled(struct vm_area_struct *vma)
 	if (vma_is_temporary_stack(vma))
 		return false;
 
+#ifndef CONFIG_CONT_PTE_HUGEPAGE
 	if (transparent_hugepage_flags & (1 << TRANSPARENT_HUGEPAGE_FLAG))
 		return true;
 
@@ -170,6 +171,13 @@ static inline bool __transparent_hugepage_enabled(struct vm_area_struct *vma)
 		return !!(vma->vm_flags & VM_HUGEPAGE);
 
 	return false;
+#else
+	/* we don't support dax 64KB hugepage yet */
+	if (vma_is_dax(vma))
+		return false;
+
+	return true;
+#endif
 }
 
 bool transparent_hugepage_active(struct vm_area_struct *vma);

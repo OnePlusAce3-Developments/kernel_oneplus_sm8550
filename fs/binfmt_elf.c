@@ -1019,7 +1019,11 @@ out_free_interp:
 				 executable_stack);
 	if (retval < 0)
 		goto out_free_dentry;
-	
+
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+       handle_chp_load_elf_binary(bprm->filename);
+#endif
+
 	elf_bss = 0;
 	elf_brk = 0;
 

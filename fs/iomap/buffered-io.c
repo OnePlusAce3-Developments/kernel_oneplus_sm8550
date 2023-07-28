@@ -178,7 +178,7 @@ iomap_read_page_end_io(struct bio_vec *bvec, int error)
 #ifdef CONFIG_CONT_PTE_HUGEPAGE
 	if (PageCont(page)) {
 		/*NOTE: This scenario does not support PageCont!*/
-		BUG_ON(page_has_private(page));
+		CHP_BUG_ON(page_has_private(page));
 		if (unlikely(error)) {
 			ClearPageUptodate(page);
 			SetPageError(page);

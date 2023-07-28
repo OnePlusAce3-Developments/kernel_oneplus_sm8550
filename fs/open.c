@@ -878,7 +878,7 @@ static int do_dentry_open(struct file *f,
 		 */
 		smp_mb();
 #ifdef CONFIG_CONT_PTE_HUGEPAGE
-		BUG_ON(inode->i_sb->s_magic == EROFS_SUPER_MAGIC_V1 && inode->may_cont_pte);
+		CHP_BUG_ON(inode->i_sb->s_magic == EROFS_SUPER_MAGIC_V1 && inode->may_cont_pte);
 #endif
 		if (filemap_nr_thps(inode->i_mapping)) {
 			struct address_space *mapping = inode->i_mapping;
@@ -896,15 +896,8 @@ static int do_dentry_open(struct file *f,
 		}
 	} else {
 #ifdef CONFIG_CONT_PTE_HUGEPAGE
-		bool fs_supported = false;
-
-		if (inode->i_sb->s_magic == EROFS_SUPER_MAGIC_V1)
-			fs_supported = true;
-		if (IS_ENABLED(CONFIG_CONT_PTE_HUGEPAGE_ON_EXT4) &&
-				inode->i_sb->s_magic == EXT4_SUPER_MAGIC)
-			fs_supported = true;
-		fs_supported = fs_supported && cont_pte_huge_page_enabled();
-
+		bool fs_supported = handle_chp_fs_supported(inode);
+		fs_supported = false;
 		if (!fs_supported)
 			return 0;
 
@@ -941,7 +934,7 @@ static int do_dentry_open(struct file *f,
 			    !strcmp(f->f_path.dentry->d_name.name, "framework-res.apk") ||
 			    !strcmp(f->f_path.dentry->d_name.name, "oplus-framework-res.apk") ||
 			    !strcmp(f->f_path.dentry->d_name.name, "OplusAppPlatform.apk") ||
-			    !strcmp(f->f_path.dentry->d_name.name, "boot-framework.oat")) {
+			    (supported_oat_hugepage && !strcmp(f->f_path.dentry->d_name.name, "boot-framework.oat"))) {
 				hugepage = NORMAL_HUGE;
 				goto done;
 			}

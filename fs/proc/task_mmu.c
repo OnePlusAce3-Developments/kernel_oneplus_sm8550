@@ -562,8 +562,14 @@ static void smaps_pte_entry(pte_t *pte, unsigned long addr,
 			bool young = false;
 			bool dirty = false;
 
-
-			mss->file_thp += HPAGE_CONT_PTE_SIZE;
+			if (PageAnon(page))
+				mss->anonymous_thp += HPAGE_CONT_PTE_SIZE;
+			else if (PageSwapBacked(page))
+				mss->shmem_thp += HPAGE_CONT_PTE_SIZE;
+			else if (is_zone_device_page(page))
+				/* pass */;
+			else if (!is_huge_zero_page(page))
+				mss->file_thp += HPAGE_CONT_PTE_SIZE;
 
 			for (i = 0; i < HPAGE_CONT_PTE_NR; i++) {
 				if (!young && pte_young(*ptep))
@@ -890,10 +896,47 @@ static int show_smap(struct seq_file *m, void *v)
 		char buf[256];
 		char *p;
 
-		if (mss.file_thp) {
-			p = d_path(&vma->vm_file->f_path, buf, 256);
-			if (!IS_ERR(p)) {
-				seq_printf(m, "GottenContPte: %lx-%lx(vma) %c%c%c%c %lx(pgoff) ",
+		if (!vma_is_anonymous(vma)) {
+			if (mss.file_thp) {
+				p = d_path(&vma->vm_file->f_path, buf, 256);
+				if (!IS_ERR(p)) {
+					seq_printf(m, "GottenContPte: %lx-%lx(vma) %c%c%c%c %lx(pgoff) ",
+							vma->vm_start, vma->vm_end,
+							vma->vm_flags & VM_READ ? 'r' : '-',
+							vma->vm_flags & VM_WRITE ? 'w' : '-',
+							vma->vm_flags & VM_EXEC ? 'x' : '-',
+							vma->vm_flags & VM_MAYSHARE ? 's' : 'p',
+							vma->vm_pgoff);
+					SEQ_PUT_DEC("size:", vma->vm_end - vma->vm_start);
+					SEQ_PUT_DEC("kB  rss:", mss.resident);
+					SEQ_PUT_DEC("kB  thp_size:", mss.file_thp);
+					seq_printf(m, "kB  %s\n", p);
+				}
+			} else {
+				if (transhuge_cont_pte_vma_suitable(vma, ALIGN_DOWN(vma->vm_start, HPAGE_CONT_PTE_SIZE) + HPAGE_CONT_PTE_SIZE)) {
+					p = d_path(&vma->vm_file->f_path, buf, 256);
+					if (!IS_ERR(p)) {
+						/* filter: vma size >= 128k */
+						if ((vma->vm_end - vma->vm_start) >= (128 << 10)) {
+							seq_printf(m, "MissedContPte: %lx-%lx(vma) %c%c%c%c %lx(pgoff) ",
+									vma->vm_start, vma->vm_end,
+									vma->vm_flags & VM_READ ? 'r' : '-',
+									vma->vm_flags & VM_WRITE ? 'w' : '-',
+									vma->vm_flags & VM_EXEC ? 'x' : '-',
+									vma->vm_flags & VM_MAYSHARE ? 's' : 'p',
+									vma->vm_pgoff);
+							SEQ_PUT_DEC("size:", vma->vm_end - vma->vm_start);
+							SEQ_PUT_DEC("kB  rss:", mss.resident);
+							SEQ_PUT_DEC("kB  thp_size:", mss.file_thp);
+							seq_printf(m, "kB  %s\n", p);
+						}
+					}
+				}
+			}
+		} else {
+			seq_printf(m, "chp: %d\n", vma_is_chp_anonymous(vma));
+			if (mss.anonymous_thp) {
+				seq_printf(m, "GottenAnonContPte: %lx-%lx(vma) %c%c%c%c %lx(pgoff) ",
 						vma->vm_start, vma->vm_end,
 						vma->vm_flags & VM_READ ? 'r' : '-',
 						vma->vm_flags & VM_WRITE ? 'w' : '-',
@@ -902,27 +945,21 @@ static int show_smap(struct seq_file *m, void *v)
 						vma->vm_pgoff);
 				SEQ_PUT_DEC("size:", vma->vm_end - vma->vm_start);
 				SEQ_PUT_DEC("kB  rss:", mss.resident);
-				SEQ_PUT_DEC("kB  thp_size:", mss.file_thp);
-				seq_printf(m, "kB  %s\n", p);
-			}
-		} else {
-			if (transhuge_cont_pte_vma_suitable(vma, ALIGN_DOWN(vma->vm_start, HPAGE_CONT_PTE_SIZE) + HPAGE_CONT_PTE_SIZE)) {
-				p = d_path(&vma->vm_file->f_path, buf, 256);
-				if (!IS_ERR(p)) {
-					/* filter: vma size >= 128k */
-					if ((vma->vm_end - vma->vm_start) >= (128 << 10)) {
-						seq_printf(m, "MissedContPte: %lx-%lx(vma) %c%c%c%c %lx(pgoff) ",
-								vma->vm_start, vma->vm_end,
-								vma->vm_flags & VM_READ ? 'r' : '-',
-								vma->vm_flags & VM_WRITE ? 'w' : '-',
-								vma->vm_flags & VM_EXEC ? 'x' : '-',
-								vma->vm_flags & VM_MAYSHARE ? 's' : 'p',
-								vma->vm_pgoff);
-						SEQ_PUT_DEC("size:", vma->vm_end - vma->vm_start);
-						SEQ_PUT_DEC("kB  rss:", mss.resident);
-						SEQ_PUT_DEC("kB  thp_size:", mss.file_thp);
-						seq_printf(m, "kB  %s\n", p);
-					}
+				SEQ_PUT_DEC("kB  thp_size:", mss.anonymous_thp);
+				seq_printf(m, "kB \n");
+			} else {
+				if (mss.resident >= HPAGE_CONT_PTE_SIZE) {
+					seq_printf(m, "MissedAnonContPte: %lx-%lx(vma) %c%c%c%c %lx(pgoff) ",
+							vma->vm_start, vma->vm_end,
+							vma->vm_flags & VM_READ ? 'r' : '-',
+							vma->vm_flags & VM_WRITE ? 'w' : '-',
+							vma->vm_flags & VM_EXEC ? 'x' : '-',
+							vma->vm_flags & VM_MAYSHARE ? 's' : 'p',
+							vma->vm_pgoff);
+					SEQ_PUT_DEC("size:", vma->vm_end - vma->vm_start);
+					SEQ_PUT_DEC("kB  rss:", mss.resident);
+					SEQ_PUT_DEC("kB  thp_size:", mss.anonymous_thp);
+					seq_printf(m, "kB \n");
 				}
 			}
 		}

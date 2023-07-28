@@ -149,7 +149,7 @@ static void read_pages(struct readahead_control *rac, struct list_head *pages,
 						within_cont_pte_cma(page_to_pfn(page)));
 				dump_page(page, "THP readahead_page");
 				dump_page(compound_head(page), "THP readahead_page head");
-				BUG_ON(1);
+				CHP_BUG_ON(1);
 			}
 #endif
 			unlock_page(page);

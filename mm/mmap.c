@@ -2201,9 +2201,7 @@ arch_get_unmapped_area(struct file *filp, unsigned long addr,
 #ifndef CONFIG_CONT_PTE_HUGEPAGE
 	info.align_mask = 0;
 #else
-	info.align_mask = CONT_PTE_SIZE - 1;
-	if (filp && file_inode(filp) && file_inode(filp)->may_cont_pte)
-		info.align_offset = (pgoff & (HPAGE_CONT_PTE_NR - 1)) * PAGE_SIZE;
+	handle_chp_get_unmapped_area(&info, filp, pgoff);
 #endif
 	return vm_unmapped_area(&info);
 }
@@ -2254,9 +2252,7 @@ arch_get_unmapped_area_topdown(struct file *filp, unsigned long addr,
 #ifndef CONFIG_CONT_PTE_HUGEPAGE
 	info.align_mask = 0;
 #else
-	info.align_mask = CONT_PTE_SIZE - 1;
-	if (filp && file_inode(filp) && file_inode(filp)->may_cont_pte)
-		info.align_offset = (pgoff & (HPAGE_CONT_PTE_NR - 1)) * PAGE_SIZE;
+	handle_chp_get_unmapped_area(&info, filp, pgoff);
 #endif
 	addr = vm_unmapped_area(&info);
 
