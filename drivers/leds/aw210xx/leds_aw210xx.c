@@ -480,7 +480,7 @@ static void aw210xx_brightness(struct aw210xx *led)
 		aw210xx_i2c_write(led, AW210XX_REG_BR06L + 2 * led->id, 0xff & led_brightness);
 		aw210xx_i2c_write(led, AW210XX_REG_BR09H + 2 * led->id, 0xff & (led_brightness >> 8));
 		aw210xx_i2c_write(led, AW210XX_REG_BR09L + 2 * led->id, 0xff & led_brightness);
-		aw210xx_i2c_write(led, AW210XX_REG_ABMCFG, 0x01);
+		aw210xx_i2c_write(led, AW210XX_REG_ABMCFG, 0x00);
 
 		/*red led, green led max current is 20ma, blue led max current is 10ma*/
 		for (i = 0; i < led->pdata->led->led_groups_num; i++) {
@@ -550,7 +550,7 @@ static void aw210xx_brightness(struct aw210xx *led)
 		led->br_res = BR_RESOLUTION_8BIT;
 		aw210xx_br_res_set(led);
 		/* sbmd enable */
-		aw210xx_sbmd_set(led, true);
+		aw210xx_sbmd_set(led, false);
 
 		if (led->pdata->led->led_groups_num == 2) {
 			for (i = 0; i < led->pdata->led->led_groups_num; i++) {
@@ -603,7 +603,7 @@ static void aw210xx_brightness(struct aw210xx *led)
 		led->br_res = BR_RESOLUTION_8BIT;
 		aw210xx_br_res_set(led);
 		/* sbmd enable */
-		aw210xx_sbmd_set(led, true);
+		aw210xx_sbmd_set(led, false);
 
 		if (led->pdata->led->led_groups_num == 2) {
 			for (i = 0; i < led->pdata->led->led_groups_num; i++) {
@@ -822,7 +822,7 @@ static int aw210xx_led_init(struct aw210xx *aw210xx)
 	}
 	usleep_range(1000, 1500);
 	/* sbmd enable */
-	aw210xx_sbmd_set(aw210xx, true);
+	aw210xx_sbmd_set(aw210xx, false);
 	/* rgbmd enable */
 	aw210xx_rgbmd_set(aw210xx, false);
 	/* clk_pwm selsect */
@@ -897,7 +897,7 @@ void aw210xx_singleled_set(struct aw210xx *aw210xx,
 	/* group set disable */
 	aw210xx_group_gcfg_set(aw210xx, false);
 
-	aw210xx_sbmd_set(aw210xx, true);
+	aw210xx_sbmd_set(aw210xx, false);
 	aw210xx_rgbmd_set(aw210xx, false);
 	aw210xx_uvlo_set(aw210xx, true);
 
@@ -1165,7 +1165,7 @@ static ssize_t aw210xx_rgbcolor_store(struct device *dev,
 		if (aw210xx_chipen_set(aw210xx, true)) {
 			AW_LOG("aw210xx sleep failed");
 		}
-		aw210xx_sbmd_set(aw210xx, true);
+		aw210xx_sbmd_set(aw210xx, false);
 		aw210xx_rgbmd_set(aw210xx, true);
 		aw210xx_global_set(aw210xx);
 		aw210xx_uvlo_set(aw210xx, true);
