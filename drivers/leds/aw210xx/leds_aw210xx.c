@@ -386,6 +386,9 @@ void aw210xx_breath_set(struct aw210xx *led)
 	case AW210xx_LED_BLUE:
 		led->pdata->led->rgb_is_ok |= B_ISNK_ON_MASK;
 		break;
+	default:
+		AW_ERR("no define id = %d\n", led->id);
+		return;
 	}
 	AW_LOG("id = %d led_mode = %d rgb_is_ok = [%d]\n", led->id, led->pdata->led_mode, led->pdata->led->rgb_is_ok);
 	if (led->pdata->led->rgb_is_ok == RGB_IS_OK_MASK) {
