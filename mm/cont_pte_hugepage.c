@@ -468,7 +468,8 @@ static int huge_page_pool_refill_worker(void *data)
 		time = ktime_to_ms(ktime_get());
 		expect = max(pool->min_buddy -
 			     huge_page_pool_count(pool, HPAGE_POOL_BUDDY), 0);
-		retries = i = 0;
+		retries = 0;
+		i = 0;
 		count_vm_chp_event(CHP_REFILL_WORKER_WAKE_UP);
 
 		set_bit(HPP_WORKER_RUNNING, &pool->flags);
@@ -792,6 +793,8 @@ bool handle_chp_ext_cmd(struct sysinfo *si)
 	case CHP_EXT_CMD_CHP_POOL:
 		if (cont_pte_huge_page_enabled())
 			si->freehigh = (u64)&g_cont_pte_pool;
+		break;
+	default:
 		break;
 	}
 	return true;
@@ -2575,7 +2578,8 @@ vm_fault_t cont_pte_filemap_around(struct vm_fault *vmf, pgoff_t start_pgoff, pg
 	unsigned long around_cont = 0;
 
 	hoff = ALIGN_DOWN(vmf->pgoff, HPAGE_CONT_PTE_NR);
-	pgoff = last_pgoff = hoff;
+	pgoff = hoff;
+	last_pgoff = hoff;
 
 	/*
 	 * we are unable to map hugepage, but someone else might have read hugepage or
@@ -3173,9 +3177,6 @@ static ssize_t uid_blacklist_store(struct kobject *kobj,
 	ret = kstrtoul(buf, 10, &uid);
 	if (ret)
 		return ret;
-
-	if (uid < 0)
-		return -EINVAL;
 
 	uid_blacklist_update((uid_t)uid);
 	return count;
