@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
+<<<<<<< HEAD
  * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+=======
+ * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+>>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
  */
 
 #include <linux/dma-mapping-fast.h>
@@ -536,6 +540,10 @@ out_undo:
 	}
 	return ret;
 }
+#if IS_MODULE(CONFIG_QCOM_IOMMU_UTIL)
 module_init(qcom_iommu_util_init);
+#else
+arch_initcall_sync(qcom_iommu_util_init);
+#endif
 
 MODULE_LICENSE("GPL v2");

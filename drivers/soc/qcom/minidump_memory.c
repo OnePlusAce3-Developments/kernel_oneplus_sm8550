@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/mm.h>
@@ -1153,6 +1153,9 @@ void md_dma_buf_info(char *m, size_t dump_size)
 	struct dma_buf_priv dma_buf_priv;
 	struct priv_buf buf;
 
+	if (!in_task())
+		return;
+
 	buf.buf = m;
 	buf.size = dump_size;
 	buf.offset = 0;
@@ -1346,3 +1349,5 @@ void md_debugfs_dmabufprocs(struct dentry *minidump_dir)
 	debugfs_create_file("dma_buf_procs_size_mb", 0400, minidump_dir, NULL,
 			&proc_dma_buf_procs_size_ops);
 }
+
+MODULE_IMPORT_NS(MINIDUMP);

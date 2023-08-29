@@ -19,7 +19,7 @@
 #define CREATE_TRACE_POINTS
 #include <trace/events/qrtr.h>
 
-#define NS_LOG_PAGE_CNT 4
+#define NS_LOG_PAGE_CNT 8
 static void *ns_ilc;
 #define NS_INFO(x, ...) ipc_log_string(ns_ilc, x, ##__VA_ARGS__)
 
@@ -93,7 +93,14 @@ static struct qrtr_node *node_get(unsigned int node_id)
 	node->id = node_id;
 	xa_init(&node->servers);
 
+<<<<<<< HEAD
 	xa_store(&nodes, node_id, node, GFP_ATOMIC);
+=======
+	if(xa_is_err(xa_store(&nodes, node_id, node, GFP_ATOMIC))){
+		kfree(node);
+		return NULL;
+	}
+>>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 
 	return node;
 }

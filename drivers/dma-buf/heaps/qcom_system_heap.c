@@ -175,6 +175,10 @@ static bool __dynamic_pool_zone_watermark_ok(struct zone *z, unsigned int order,
 			if (mt == MIGRATE_CMA)
 				continue;
 #endif
+<<<<<<< HEAD
+=======
+
+>>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 			if (!free_area_empty(area, mt))
 				return true;
 		}
@@ -426,17 +430,19 @@ struct page *qcom_sys_heap_alloc_largest_available(struct dynamic_page_pool **po
 	int i;
 
 	for (i = 0; i < NUM_ORDERS; i++) {
+		unsigned long flags;
+
 		if (size <  (PAGE_SIZE << orders[i]))
 			continue;
 		if (max_order < orders[i])
 			continue;
 
-		mutex_lock(&pools[i]->mutex);
+		spin_lock_irqsave(&pools[i]->lock, flags);
 		if (pools[i]->high_count)
 			page = dynamic_page_pool_remove(pools[i], true);
 		else if (pools[i]->low_count)
 			page = dynamic_page_pool_remove(pools[i], false);
-		mutex_unlock(&pools[i]->mutex);
+		spin_unlock_irqrestore(&pools[i]->lock, flags);
 
 #ifdef CONFIG_CONT_PTE_HUGEPAGE
 		/*try get page from hugepage pool when order is HPAGE_CONT_PTE_ORDER*/
