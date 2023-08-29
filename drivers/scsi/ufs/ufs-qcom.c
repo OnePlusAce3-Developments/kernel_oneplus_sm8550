@@ -45,13 +45,10 @@
 #include "ufshci.h"
 #include "ufs_quirks.h"
 #include "ufshcd-crypto-qti.h"
-<<<<<<< HEAD
 #include "../sd.h"
-=======
 #if IS_ENABLED(CONFIG_QTI_CRYPTO_FDE)
 #include <linux/crypto-qti-common.h>
 #endif
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 
 #define UFS_QCOM_DEFAULT_DBG_PRINT_EN	\
 	(UFS_QCOM_DBG_PRINT_REGS_EN | UFS_QCOM_DBG_PRINT_TEST_BUS_EN)
@@ -2500,12 +2497,6 @@ static void ufs_qcom_set_caps(struct ufs_hba *hba)
 {
 	struct ufs_qcom_host *host = ufshcd_get_variant(hba);
 
-<<<<<<< HEAD
-	hba->caps |= UFSHCD_CAP_CLK_GATING | UFSHCD_CAP_HIBERN8_WITH_CLK_GATING;
-	hba->caps |= UFSHCD_CAP_CLK_SCALING;
-	hba->caps |= UFSHCD_CAP_AUTO_BKOPS_SUSPEND;
-	hba->caps |= UFSHCD_CAP_WB_EN;
-=======
 	if (!host->disable_lpm) {
 		hba->caps |= UFSHCD_CAP_CLK_GATING |
 		UFSHCD_CAP_HIBERN8_WITH_CLK_GATING |
@@ -2517,9 +2508,7 @@ static void ufs_qcom_set_caps(struct ufs_hba *hba)
 		hba->caps |= UFSHCD_CAP_AGGR_POWER_COLLAPSE;
 	}
 
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 	hba->caps |= UFSHCD_CAP_CRYPTO;
-	hba->caps |= UFSHCD_CAP_AGGR_POWER_COLLAPSE;
 
 	if (host->hw_ver.major >= 0x2)
 		host->caps = UFS_QCOM_CAP_QUNIPRO |
@@ -5054,6 +5043,9 @@ static void ufs_qcom_event_notify(struct ufs_hba *hba,
 	bool ber_th_exceeded = false;
 	bool evt_valid = true;
 
+	recordUniproErr(&signalCtrl, reg, evt);
+	recordGearErr(&signalCtrl, hba);
+
 	switch (evt) {
 	case UFS_EVT_PA_ERR:
 		ber_th_exceeded = ufs_qcom_update_ber_event(host, reg,
@@ -5534,13 +5526,6 @@ void recordGearErr(struct unipro_signal_quality_ctrl *signalCtrl, struct ufs_hba
 	signalCtrl->record.gear_err_cnt[dev_gear]++;
 }
 
-static void ufs_qcom_event_notify(struct ufs_hba *hba,
-	enum ufs_event_type evt, void *data)
-{
-	u32 reg = *(u32 *)data;
-	recordUniproErr(&signalCtrl, reg, evt);
-	recordGearErr(&signalCtrl, hba);
-}
 /*feature-flashaging806-v001-4-end*/
 /*
  * struct ufs_hba_qcom_vops - UFS QCOM specific variant operations
@@ -5554,7 +5539,6 @@ static const struct ufs_hba_variant_ops ufs_hba_qcom_vops = {
 	.exit                   = ufs_qcom_exit,
 	.get_ufs_hci_version	= ufs_qcom_get_ufs_hci_version,
 	.clk_scale_notify	= ufs_qcom_clk_scale_notify,
-	.event_notify       = ufs_qcom_event_notify,
 	.setup_clocks           = ufs_qcom_setup_clocks,
 	.hce_enable_notify      = ufs_qcom_hce_enable_notify,
 	.link_startup_notify    = ufs_qcom_link_startup_notify,
@@ -6186,13 +6170,10 @@ static int ufs_qcom_remove(struct platform_device *pdev)
 	pm_runtime_get_sync(&(pdev)->dev);
 	for (i = 0; i < r->num_groups; i++, qcg++)
 		remove_group_qos(qcg);
-<<<<<<< HEAD
-        /*feature-flashaging806-v001-6-begin*/
+	/*feature-flashaging806-v001-6-begin*/
 	remove_signal_quality_proc(&signalCtrl);
-        /*feature-flashaging806-v001-6-end*/
-=======
+	/*feature-flashaging806-v001-6-end*/
 
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 	ufshcd_remove(hba);
 	return 0;
 }
@@ -6219,12 +6200,8 @@ static void ufs_qcom_shutdown(struct platform_device *pdev)
 	 * reset, so deassert ufs device reset line after UFS device shutdown
 	 * to ensure the UFS_RESET TLMM register value is POR value
 	 */
-<<<<<<< HEAD
-	//ufs_qcom_device_reset_ctrl(hba, false);
-=======
 	if (!host->bypass_pbl_rst_wa)
 		ufs_qcom_device_reset_ctrl(hba, false);
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 }
 
 static int ufs_qcom_system_suspend(struct device *dev)
@@ -6284,12 +6261,6 @@ MODULE_DEVICE_TABLE(acpi, ufs_qcom_acpi_match);
 #endif
 
 static const struct dev_pm_ops ufs_qcom_pm_ops = {
-<<<<<<< HEAD
-	SET_SYSTEM_SLEEP_PM_OPS(ufs_qcom_system_suspend, ufs_qcom_system_resume)
-	SET_RUNTIME_PM_OPS(ufshcd_runtime_suspend, ufshcd_runtime_resume, NULL)
-	.prepare	 = ufs_qcom_suspend_prepare,
-	.complete	 = ufs_qcom_resume_complete,
-=======
 	SET_RUNTIME_PM_OPS(ufshcd_runtime_suspend, ufshcd_runtime_resume, NULL)
 	.prepare	= ufs_qcom_suspend_prepare,
 	.complete	= ufs_qcom_resume_complete,
@@ -6300,7 +6271,6 @@ static const struct dev_pm_ops ufs_qcom_pm_ops = {
 	.restore         = ufshcd_system_restore,
 	.thaw            = ufshcd_system_thaw,
 #endif
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 };
 
 static struct platform_driver ufs_qcom_pltform = {

@@ -11,11 +11,8 @@
 #include <linux/phy/phy.h>
 #include <linux/pm_qos.h>
 #include <linux/notifier.h>
-<<<<<<< HEAD
 #include <linux/proc_fs.h>
-=======
 #include <linux/panic_notifier.h>
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 #include "ufshcd.h"
 #include "unipro.h"
 
