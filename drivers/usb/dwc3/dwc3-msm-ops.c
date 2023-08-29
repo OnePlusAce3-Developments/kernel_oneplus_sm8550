@@ -24,7 +24,6 @@ struct kprobe_data {
 	int xi0;
 };
 
-<<<<<<< HEAD
 #ifdef OPLUS_FEATURE_CHG_BASIC
 static int entry_usb_ep_set_maxpacket_limit(struct kretprobe_instance *ri,
 				   struct pt_regs *regs)
@@ -53,7 +52,7 @@ static int exit_usb_ep_set_maxpacket_limit(struct kretprobe_instance *ri,
 	return 0;
 }
 #endif
-=======
+
 static unsigned long dwc3_pt_reg(struct pt_regs *regs, int reg)
 {
 #ifdef CONFIG_ARM64
@@ -62,7 +61,6 @@ static unsigned long dwc3_pt_reg(struct pt_regs *regs, int reg)
 	return regs->uregs[reg];
 #endif
 }
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 
 static int entry_dwc3_gadget_run_stop(struct kretprobe_instance *ri,
 				   struct pt_regs *regs)

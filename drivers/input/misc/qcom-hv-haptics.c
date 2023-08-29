@@ -97,19 +97,10 @@
 #define HPRW_RDY_FAULT_BIT			BIT(0)
 
 /* Only for HAP525_HV */
-<<<<<<< HEAD
-#ifdef OPLUS_FEATURE_CHG_BASIC
-#define HAP_CFG_HPWR_INTF_REG 0x0B
-#define HPWR_INTF_STATUS_MASK GENMASK(1, 0)
-#define HPWR_DISABLED 0
-#define HPWR_READY 3
-#endif
-=======
 #define HAP_CFG_HPWR_INTF_REG                   0x0B
 #define HPWR_INTF_STATUS_MASK                   GENMASK(1, 0)
 #define HPWR_DISABLED                           0
 #define HPWR_READY                              3
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 
 #define HAP_CFG_REAL_TIME_LRA_IMPEDANCE_REG	0x0E
 #define LRA_IMPEDANCE_MOHMS_LSB			250
@@ -393,15 +384,7 @@
 #define CHAR_PER_SAMPLE				8
 #define CHAR_MSG_HEADER				16
 #define CHAR_BRAKE_MODE				24
-<<<<<<< HEAD
-#ifndef OPLUS_FEATURE_CHG_BASIC
-#define HW_BRAKE_CYCLES				5
-#else
 #define HW_BRAKE_MAX_CYCLES			16
-#endif
-=======
-#define HW_BRAKE_MAX_CYCLES			16
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 #define F_LRA_VARIATION_HZ			5
 #define NON_HBOOST_MAX_VMAX_MV			4000
 /* below definitions are only for HAP525_HV */
@@ -738,14 +721,8 @@ struct haptics_chip {
 	struct regulator		*hpwr_vreg;
 	struct hrtimer			hbst_off_timer;
 	struct notifier_block		hboost_nb;
-<<<<<<< HEAD
-#ifdef OPLUS_FEATURE_CHG_BASIC
-	struct mutex vmax_lock;
-#endif
-=======
 	struct mutex			vmax_lock;
 	struct work_struct		set_gain_work;
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 	int				fifo_empty_irq;
 	u32				hpwr_voltage_mv;
 	u32				effects_count;
@@ -1160,31 +1137,13 @@ static int get_brake_play_length_us(struct brake_cfg *brake, u32 t_lra_us)
 		return 0;
 
 	if (brake->mode == PREDICT_BRAKE || brake->mode == AUTO_BRAKE)
-<<<<<<< HEAD
-#ifndef OPLUS_FEATURE_CHG_BASIC
-		return HW_BRAKE_CYCLES * t_lra_us;
-#else
 		return HW_BRAKE_MAX_CYCLES * t_lra_us / 2;
-
-#endif
-=======
-		return HW_BRAKE_MAX_CYCLES * t_lra_us / 2;
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 
 	for (; i >= 0; i--)
 		if (brake->samples[i] != 0)
 			break;
-<<<<<<< HEAD
-#ifndef OPLUS_FEATURE_CHG_BASIC
-	return t_lra_us * (i + 1);
-#else
-	return t_lra_us * (i + 1) / 2;
-#endif
-
-=======
 
 	return t_lra_us * (i + 1) / 2;
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 }
 
 static int haptics_get_status_data(struct haptics_chip *chip,
@@ -1234,69 +1193,6 @@ static int haptics_get_status_data(struct haptics_chip *chip,
 	trace_qcom_haptics_status(name, data[0], data[1]);
 	return 0;
 }
-
-#ifdef OPLUS_FEATURE_CHG_BASIC
-static int haptics_wait_brake_complete(struct haptics_chip *chip)
-{
-	struct haptics_play_info *play = &chip->play;
-	u32 brake_length_us, t_lra_us, timeout, delay_us;
-	int rc;
-	u8 val;
-
-	if (chip->hw_type != HAP525_HV)
-		return 0;
-
-#ifdef OPLUS_FEATURE_CHG_BASIC
-	t_lra_us = (chip->config.cl_t_lra_us) ?
-			chip->config.cl_t_lra_us : chip->config.t_lra_us;
-#endif
-
-	brake_length_us = get_brake_play_length_us(play->brake, chip->config.cl_t_lra_us);
-
-	/* add a cycle to give some margin for brake sychronization */
-#ifdef OPLUS_FEATURE_CHG_BASIC
-	brake_length_us += t_lra_us;
-	delay_us = t_lra_us / 2;
-#else
-	brake_length_us += chip->config.cl_t_lra_us;
-	if (chip->config.cl_t_lra_us)
-		delay_us = chip->config.cl_t_lra_us / 2;
-	else
-		delay_us = chip->config.t_lra_us / 2;
-#endif
-
-	timeout = brake_length_us / delay_us + 1;
-	dev_dbg(chip->dev, "wait %d us for brake pattern to complete\n", brake_length_us);
-
-	/* poll HPWR_DISABLED to guarantee the brake pattern has been played completely */
-	do {
-		usleep_range(delay_us, delay_us + 1);
-		rc = haptics_read(chip, chip->cfg_addr_base, HAP_CFG_HPWR_INTF_REG, &val, 1);
-		if (rc < 0) {
-			dev_err(chip->dev, "read HPWR_INTF failed, rc=%d\n", rc);
-			return rc;
-		}
-
-		if ((val & HPWR_INTF_STATUS_MASK) == HPWR_DISABLED) {
-			dev_dbg(chip->dev, "stopped play completely");
-			break;
-		}
-
-		dev_dbg(chip->dev, "polling HPWR_INTF timeout %d, value = %d\n",
-				timeout, val);
-	} while (--timeout);
-
-	if (timeout == 0) {
-		dev_warn(chip->dev, "poll HPWR_DISABLED failed after stopped play\n");
-#ifdef OPLUS_FEATURE_CHG_BASIC
-		return haptics_toggle_module_enable(chip);
-#endif
-	}
-
-	return 0;
-}
-#endif
-
 
 #define AUTO_CAL_CLK_SCALE_DEN		1000
 #define AUTO_CAL_CLK_SCALE_NUM		1024
@@ -1482,10 +1378,6 @@ static int haptics_get_closeloop_lra_period(
 	return 0;
 }
 
-<<<<<<< HEAD
-#ifdef OPLUS_FEATURE_CHG_BASIC
-=======
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 static int haptics_module_enable(struct haptics_chip *chip, bool enable)
 {
 	u8 val;
@@ -1493,22 +1385,13 @@ static int haptics_module_enable(struct haptics_chip *chip, bool enable)
 
 	val = enable ? HAPTICS_EN_BIT : 0;
 	rc = haptics_write(chip, chip->cfg_addr_base,
-<<<<<<< HEAD
-	HAP_CFG_EN_CTL_REG, &val, 1);
+		HAP_CFG_EN_CTL_REG, &val, 1);
 	if (rc < 0)
 		return rc;
 #ifndef OPLUS_FEATURE_CHG_BASIC
 	dev_dbg(chip->dev, "haptics module %s",
 		enable ? "enabled" : "disabled");
 #endif
-=======
-		HAP_CFG_EN_CTL_REG, &val, 1);
-	if (rc < 0)
-		return rc;
-
-	dev_dbg(chip->dev, "haptics module %s\n",
-		enable ? "enabled" : "disabled");
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 	return 0;
 }
 
@@ -1517,17 +1400,10 @@ static int haptics_toggle_module_enable(struct haptics_chip *chip)
 	int rc;
 
 	/*
-<<<<<<< HEAD
-	* Updating HAPTICS_EN would vote hBoost enable status. Add 100us
-	* delay before updating HAPTICS_EN for hBoost to have enough time
-	* to handle its power transition.
-	*/
-=======
 	 * Updating HAPTICS_EN would vote hBoost enable status. Add 100us
 	 * delay before updating HAPTICS_EN for hBoost to have enough time
 	 * to handle its power transition.
 	 */
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 	usleep_range(100, 101);
 	rc = haptics_module_enable(chip, false);
 	if (rc < 0)
@@ -1537,11 +1413,7 @@ static int haptics_toggle_module_enable(struct haptics_chip *chip)
 	return haptics_module_enable(chip, true);
 }
 
-<<<<<<< HEAD
-#define VMAX_SETTLE_COUNT 10
-=======
 #define VMAX_SETTLE_COUNT	10
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 static int haptics_check_hpwr_status(struct haptics_chip *chip)
 {
 	int i, rc = 0;
@@ -1552,16 +1424,6 @@ static int haptics_check_hpwr_status(struct haptics_chip *chip)
 
 	for (i = 0; i < VMAX_SETTLE_COUNT; i++) {
 		rc = haptics_read(chip, chip->cfg_addr_base, HAP_CFG_HPWR_INTF_REG, &val, 1);
-<<<<<<< HEAD
-	if (rc < 0)
-		break;
-
-	val &= HPWR_INTF_STATUS_MASK;
-	if ((val == HPWR_DISABLED) || (val == HPWR_READY))
-		break;
-
-	usleep_range(1000, 1001);
-=======
 		if (rc < 0)
 			break;
 
@@ -1570,43 +1432,26 @@ static int haptics_check_hpwr_status(struct haptics_chip *chip)
 			break;
 
 		usleep_range(1000, 1001);
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 	}
 
 	if (!rc && i == VMAX_SETTLE_COUNT) {
 		haptics_toggle_module_enable(chip);
-<<<<<<< HEAD
-		dev_err(chip->dev, "set Vmax failed, toggle HAPTICS_EN to restore HW status");
-=======
 		dev_err(chip->dev, "set Vmax failed, toggle HAPTICS_EN to restore HW status\n");
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 		rc = -EBUSY;
 	}
 
 	return rc;
 }
-<<<<<<< HEAD
-#endif
 
 #if IS_ENABLED(CONFIG_OPLUS_FEATURE_FAULT_INJECT_VIBRATOR)
 noinline
 #endif
-=======
-
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 static int haptics_set_vmax_mv(struct haptics_chip *chip, u32 vmax_mv)
 {
 	int rc = 0;
 	u8 val, vmax_step;
 
-<<<<<<< HEAD
-#ifdef OPLUS_FEATURE_CHG_BASIC
 	mutex_lock(&chip->vmax_lock);
-#endif
-
-=======
-	mutex_lock(&chip->vmax_lock);
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 	if (vmax_mv > chip->max_vmax_mv) {
 		dev_dbg(chip->dev, "vmax (%d) exceed the max value: %d\n",
 					vmax_mv, chip->max_vmax_mv);
@@ -1626,29 +1471,9 @@ static int haptics_set_vmax_mv(struct haptics_chip *chip, u32 vmax_mv)
 			HAP_CFG_VMAX_REG, &val, 1);
 	if (rc < 0) {
 		dev_err(chip->dev, "config VMAX failed, rc=%d\n", rc);
-<<<<<<< HEAD
-#ifndef OPLUS_FEATURE_CHG_BASIC
-	else
-		dev_dbg(chip->dev, "Set Vmax to %u mV\n", vmax_mv);
-#endif
-#ifdef OPLUS_FEATURE_CHG_BASIC
-	mutex_unlock(&chip->vmax_lock);
-	return rc;
-#endif
-	}
-#ifdef OPLUS_FEATURE_CHG_BASIC
-	dev_dbg(chip->dev, "Set Vmax to %u mV", vmax_mv);
-	rc = haptics_check_hpwr_status(chip);
-	if (rc < 0)
-		dev_err(chip->dev, "check hpwr_status failed, rc=%d", rc);
-#endif
-
-	mutex_unlock(&chip->vmax_lock);
-=======
 		mutex_unlock(&chip->vmax_lock);
 		return rc;
 	}
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 
 	dev_dbg(chip->dev, "Set Vmax to %u mV\n", vmax_mv);
 
@@ -2003,47 +1828,6 @@ static int haptics_open_loop_drive_config(struct haptics_chip *chip, bool en)
 	return 0;
 }
 
-<<<<<<< HEAD
-#ifndef OPLUS_FEATURE_CHG_BASIC
-static int haptics_module_enable(struct haptics_chip *chip, bool enable)
-{
-	u8 val;
-	int rc;
-
-	val = enable ? HAPTICS_EN_BIT : 0;
-	rc = haptics_write(chip, chip->cfg_addr_base,
-		HAP_CFG_EN_CTL_REG, &val, 1);
-	if (rc < 0)
-		return rc;
-
-#ifndef OPLUS_FEATURE_CHG_BASIC
-	dev_dbg(chip->dev, "haptics module %s\n",
-		enable ? "enabled" : "disabled");
-#endif
-	return 0;
-}
-
-static int haptics_toggle_module_enable(struct haptics_chip *chip)
-{
-	int rc;
-
-	/*
-	 * Updating HAPTICS_EN would vote hBoost enable status. Add 100us
-	 * delay before updating HAPTICS_EN for hBoost to have enough time
-	 * to handle its power transition.
-	 */
-	usleep_range(100, 101);
-	rc = haptics_module_enable(chip, false);
-	if (rc < 0)
-		return rc;
-
-	usleep_range(100, 101);
-	return haptics_module_enable(chip, true);
-}
-#endif
-
-=======
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 static int haptics_clear_fault(struct haptics_chip *chip)
 {
 	u8 val;
@@ -2141,15 +1925,8 @@ static int haptics_enable_play(struct haptics_chip *chip, bool en)
 		return rc;
 	}
 
-<<<<<<< HEAD
-#ifdef OPLUS_FEATURE_CHG_BASIC
 	if (!en)
 		haptics_wait_brake_complete(chip);
-#endif
-=======
-	if (!en)
-		haptics_wait_brake_complete(chip);
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 
 	if (chip->wa_flags & SW_CTRL_HBST) {
 		if (en) {
@@ -2166,15 +1943,13 @@ static int haptics_enable_play(struct haptics_chip *chip, bool en)
 		}
 	}
 
-<<<<<<< HEAD
 #ifdef OPLUS_FEATURE_CHG_BASIC
 	if (!en)
 		atomic_set(&chip->direct_richtap_status, false);
 #endif
-=======
+
 	if ((chip->wa_flags & TOGGLE_MODULE_EN) && !en)
 		rc = haptics_toggle_module_enable(chip);
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 
 	trace_qcom_haptics_play(en);
 	return rc;
@@ -3177,7 +2952,6 @@ static int haptics_upload_effect(struct input_dev *dev,
 
 	switch (effect->type) {
 	case FF_CONSTANT:
-<<<<<<< HEAD
 #ifdef OPLUS_FEATURE_RICHTAP_SUPPORT // quit rihctap while direct play
 		if (atomic_read(&chip->richtap_mode)) {
 			cancel_work_sync(&chip->richtap_stream_work);
@@ -3190,10 +2964,7 @@ static int haptics_upload_effect(struct input_dev *dev,
 			mutex_unlock(&chip->play.lock);
 		}
 #endif
-		length_us = effect->replay.length * USEC_PER_MSEC;
-=======
 		length_ms = effect->replay.length;
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 		level = effect->u.constant.level;
 		tmp = get_direct_play_max_amplitude(chip);
 		tmp *= level;
@@ -3273,46 +3044,12 @@ static int haptics_upload_effect(struct input_dev *dev,
 static int haptics_playback(struct input_dev *dev, int effect_id, int val)
 {
 	struct haptics_chip *chip = input_get_drvdata(dev);
-<<<<<<< HEAD
-#ifndef OPLUS_FEATURE_CHG_BASIC
-	struct haptics_play_info *play = &chip->play;
-	int rc;
-#endif
-
-	dev_dbg(chip->dev, "playback val = %d\n", val);
-#ifndef OPLUS_FEATURE_CHG_BASIC
-	if (!!val) {
-		rc = haptics_enable_play(chip, true);
-		if (rc < 0)
-			return rc;
-	} else {
-		if (play->pattern_src == FIFO &&
-				atomic_read(&play->fifo_status.is_busy)) {
-#ifndef OPLUS_FEATURE_CHG_BASIC
-			dev_dbg(chip->dev, "FIFO playing is not done yet, defer stopping in erase\n");
-#endif
-			return 0;
-		}
-
-		rc = haptics_enable_play(chip, false);
-	}
-#else
-	if (!!val)
-		return haptics_enable_play(chip, true);
-#endif
-#ifndef OPLUS_FEATURE_CHG_BASIC
-	return rc;
-#else
-	return 0;
-#endif
-=======
 
 	dev_dbg(chip->dev, "playback val = %d\n", val);
 	if (!!val)
 		return haptics_enable_play(chip, true);
 
 	return 0;
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 }
 
 static int haptics_erase(struct input_dev *dev, int effect_id)
@@ -3321,14 +3058,7 @@ static int haptics_erase(struct input_dev *dev, int effect_id)
 	struct haptics_play_info *play = &chip->play;
 	int rc;
 
-<<<<<<< HEAD
-#ifdef OPLUS_FEATURE_CHG_BASIC
 	dev_dbg(chip->dev, "erase effect, really stop play\n");
-#endif
-
-=======
-	dev_dbg(chip->dev, "erase effect, really stop play\n");
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 	mutex_lock(&play->lock);
 	cancel_delayed_work_sync(&chip->stop_work);
 	if ((play->pattern_src == FIFO) &&
@@ -3345,10 +3075,6 @@ static int haptics_erase(struct input_dev *dev, int effect_id)
 			mutex_unlock(&play->lock);
 			return rc;
 		}
-<<<<<<< HEAD
-#ifdef OPLUS_FEATURE_CHG_BASIC
-=======
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 	} else {
 		rc = haptics_enable_play(chip, false);
 		if (rc < 0) {
@@ -3356,10 +3082,6 @@ static int haptics_erase(struct input_dev *dev, int effect_id)
 			mutex_unlock(&play->lock);
 			return rc;
 		}
-<<<<<<< HEAD
-#endif
-=======
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 	}
 	mutex_unlock(&play->lock);
 
@@ -3370,64 +3092,7 @@ static int haptics_erase(struct input_dev *dev, int effect_id)
 	return rc;
 }
 
-<<<<<<< HEAD
-#ifdef OPLUS_FEATURE_CHG_BASIC
-static void oplus_haptic_gain_event_work_handler(struct work_struct *work)
-{
-	struct haptics_chip *chip  = container_of(work,
-		struct haptics_chip, haptic_gain_event_work);
-	struct haptics_hw_config *config = &chip->config;
-	struct haptics_play_info *play = &chip->play;
-	u32 vmax_mv, amplitude;
-	u16 gain = chip->oplus_gain;
-
-	if (gain == 0)
-		return;
-
-	mutex_lock(&play->lock);
-
-	if (gain > 0x7fff)
-		gain = 0x7fff;
-
-	dev_dbg(chip->dev, "Set gain: %#x\n", gain);
-
-	/* scale amplitude when playing in DIRECT_PLAY mode */
-	if (chip->play.pattern_src == DIRECT_PLAY) {
-		amplitude = get_direct_play_max_amplitude(chip);
-		amplitude *= gain;
-		amplitude /= 0x7fff;
-
-		dev_dbg(chip->dev, "Set amplitude: %#x\n", amplitude);
-		haptics_set_direct_play(chip, (u8)amplitude);
-		mutex_unlock(&play->lock);
-		return;
-	}
-
-	/* scale Vmax when playing in other modes */
-	vmax_mv = config->vmax_mv;
-	if (play->effect)
-		vmax_mv = play->effect->vmax_mv;
-
-	if (chip->clamp_at_5v && (vmax_mv > CLAMPED_VMAX_MV))
-		vmax_mv = CLAMPED_VMAX_MV;
-
-	play->vmax_mv = ((u32)(gain * vmax_mv)) / 0x7fff;
-	haptics_set_vmax_mv(chip, play->vmax_mv);
-	mutex_unlock(&play->lock);
-}
-
-static void haptics_set_gain(struct input_dev *dev, u16 gain)
-{
-	struct haptics_chip *chip = input_get_drvdata(dev);
-	chip->oplus_gain = gain;
-	queue_work(chip->haptic_gain_event_wq, &chip->haptic_gain_event_work);
-}
-
-#else
-static void haptics_set_gain(struct input_dev *dev, u16 gain)
-=======
 static void haptics_set_gain_work(struct work_struct *work)
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 {
 	struct haptics_chip *chip =
 		container_of(work, struct haptics_chip, set_gain_work);
@@ -3436,23 +3101,8 @@ static void haptics_set_gain_work(struct work_struct *work)
 	u32 vmax_mv, amplitude;
 	u16 gain;
 
-<<<<<<< HEAD
-	if (gain == 0)
-		return;
-
-#ifdef OPLUS_FEATURE_CHG_BASIC
-	mutex_lock(&play->lock);
-#endif
-
-	if (gain > 0x7fff)
-		gain = 0x7fff;
-
-	dev_dbg(chip->dev, "Set gain: %#x\n", gain);
-
-=======
 	mutex_lock(&play->lock);
 	gain = atomic_read(&play->gain);
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 	/* scale amplitude when playing in DIRECT_PLAY mode */
 	if (chip->play.pattern_src == DIRECT_PLAY) {
 		amplitude = get_direct_play_max_amplitude(chip);
@@ -3461,13 +3111,7 @@ static void haptics_set_gain_work(struct work_struct *work)
 
 		dev_dbg(chip->dev, "Set amplitude: %#x\n", amplitude);
 		haptics_set_direct_play(chip, (u8)amplitude);
-<<<<<<< HEAD
-#ifdef OPLUS_FEATURE_CHG_BASIC
 		mutex_unlock(&play->lock);
-#endif
-=======
-		mutex_unlock(&play->lock);
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 		return;
 	}
 
@@ -3481,11 +3125,6 @@ static void haptics_set_gain_work(struct work_struct *work)
 
 	play->vmax_mv = ((u32)(gain * vmax_mv)) / 0x7fff;
 	haptics_set_vmax_mv(chip, play->vmax_mv);
-<<<<<<< HEAD
-#ifdef OPLUS_FEATURE_CHG_BASIC
-	mutex_unlock(&play->lock);
-#endif
-=======
 	mutex_unlock(&play->lock);
 }
 
@@ -3503,9 +3142,7 @@ static void haptics_set_gain(struct input_dev *dev, u16 gain)
 	atomic_set(&play->gain, gain);
 	schedule_work(&chip->set_gain_work);
 	dev_dbg(chip->dev, "Set gain: %#x\n", gain);
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 }
-#endif
 
 static int haptics_store_cl_brake_settings(struct haptics_chip *chip)
 {
@@ -7470,13 +7107,7 @@ static int haptics_probe(struct platform_device *pdev)
 		return rc;
 	}
 
-<<<<<<< HEAD
-#ifdef OPLUS_FEATURE_CHG_BASIC
 	mutex_init(&chip->vmax_lock);
-#endif
-=======
-	mutex_init(&chip->vmax_lock);
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 
 	rc = haptics_hw_init(chip);
 	if (rc < 0) {
@@ -7652,15 +7283,12 @@ static int haptics_remove(struct platform_device *pdev)
 #ifdef CONFIG_DEBUG_FS
 	debugfs_remove_recursive(chip->debugfs_dir);
 #endif
-<<<<<<< HEAD
 #ifdef OPLUS_FEATURE_RICHTAP_SUPPORT
 	kfree(chip->rtp_ptr);
 	free_pages((unsigned long)chip->start_buf, RICHTAP_MMAP_PAGE_ORDER);
 #endif //OPLUS_FEATURE_RICHTAP_SUPPORT
 	input_ff_destroy(chip->input_dev);
-=======
 	input_unregister_device(chip->input_dev);
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 	dev_set_drvdata(chip->dev, NULL);
 
 	return 0;

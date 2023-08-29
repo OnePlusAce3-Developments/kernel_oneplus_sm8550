@@ -609,14 +609,8 @@ struct dwc3_msm {
 	int			refcnt_dp_usb;
 	enum dp_lane		dp_state;
 	bool			dynamic_disable;
-<<<<<<< HEAD
-#ifdef OPLUS_FEATURE_CHG_BASIC
-	bool			force_disconnect;
-#endif
-=======
 	bool			wcd_usbss;
 	bool			force_disconnect;
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 };
 
 #define USB_HSPHY_3P3_VOL_MIN		3050000 /* uV */
@@ -6174,14 +6168,8 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 		return 0;
 	}
 
-<<<<<<< HEAD
-#ifndef OPLUS_FEATURE_CHG_BASIC
-	dwc3_ext_event_notify(mdwc);
-#endif
-=======
 	if (of_property_read_bool(node, "qcom,msm-probe-core-init"))
 		dwc3_ext_event_notify(mdwc);
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 
 	mdwc->force_disconnect = false;
 	return 0;
@@ -6534,13 +6522,10 @@ static int dwc3_otg_start_host(struct dwc3_msm *mdwc, int on)
 {
 	int ret = 0;
 	struct dwc3 *dwc = platform_get_drvdata(mdwc->dwc3);
-<<<<<<< HEAD
 #ifdef OPLUS_FEATURE_CHG_BASIC
 	u32 val;
 #endif
-=======
 	u32 reg;
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 
 	if (on) {
 		dev_dbg(mdwc->dev, "%s: turn on host\n", __func__);
@@ -6811,18 +6796,6 @@ static int dwc3_otg_start_peripheral(struct dwc3_msm *mdwc, int on)
 		cpu_latency_qos_add_request(&mdwc->pm_qos_req_dma,
 					    PM_QOS_DEFAULT_VALUE);
 		clk_set_rate(mdwc->core_clk, mdwc->core_clk_rate);
-<<<<<<< HEAD
-		/* start in perf mode for better performance initially */
-		msm_dwc3_perf_vote_update(mdwc, true);
-		schedule_delayed_work(&mdwc->perf_vote_work,
-				msecs_to_jiffies(1000 * PM_QOS_SAMPLE_SEC));
-#ifdef OPLUS_FEATURE_CHG_BASIC
-		if (mdwc->force_disconnect) {
-			usb_gadget_connect(dwc->gadget);
-			mdwc->force_disconnect = false;
-		}
-#endif
-=======
 		msm_dwc3_perf_vote_enable(mdwc, true);
 
 		/*
@@ -6835,7 +6808,6 @@ static int dwc3_otg_start_peripheral(struct dwc3_msm *mdwc, int on)
 		}
 		mdwc->force_disconnect = false;
 
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 	} else {
 		dev_dbg(mdwc->dev, "%s: turn off gadget\n", __func__);
 		msm_dwc3_perf_vote_enable(mdwc, false);
@@ -6861,35 +6833,13 @@ static int dwc3_otg_start_peripheral(struct dwc3_msm *mdwc, int on)
 		 * disable), and retry suspend again.
 		 */
 		ret = pm_runtime_put_sync(&mdwc->dwc3->dev);
-<<<<<<< HEAD
-#ifdef OPLUS_FEATURE_CHG_BASIC
 		if (ret < 0) {
-#else
-		if (ret == -EBUSY) {
-#endif
-=======
-		if (ret < 0) {
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 			while (--timeout && dwc->connected)
 				msleep(20);
 			dbg_event(0xFF, "StopGdgt connected", dwc->connected);
 			pm_runtime_suspend(&mdwc->dwc3->dev);
 		}
 
-<<<<<<< HEAD
-#ifdef OPLUS_FEATURE_CHG_BASIC
-		if ((dwc->connected) && (timeout == 0)) {
-			usb_gadget_disconnect(dwc->gadget);
-			timeout = 10;
-			while (timeout && !pm_runtime_suspended(dwc->dev)) {
-				msleep(20);
-				timeout--;
-			}
-			mdwc->force_disconnect = true;
-			dbg_event(0xFF, "Force Disconnect", mdwc->force_disconnect);
-		}
-#endif
-=======
 		if ((timeout == 0) && (dwc->connected)) {
 			dbg_event(0xFF, "Force Pulldown", 0);
 
@@ -6903,7 +6853,6 @@ static int dwc3_otg_start_peripheral(struct dwc3_msm *mdwc, int on)
 			mdwc->force_disconnect = true;
 		}
 
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 		/* wait for LPM, to ensure h/w is reset after stop_peripheral */
 		set_bit(WAIT_FOR_LPM, &mdwc->inputs);
 
