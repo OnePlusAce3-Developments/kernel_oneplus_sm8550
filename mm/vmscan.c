@@ -3088,7 +3088,7 @@ static bool can_age_anon_pages(struct pglist_data *pgdat,
 
 #ifdef CONFIG_LRU_GEN
 
-#ifdef CONFIG_LRU_GEN_ENABLED
+#if defined(CONFIG_LRU_GEN_ENABLED) && !defined(CONFIG_CONT_PTE_HUGEPAGE)
 DEFINE_STATIC_KEY_ARRAY_TRUE(lru_gen_caps, NR_LRU_GEN_CAPS);
 #define get_cap(cap)	static_branch_likely(&lru_gen_caps[cap])
 #else
@@ -5366,6 +5366,10 @@ static ssize_t store_enabled(struct kobject *kobj, struct kobj_attribute *attr,
 {
 	int i;
 	unsigned int caps;
+
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+	return -EINVAL;
+#endif
 
 	if (tolower(*buf) == 'n')
 		caps = 0;
