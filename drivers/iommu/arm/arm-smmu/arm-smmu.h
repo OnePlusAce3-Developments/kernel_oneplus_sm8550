@@ -6,11 +6,7 @@
  *
  * Author: Will Deacon <will.deacon@arm.com>
  *
-<<<<<<< HEAD
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
-=======
  * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
  */
 
 #ifndef _ARM_SMMU_H
@@ -31,9 +27,6 @@
 #include <linux/qcom-iommu-util.h>
 #include <linux/qcom-io-pgtable.h>
 
-<<<<<<< HEAD
-#include <linux/qcom-io-pgtable.h>
-=======
 #ifdef CONFIG_MSM_TZ_SMMU
 bool arm_smmu_skip_write(void __iomem *addr);
 extern void *get_smmu_from_addr(struct iommu_device *iommu, void __iomem *addr);
@@ -51,7 +44,6 @@ extern void *arm_smmu_get_by_addr(void __iomem *addr);
 		((void)__raw_writeq((u64)cpu_to_le64(v), (c))); \
 	} while (0)
 #endif
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 
 /* Configuration registers */
 #define ARM_SMMU_GR0_sCR0		0x0

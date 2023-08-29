@@ -4166,8 +4166,6 @@ static int arm_smmu_pm_prepare(struct device *dev)
 	return (atomic_read(&dev->power.usage_count) == 1) ? -EINPROGRESS : 0;
 }
 
-<<<<<<< HEAD
-=======
 static int __maybe_unused arm_smmu_pm_suspend(struct device *dev)
 {
 	int ret = 0;
@@ -4196,7 +4194,6 @@ static int __maybe_unused arm_smmu_pm_resume(struct device *dev)
 		return arm_smmu_pm_resume_common(dev);
 }
 
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 static const struct dev_pm_ops arm_smmu_pm_ops = {
 	SET_RUNTIME_PM_OPS(arm_smmu_runtime_suspend,
 			   arm_smmu_runtime_resume, NULL)
