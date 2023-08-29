@@ -1367,10 +1367,7 @@ static inline void __up_read(struct rw_semaphore *sem)
 	DEBUG_RWSEMS_WARN_ON(sem->magic != sem, sem);
 	DEBUG_RWSEMS_WARN_ON(!is_rwsem_reader_owned(sem), sem);
 
-<<<<<<< HEAD
-=======
 	preempt_disable();
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 	rwsem_clear_reader_owned(sem);
 	tmp = atomic_long_add_return_release(-RWSEM_READER_BIAS, &sem->count);
 	DEBUG_RWSEMS_WARN_ON(tmp < 0, sem);
@@ -1380,10 +1377,7 @@ static inline void __up_read(struct rw_semaphore *sem)
 		rwsem_wake(sem);
 	}
 	trace_android_vh_record_rwsem_lock_starttime(current, 0);
-<<<<<<< HEAD
-=======
 	preempt_enable();
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 }
 
 /*
