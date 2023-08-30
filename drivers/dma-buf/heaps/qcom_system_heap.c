@@ -175,10 +175,6 @@ static bool __dynamic_pool_zone_watermark_ok(struct zone *z, unsigned int order,
 			if (mt == MIGRATE_CMA)
 				continue;
 #endif
-<<<<<<< HEAD
-=======
-
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 			if (!free_area_empty(area, mt))
 				return true;
 		}

@@ -614,11 +614,8 @@ static void bam_free_chan(struct dma_chan *chan)
 	unsigned long flags;
 	int ret;
 
-<<<<<<< HEAD
-=======
 	DMA_BAM_DBG(bdev->ipc_log_dma, bdev->dev,
 		    "%s chan id:%d\n", __func__, bchan->id);
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 	ret = pm_runtime_get_sync(bdev->dev);
 	if (ret < 0)
 		return;
@@ -827,11 +824,8 @@ static int bam_pause(struct dma_chan *chan)
 	unsigned long flag;
 	int ret;
 
-<<<<<<< HEAD
-=======
 	DMA_BAM_DBG(bdev->ipc_log_dma, bdev->dev,
 		    "%s chan id:%d\n", __func__, bchan->id);
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 	ret = pm_runtime_get_sync(bdev->dev);
 	if (ret < 0)
 		return ret;
@@ -858,11 +852,8 @@ static int bam_resume(struct dma_chan *chan)
 	unsigned long flag;
 	int ret;
 
-<<<<<<< HEAD
-=======
 	DMA_BAM_DBG(bdev->ipc_log_dma, bdev->dev,
 		    "%s chan id:%d\n", __func__, bchan->id);
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 	ret = pm_runtime_get_sync(bdev->dev);
 	if (ret < 0)
 		return ret;

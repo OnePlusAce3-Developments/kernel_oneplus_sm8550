@@ -48,12 +48,8 @@ void dynamic_page_pool_add(struct dynamic_page_pool *pool, struct page *page)
 	atomic_inc(&pool->count);
 	mod_node_page_state(page_pgdat(page), NR_KERNEL_MISC_RECLAIMABLE,
 			    1 << pool->order);
-<<<<<<< HEAD
 	atomic64_add(1 << pool->order, &qcom_dma_heap_pool);
-	mutex_unlock(&pool->mutex);
-=======
 	spin_unlock_irqrestore(&pool->lock, flags);
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 }
 
 struct page *dynamic_page_pool_remove(struct dynamic_page_pool *pool, bool high)
