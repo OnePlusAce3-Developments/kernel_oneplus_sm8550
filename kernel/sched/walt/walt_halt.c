@@ -609,7 +609,6 @@ void walt_halt_init(void)
 
 	sched_setscheduler_nocheck(walt_drain_thread, SCHED_FIFO, &param);
 
-<<<<<<< HEAD
 #ifdef CONFIG_OPLUS_ADD_CORE_CTRL_MASK
 #if IS_ENABLED(CONFIG_OPLUS_FEATURE_FRAME_BOOST)
 	init_fbg_halt_mask(&__cpu_halt_mask);
@@ -619,7 +618,7 @@ void walt_halt_init(void)
 	init_ux_halt_mask(&__cpu_halt_mask);
 #endif
 #endif /* CONFIG_OPLUS_ADD_CORE_CTRL_MASK */
-=======
+
 	/*
 	 * disable hotplug of first cpu for a symmetric system (all or none of the cores
 	 * supporting 32bit).
@@ -629,7 +628,6 @@ void walt_halt_init(void)
 			     cpumask_weight(system_32bit_el0_cpumask())))
 		get_cpu_device(cpumask_first(cpu_possible_mask))->offline_disabled = true;
 
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 	register_trace_android_rvh_get_nohz_timer_target(android_rvh_get_nohz_timer_target, NULL);
 	register_trace_android_rvh_set_cpus_allowed_by_task(
 						android_rvh_set_cpus_allowed_by_task, NULL);

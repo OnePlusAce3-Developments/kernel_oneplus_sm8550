@@ -5270,14 +5270,6 @@ static void walt_init(struct work_struct *work)
 		wait_for_completion_interruptible(&rebuild_domains_completion);
 	}
 
-<<<<<<< HEAD
-	if (!rcu_dereference(rd->pd))
-		WALT_BUG(WALT_BUG_WALT, NULL,
-			"root domain's perf-domain values not initialized rd->pd=%d.",
-			rd->pd);
-
-=======
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 	stop_machine(walt_init_stop_handler, NULL, NULL);
 
 	/*

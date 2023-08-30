@@ -311,25 +311,19 @@ static void walt_get_indicies(struct task_struct *p, int *order_index,
 	}
 
 	for (i = *order_index ; i < num_sched_clusters - 1; i++) {
-<<<<<<< HEAD
-		if (task_demand_fits(p, cpumask_first(&cpu_array[i][0])))
 #if IS_ENABLED(CONFIG_OPLUS_FEATURE_FAKE_CAP)
-		{
+		if (task_demand_fits(p, cpumask_first(&cpu_array[i][0]))) {
 			if (adjust_group_task(p, cpumask_first(&cpu_array[i][0])))
 				continue;
 			else
 				break;
 		}
 #else
-			break;
-#endif
-
-=======
 		if (task_demand_fits(p, cpumask_first(&cpu_array[i][0]))) {
 			if (!ignore_cluster[i])
 				break;
 		}
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
+#endif
 	}
 
 	*order_index = i;
@@ -367,16 +361,13 @@ enum fastpaths {
 	SYNC_WAKEUP,
 	PREV_CPU_FASTPATH,
 	CLUSTER_PACKING_FASTPATH,
-<<<<<<< HEAD
 #if IS_ENABLED(CONFIG_OPLUS_FEATURE_FRAME_BOOST)
 	FRAME_BOOST_SELECT,
 #endif
 #ifdef CONFIG_OPLUS_FEATURE_SCHED_SPREAD
 	NR_WAKEUP_SELECT,
 #endif /* CONFIG_OPLUS_FEATURE_SCHED_SPREAD */
-=======
 	PIPELINE_FASTPATH,
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 };
 
 static inline bool is_complex_sibling_idle(int cpu)
@@ -442,13 +433,10 @@ static void walt_find_best_target(struct sched_domain *sd,
 	int packing_cpu;
 	struct walt_rq *prev_wrq = (struct walt_rq *) cpu_rq(prev_cpu)->android_vendor_data1;
 	struct walt_rq *start_wrq;
-<<<<<<< HEAD
 #if IS_ENABLED(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
 	cpumask_t new_allowed_cpus;
 #endif
-=======
 	bool scan_ignore_cluster = false, ignored = false;
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 
 	/* Find start CPU based on boost value */
 	start_cpu = fbt_env->start_cpu;
@@ -489,7 +477,6 @@ static void walt_find_best_target(struct sched_domain *sd,
 		goto out;
 	}
 
-<<<<<<< HEAD
 #if IS_ENABLED(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
 	cpumask_copy(&new_allowed_cpus, &p->cpus_mask);
 	task_tpd_mask(p, &new_allowed_cpus);
@@ -504,9 +491,7 @@ static void walt_find_best_target(struct sched_domain *sd,
 	}
 #endif /* CONFIG_OPLUS_FEATURE_SCHED_SPREAD */
 
-=======
 retry_ignore_cluster:
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 	for (cluster = 0; cluster < num_sched_clusters; cluster++) {
 		int best_idle_cpu_cluster = -1;
 		int target_cpu_cluster = -1;
@@ -550,36 +535,12 @@ retry_ignore_cluster:
 
 			/* record the prss as we visit cpus in a cluster */
 			fbt_env->prs[i] = wrq->prev_runnable_sum + wrq->grp_time.prev_runnable_sum;
-
-<<<<<<< HEAD
-			if (!cpu_active(i))
-				continue;
-
-			if (cpu_halted(i))
-				continue;
-
 #if IS_ENABLED(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
 			if (should_ux_task_skip_cpu(p, i))
 				continue;
 #endif
-			/*
-			 * This CPU is the target of an active migration that's
-			 * yet to complete. Avoid placing another task on it.
-			 */
-			if (is_reserved(i))
-				continue;
 
-			if (sched_cpu_high_irqload(i))
-				continue;
-
-			if (fbt_env->skip_cpu == i)
-				continue;
-
-			if (wrq->num_mvp_tasks > 0 &&
-				per_task_boost(p) != TASK_BOOST_STRICT_MAX)
-=======
 			if (walt_should_reject_fbt_cpu(wrq, p, i, order_index, fbt_env))
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 				continue;
 
 			/*

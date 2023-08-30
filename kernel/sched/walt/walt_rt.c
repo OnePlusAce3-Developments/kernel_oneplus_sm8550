@@ -9,7 +9,7 @@
 #include "walt.h"
 #include "trace.h"
 
-<<<<<<< HEAD
+
 #if IS_ENABLED(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
 #include <../kernel/oplus_cpu/sched/sched_assist/sa_common.h>
 #endif
@@ -19,8 +19,6 @@
 
 #define MSEC_TO_NSEC (1000 * 1000)
 
-=======
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 static DEFINE_PER_CPU(cpumask_var_t, walt_local_cpu_mask);
 DEFINE_PER_CPU(u64, rt_task_arrival_time) = 0;
 static bool long_running_rt_task_trace_rgstrd;

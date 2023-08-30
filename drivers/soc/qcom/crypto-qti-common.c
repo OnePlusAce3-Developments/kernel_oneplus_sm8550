@@ -406,30 +406,20 @@ int crypto_qti_keyslot_program(const struct ice_mmio_data *mmio_data,
 			       unsigned int slot,
 			       u8 data_unit_mask, int capid)
 {
-	int err1 = 0, err2 = 0;
+	int err = 0;
 
-	err1 = crypto_qti_program_key(mmio_data, key, slot,
+	err = crypto_qti_program_key(mmio_data, key, slot,
 				data_unit_mask, capid);
-<<<<<<< HEAD
-	if (err1) {
-		pr_err("%s: program key failed with error %d\n", __func__, err1);
-		err2 = crypto_qti_invalidate_key(mmio_data, slot);
-		if (err2) {
-			pr_err("%s: invalidate key failed with error %d\n",
-				__func__, err2);
-			return err2;
-=======
 	if (err) {
 		pr_err("%s: program key failed with error %d\n", __func__, err);
 		err = crypto_qti_invalidate_key(mmio_data, slot);
 		if (err) {
 			pr_err("%s: invalidate key failed with error %d\n", __func__, err);
 			return err;
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 		}
 	}
 
-	return err1;
+	return err;
 }
 EXPORT_SYMBOL(crypto_qti_keyslot_program);
 

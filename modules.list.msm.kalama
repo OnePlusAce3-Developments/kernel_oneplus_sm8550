@@ -27,11 +27,8 @@ crypto-qti-hwkm.ko
 dcc_v2.ko
 dcvs_fp.ko
 debug-regulator.ko
-<<<<<<< HEAD
 device_info.ko
-=======
 dispcc-crow.ko
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 dispcc-kalama.ko
 tcsrcc-kalama.ko
 videocc-kalama.ko

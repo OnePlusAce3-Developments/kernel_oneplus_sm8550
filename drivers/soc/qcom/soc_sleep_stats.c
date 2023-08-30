@@ -850,14 +850,14 @@ skip_ddr_stats:
 	platform_set_drvdata(pdev, root);
 #endif
 
-<<<<<<< HEAD
+
 #ifdef CONFIG_OPLUS_POWERINFO_RPMH
 	soc_sleep_stats_create_sysfs(pdev, drv);
 	drv_backup = drv;
-=======
+#endif
+
 #ifdef CONFIG_MSM_BOOT_TIME_MARKER
 	gdata = prv_data;
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 #endif
 
 	return 0;

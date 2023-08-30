@@ -318,11 +318,8 @@
   __traceiter_android_vh_alloc_pages_reclaim_bypass
   __traceiter_android_vh_mmput
   __tracepoint_android_vh_alloc_pages_failure_bypass
-<<<<<<< HEAD
-=======
   __tracepoint_android_vh_alloc_pages_reclaim_bypass
   __tracepoint_android_vh_mmput
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 
 #required by mifs.ko module
   add_swap_extent

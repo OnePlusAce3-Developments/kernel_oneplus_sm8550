@@ -286,10 +286,7 @@
   register_sysctl_table
   register_tcf_proto_ops
   remove_proc_subtree
-<<<<<<< HEAD
-=======
   rtc_read_alarm
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
   __rtnl_link_unregister
   sched_clock
   sched_setscheduler_nocheck
@@ -458,9 +455,6 @@
   __traceiter_android_vh_tune_scan_type
   __traceiter_android_vh_tune_swappiness
   __traceiter_android_vh_update_page_mapcount
-<<<<<<< HEAD
-  __traceiter_mm_vmscan_direct_reclaim_begin
-=======
   __traceiter_block_bio_complete
   __traceiter_block_bio_queue
   __traceiter_block_getrq
@@ -472,7 +466,6 @@
   __traceiter_net_dev_xmit
   __traceiter_netif_receive_skb
   __traceiter_netif_rx
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
   __traceiter_sched_stat_blocked
   __traceiter_sched_stat_iowait
   __traceiter_sched_stat_runtime
@@ -566,13 +559,8 @@
   __tracepoint_android_vh_rwsem_opt_spin_finish
   __tracepoint_android_vh_rwsem_opt_spin_start
   __tracepoint_android_vh_rwsem_wake_finish
-<<<<<<< HEAD
-  __tracepoint_android_vh_sched_show_task
-  __tracepoint_android_vh_save_track_hash
-=======
   __tracepoint_android_vh_save_track_hash
   __tracepoint_android_vh_sched_show_task
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
   __tracepoint_android_vh_sched_stat_runtime_rt
   __tracepoint_android_vh_show_mapcount_pages
   __tracepoint_android_vh_sync_txn_recvd
@@ -580,9 +568,6 @@
   __tracepoint_android_vh_tune_scan_type
   __tracepoint_android_vh_tune_swappiness
   __tracepoint_android_vh_update_page_mapcount
-<<<<<<< HEAD
-  __tracepoint_mm_vmscan_direct_reclaim_begin
-=======
   __tracepoint_block_bio_complete
   __tracepoint_block_bio_queue
   __tracepoint_block_getrq
@@ -590,7 +575,6 @@
   __tracepoint_block_rq_merge
   __tracepoint_block_rq_requeue
   __tracepoint_block_split
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
   __tracepoint_net_dev_queue
   __tracepoint_net_dev_xmit
   __tracepoint_netif_receive_skb
