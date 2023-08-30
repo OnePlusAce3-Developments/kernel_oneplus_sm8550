@@ -149,11 +149,8 @@ int slim_do_transfer(struct slim_controller *ctrl, struct slim_msg_txn *txn)
 			pm_runtime_put_noidle(ctrl->dev);
 			/* Set device in suspended since resume failed */
 			pm_runtime_set_suspended(ctrl->dev);
-<<<<<<< HEAD
-=======
 			if (need_tid && !txn->msg->comp)
 				txn->comp = comp;
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 			return ret;
 		}
 

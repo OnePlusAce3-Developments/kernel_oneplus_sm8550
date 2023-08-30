@@ -1114,15 +1114,11 @@ static int qcom_slim_ngd_xfer_msg(struct slim_controller *sctrl,
 		if (!timeout) {
 			SLIM_WARN(ctrl, "TX usr_msg timed out:MC:0x%x,mt:0x%x",
 				txn->mc, txn->mt);
-<<<<<<< HEAD
 //#ifdef OPLUS_ARCH_EXTENDS
 			pr_err("%s: TX usr_msg timed out:MC:0x%x,mt:0x%x \n", __func__, txn->mc, txn->mt);
-			txn->comp = NULL;
 //#endif /* OPLUS_ARCH_EXTENDS */
-=======
 			ctrl->capability_timeout = true;
 			txn->comp = NULL;
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 			mutex_unlock(&ctrl->tx_lock);
 			return -ETIMEDOUT;
 		}
@@ -1838,12 +1834,9 @@ static int qcom_slim_ngd_ssr_pdr_notify(struct qcom_slim_ngd_ctrl *ctrl,
 			"QCOM_SSR_BEFORE_SHUTDOWN", "slim_ngd_ssr_pdr-enter");
 		SLIM_INFO(ctrl, "SLIM SSR Before Shutdown\n");
 		if (ctrl->state != QCOM_SLIM_NGD_CTRL_DOWN) {
-<<<<<<< HEAD
-=======
 			/* Make sure the last dma xfer is finished */
 			mutex_lock(&ctrl->suspend_resume_lock);
 			mutex_lock(&ctrl->tx_lock);
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 			ctrl->state = QCOM_SLIM_NGD_CTRL_SSR_GOING_DOWN;
 			SLIM_INFO(ctrl, "SLIM SSR going down\n");
 			pm_runtime_get_noresume(ctrl->ctrl.dev);
@@ -1857,11 +1850,6 @@ static int qcom_slim_ngd_ssr_pdr_notify(struct qcom_slim_ngd_ctrl *ctrl,
 			mutex_unlock(&ctrl->tx_lock);
 			mutex_unlock(&ctrl->suspend_resume_lock);
 		}
-<<<<<<< HEAD
-		mutex_unlock(&ctrl->tx_lock);
-		mutex_unlock(&ctrl->suspend_resume_lock);
-=======
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 
 		/* PDR must clean up everything as part of state down notification */
 		if (action == SERVREG_SERVICE_STATE_DOWN)
@@ -2158,13 +2146,8 @@ static int qcom_slim_ngd_ctrl_probe(struct platform_device *pdev)
 
 	ctrl->pdr = pdr_handle_alloc(slim_pd_status, ctrl);
 	if (IS_ERR(ctrl->pdr)) {
-<<<<<<< HEAD
-		dev_err(dev, "Failed to init PDR handle\n");
-		ret = PTR_ERR(ctrl->pdr);
-=======
 		ret = PTR_ERR(ctrl->pdr);
 		dev_err(dev, "Failed to init PDR handle: %d\n", ret);
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 		goto err_pdr_alloc;
 	}
 
@@ -2175,16 +2158,6 @@ static int qcom_slim_ngd_ctrl_probe(struct platform_device *pdev)
 		goto err_pdr_lookup;
 	}
 
-<<<<<<< HEAD
-	platform_driver_register(&qcom_slim_ngd_driver);
-	return of_qcom_slim_ngd_register(dev, ctrl);
-
-err_pdr_lookup:
-		pdr_handle_release(ctrl->pdr);
-
-err_pdr_alloc:
-		qcom_unregister_ssr_notifier(ctrl->notifier, &ctrl->nb);
-=======
 	ret = of_qcom_slim_ngd_register(dev, ctrl);
 	if (ret) {
 		SLIM_ERR(ctrl, "qcom_slim_ngd_register failed ret:%d\n", ret);
@@ -2200,7 +2173,6 @@ err_pdr_lookup:
 
 err_pdr_alloc:
         qcom_unregister_ssr_notifier(ctrl->notifier, &ctrl->nb);
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 
 remove_ipc_sysfs:
 	if (ctrl->ipc_slimbus_log)
