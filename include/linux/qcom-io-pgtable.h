@@ -1,5 +1,3 @@
-<<<<<<< HEAD:drivers/iommu/qcom-io-pgtable.h
-=======
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
@@ -85,4 +83,3 @@ extern struct io_pgtable_init_fns qcom_io_pgtable_arm_64_lpae_s1_init_fns;
 #endif
 
 #endif /* __QCOM_QCOM_IO_PGTABLE_H */
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131:include/linux/qcom-io-pgtable.h
