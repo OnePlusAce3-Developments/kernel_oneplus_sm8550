@@ -17,21 +17,14 @@
 #define _TRACE_HOOK_MM_H
 
 #include <trace/hooks/vendor_hooks.h>
-<<<<<<< HEAD
 #include <../mm/slab.h>
-=======
 #include <linux/rwsem.h>
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 
 #ifdef __GENKSYMS__
 #include <linux/types.h>
 #include <linux/mm.h>
 #include <linux/oom.h>
 #include <linux/rwsem.h>
-<<<<<<< HEAD
-=======
-#include <../mm/slab.h>
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 #endif
 
 struct oom_control;
@@ -210,8 +203,6 @@ DECLARE_HOOK(android_vh_madvise_cold_or_pageout,
 DECLARE_RESTRICTED_HOOK(android_rvh_ctl_dirty_rate,
 	TP_PROTO(void *unused),
 	TP_ARGS(unused), 1);
-<<<<<<< HEAD
-=======
 DECLARE_HOOK(android_vh_rmqueue_smallest_bypass,
 	TP_PROTO(struct page **page, struct zone *zone, int order, int migratetype),
 	TP_ARGS(page, zone, order, migratetype));
@@ -219,7 +210,6 @@ DECLARE_HOOK(android_vh_free_one_page_bypass,
 	TP_PROTO(struct page *page, struct zone *zone, int order, int migratetype,
 		int fpi_flags, bool *bypass),
 	TP_ARGS(page, zone, order, migratetype, fpi_flags, bypass));
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 #endif /* _TRACE_HOOK_MM_H */
 
 /* This part must be outside protection */
