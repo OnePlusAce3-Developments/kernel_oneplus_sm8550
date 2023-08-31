@@ -93,14 +93,10 @@ static struct qrtr_node *node_get(unsigned int node_id)
 	node->id = node_id;
 	xa_init(&node->servers);
 
-<<<<<<< HEAD
-	xa_store(&nodes, node_id, node, GFP_ATOMIC);
-=======
 	if(xa_is_err(xa_store(&nodes, node_id, node, GFP_ATOMIC))){
 		kfree(node);
 		return NULL;
 	}
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 
 	return node;
 }
