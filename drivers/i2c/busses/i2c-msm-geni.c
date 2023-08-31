@@ -189,7 +189,6 @@ struct geni_i2c_dev {
 	bool prev_cancel_pending; //Halt cancel till IOS in good state
 	bool gsi_err; /* For every gsi error performing gsi reset */
 	bool is_i2c_rtl_based; /* doing pending cancel only for rtl based SE's */
-<<<<<<< HEAD
 #ifdef OPLUS_FEATURE_CHG_BASIC
 	struct pinctrl *geni_pinctrl;
 	struct pinctrl_state *geni_gpio_active;
@@ -199,12 +198,10 @@ struct geni_i2c_dev {
 	bool i2c_reset_processing;
 	int err_count_for_reset;
 #endif
-=======
 	bool skip_bw_vote; /* Used for PMIC over i2c use case to skip the BW vote */
 	bool bus_recovery_enable; //To be enabled by client if needed
 	atomic_t is_xfer_in_progress; /* Used to maintain xfer inprogress status */
 	bool is_deep_sleep; /* For deep sleep restore the config similar to the probe. */
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 };
 
 static struct geni_i2c_dev *gi2c_dev_dbg[MAX_SE];
@@ -1665,8 +1662,7 @@ static int geni_i2c_xfer(struct i2c_adapter *adap,
 
 	geni_ios = geni_read_reg(gi2c->base, SE_GENI_IOS);
 	if ((geni_ios & 0x3) != 0x3) { //SCL:b'1, SDA:b'0
-<<<<<<< HEAD
-		I2C_LOG_ERR(gi2c->ipcl, true, gi2c->dev,
+		I2C_LOG_ERR(gi2c->ipcl, false, gi2c->dev,
 			"IO lines in bad state, Power the slave\n");
 #ifdef OPLUS_FEATURE_CHG_BASIC
 		for (i = 0; i < num; i++) {
@@ -1675,18 +1671,12 @@ static int geni_i2c_xfer(struct i2c_adapter *adap,
 			}
 		}
 #endif /* OPLUS_FEATURE_CHG_BASIC */
-		pm_runtime_mark_last_busy(gi2c->dev);
-		pm_runtime_put_autosuspend(gi2c->dev);
-=======
-		I2C_LOG_ERR(gi2c->ipcl, false, gi2c->dev,
-			    "IO lines in bad state, Power the slave\n");
 		/* for levm skip auto suspend timer */
 		if (!gi2c->is_le_vm) {
 			pm_runtime_mark_last_busy(gi2c->dev);
 			pm_runtime_put_autosuspend(gi2c->dev);
 		}
 		atomic_set(&gi2c->is_xfer_in_progress, 0);
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 		return -ENXIO;
 	}
 
@@ -1951,7 +1941,6 @@ geni_i2c_txn_ret:
 	return ret;
 }
 
-<<<<<<< HEAD
 /*OPLUS_FEATURE_CHG_BASIC qcom case 06374203 Solve smbus I2C communication exception start*/
 #if IS_ENABLED(CONFIG_I2C_SLAVE_QCOM)
 /*OPLUS_FEATURE_CHG_BASIC qcom case 06374203 Solve smbus I2C communication exception end*/
@@ -2074,8 +2063,6 @@ static int geni_i2c_smbus_xfer(struct i2c_adapter *adap, u16 addr,
 }
 #endif /*OPLUS_FEATURE_CHG_BASIC qcom case 06374203 Solve smbus I2C communication exception*/
 
-=======
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 static u32 geni_i2c_func(struct i2c_adapter *adap)
 {
 	return I2C_FUNC_I2C | (I2C_FUNC_SMBUS_EMUL & ~I2C_FUNC_SMBUS_QUICK);
@@ -2084,14 +2071,11 @@ static u32 geni_i2c_func(struct i2c_adapter *adap)
 static const struct i2c_algorithm geni_i2c_algo = {
 	.master_xfer	= geni_i2c_xfer,
 	.functionality	= geni_i2c_func,
-<<<<<<< HEAD
 /*OPLUS_FEATURE_CHG_BASIC qcom case 06374203 Solve smbus I2C communication exception start*/
 #if IS_ENABLED(CONFIG_I2C_SLAVE_QCOM)
 	.smbus_xfer	= geni_i2c_smbus_xfer,
 #endif
 /*OPLUS_FEATURE_CHG_BASIC qcom case 06374203 Solve smbus I2C communication exception end*/
-=======
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 };
 
 #if I2C_HUB_DEF
