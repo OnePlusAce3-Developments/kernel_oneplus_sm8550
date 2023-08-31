@@ -103,6 +103,7 @@ atomic64_t thp_swpin_hit_swapcache;
 atomic64_t thp_cow;
 atomic64_t thp_cow_fallback;
 
+#if CONFIG_CHP_SPECIAL_PROCESS_BLACKLIST_ENABLE
 /* this must be equal to size of chp_special_processes */
 #define NR_SPECIAL_PROCESSES (4)
 
@@ -112,6 +113,7 @@ static const char *chp_special_processes[NR_SPECIAL_PROCESSES] = {
 	"/vendor/bin/hw/android.hardware.audio.service_64",
 	"/vendor/bin/hw/vendor.qti.hardware.AGMIPC@1.0-service",
 };
+#endif
 
 static const char *vm_chp_event_text[NR_VM_CHP_EVENT_ITEMS] = {
 	"page_alloc_slow_path",
@@ -228,10 +230,12 @@ inline bool current_is_hybridswapd(void)
 
 static bool find_uid_in_blacklist(uid_t uid);
 
+#if CONFIG_CHP_SPECIAL_PROCESS_BLACKLIST_ENABLE
 static inline bool __is_critical_task_uid(kuid_t uid)
 {
 	return uid_eq(uid, ROOT_APP_UID) || uid_eq(uid, SYSTEM_APP_UID) || uid_eq(uid, AUDIOSERVER_UID);
 }
+#endif
 
 inline bool cont_pte_huge_page_enabled(void)
 {
@@ -838,6 +842,7 @@ inline bool handle_chp_fs_supported(struct inode *inode)
 
 void handle_chp_load_elf_binary(const char *filename)
 {
+#if CONFIG_CHP_SPECIAL_PROCESS_BLACKLIST_ENABLE
 	int i;
 
 	if (!filename || test_thread_flag(TIF_32BIT) ||
@@ -853,6 +858,7 @@ void handle_chp_load_elf_binary(const char *filename)
 			return;
 		}
 	}
+#endif
 }
 
 static inline bool current_is_fg(void)
@@ -1208,9 +1214,11 @@ struct page *alloc_cont_pte_hugepage(gfp_t gfp_mask)
 		first_alloc = false;
 	}
 
+#if CONFIG_CHP_SPECIAL_PROCESS_BLACKLIST_ENABLE
 	if (current->group_leader && current->group_leader->signal &&
 	    (current->group_leader->signal->flags & SIGNAL_CHP_SPECIAL))
 		return NULL;
+#endif
 
 	/* enter fast path or slow path 1/2 */
 	page = __alloc_cont_pte_hugepage(gfp_mask);
@@ -1262,6 +1270,7 @@ static bool is_critical_system_task(struct task_struct *tsk)
 
 void update_task_hugepage_critical_flag(struct task_struct *tsk)
 {
+#if CONFIG_CHP_SPECIAL_PROCESS_BLACKLIST_ENABLE
 	if (!__is_critical_task_uid(current_uid()))
 		return;
 
@@ -1272,6 +1281,7 @@ void update_task_hugepage_critical_flag(struct task_struct *tsk)
 			 current->comm, current->pid);
 		current->group_leader->signal->flags |= SIGNAL_CHP_SPECIAL;
 	}
+#endif
 
 	if (is_critical_system_task(tsk))
 		tsk->signal->flags |= SIGNAL_HUGEPAGE_CRITICAL;
@@ -1284,8 +1294,10 @@ bool is_critical_native(struct task_struct *tsk)
 	if (!is_native_task(tsk))
 		return false;
 
+#if CONFIG_CHP_SPECIAL_PROCESS_BLACKLIST_ENABLE
 	if (!__is_critical_task_uid(current_uid()))
 		return false;
+#endif
 
 	if (tsk->signal->flags & SIGNAL_HUGEPAGE_CRITICAL)
 		return true;

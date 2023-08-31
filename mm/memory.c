@@ -6421,24 +6421,6 @@ static vm_fault_t handle_pte_fault(struct vm_fault *vmf)
 			return do_wp_page(vmf);
 		entry = pte_mkdirty(entry);
 	}
-#ifdef CONFIG_CONT_PTE_HUGEPAGE
-	if (pte_cont(entry)) {
-		unsigned long haddr = vmf->address & HPAGE_CONT_PTE_MASK;
-		pte_t *ptep = vmf->pte - (vmf->address - haddr)/PAGE_SIZE;
-
-		entry = pte_mkyoung(*ptep);
-		/*
-		 * we don't poison the head pte when we have let cont_pte
-		 * cross two physical 64KB incorrectly.
-		 * in case head pte is 0, we are setting 0x400 which is
-		 * a swap entry; in case head pte is a swap or other non-
-		 * present entry, we are corrupting its offset
-		 */
-		if (pte_cont(*ptep))
-			ptep_set_access_flags(vmf->vma, haddr, ptep, entry,
-					vmf->flags & FAULT_FLAG_WRITE);
-	}
-#endif
 	entry = pte_mkyoung(entry);
 	if (ptep_set_access_flags(vmf->vma, vmf->address, vmf->pte, entry,
 				vmf->flags & FAULT_FLAG_WRITE)) {
