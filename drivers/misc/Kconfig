@@ -514,7 +514,6 @@ config OPEN_DICE
 
 	  If unsure, say N.
 
-<<<<<<< HEAD
 #ifdef OPLUS_FEATURE_RF_CABLE_DETECT
 config OPLUS_RF_CABLE_MONITOR
 	tristate "OPLUS rf cable monitor system"
@@ -554,7 +553,7 @@ config HAPTIC_FEEDBACK
     tristate "Haptic driver feedback"
     help
       This option enables support for Haptic Driver Feedback.
-=======
+
 config PROFILER
 	tristate "Qualcomm Technologies, Inc. trustzone Communicator driver"
 	help
@@ -562,7 +561,6 @@ config PROFILER
 	  trustzone using Secure Channel Manager (SCM) interface.
 	  It exposes APIs for userspace to get system profiling
 	  information.
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
@@ -581,9 +579,6 @@ source "drivers/misc/cardreader/Kconfig"
 source "drivers/misc/habanalabs/Kconfig"
 source "drivers/misc/uacce/Kconfig"
 source "drivers/misc/pvpanic/Kconfig"
-<<<<<<< HEAD
 source "drivers/misc/tri_state_key/Kconfig"
-=======
 source "drivers/misc/qrc/Kconfig"
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 endmenu
