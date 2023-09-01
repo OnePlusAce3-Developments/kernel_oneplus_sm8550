@@ -1239,8 +1239,6 @@ int walt_find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
 
 unlock:
 	rcu_read_unlock();
-<<<<<<< HEAD
-
 #if IS_ENABLED(CONFIG_OPLUS_FEATURE_FRAME_BOOST)
 	if (set_frame_group_task_to_perfer_cpu(p, &best_energy_cpu))
 		fbt_env.fastpath = FRAME_BOOST_SELECT;
@@ -1249,10 +1247,7 @@ unlock:
 #if IS_ENABLED(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
 	set_ux_task_to_prefer_cpu(p, &best_energy_cpu);
 #endif
-
-=======
 out:
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.131
 	if (best_energy_cpu < 0 || best_energy_cpu >= WALT_NR_CPUS)
 		best_energy_cpu = prev_cpu;
 
