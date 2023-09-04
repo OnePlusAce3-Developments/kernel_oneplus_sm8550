@@ -1503,7 +1503,7 @@ unsigned long do_mmap(struct file *file, unsigned long addr,
 		 * Note: Ideally, we should fix it in Android.
 		 */
 		if (inode->may_cont_pte == JAR_HUGE &&
-		    CONFIG_CONT_PTE_FILE_HUGEPAGE_DISABLE != 1)
+			CONFIG_CONT_PTE_FILE_HUGEPAGE_DISABLE != 1)
 			vm_flags &= ~VM_WRITE;
 #endif
 
