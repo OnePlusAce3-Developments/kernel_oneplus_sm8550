@@ -751,9 +751,6 @@ struct haptics_chip {
 	int				haptic_current_test_time;
 	int				haptic_test_duration;
 	bool			livetap_support;
-	u16				oplus_gain;
-	struct workqueue_struct *haptic_gain_event_wq;
-	struct work_struct haptic_gain_event_work;
 #endif
 
 #ifdef OPLUS_FEATURE_RICHTAP_SUPPORT
@@ -7210,12 +7207,6 @@ static int haptics_probe(struct platform_device *pdev)
 
 	chip->hboost_nb.notifier_call = haptics_boost_notifier;
 	register_hboost_event_notifier(&chip->hboost_nb);
-
-#ifdef OPLUS_FEATURE_CHG_BASIC
-	chip->oplus_gain = 0x7fff;
-	chip->haptic_gain_event_wq = create_singlethread_workqueue("haptic_gain_event");
-	INIT_WORK(&chip->haptic_gain_event_work, oplus_haptic_gain_event_work_handler);
-#endif
 
 #ifdef OPLUS_FEATURE_RICHTAP_SUPPORT
 	chip->rtp_ptr = kmalloc(RICHTAP_MMAP_BUF_SIZE * RICHTAP_MMAP_BUF_SUM, GFP_KERNEL);
