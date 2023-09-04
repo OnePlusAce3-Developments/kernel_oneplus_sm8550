@@ -225,7 +225,11 @@ int uaudio_qmi_ctrl_msg(struct usb_device *dev, unsigned int pipe, __u8 request,
 		    __u8 requesttype, __u16 value, __u16 index, void *data,
 		    __u16 size)
 {
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	int err = 0;
+#else
 	int err;
+#endif
 	void *buf = NULL;
 	int timeout;
 
