@@ -194,9 +194,6 @@ enum {
 #define UFS_QCOM_MAX_HS_GEAR(x) (((x) & UFS_MAX_HS_GEAR_MASK) >>\
 				 UFS_MAX_HS_GEAR_SHIFT)
 
-/*bsp.storage.ufs 2023.9.04 add for recordGearErr.*/
-void recordGearErr(struct unipro_signal_quality_ctrl *signalCtrl, struct ufs_hba *hba);
-
 /*define ufs uic error code*/
 /*feature-flashaging806-v001-1-begin*/
 enum unipro_pa_errCode {
@@ -316,6 +313,10 @@ struct unipro_signal_quality_ctrl {
 	struct signal_quality record;
 	struct signal_quality record_upload;
 };
+
+/*bsp.storage.ufs 2023.9.04 add for recordGearErr.*/
+void recordGearErr(struct unipro_signal_quality_ctrl *signalCtrl, struct ufs_hba *hba);
+
 /*feature-flashaging806-v001-1-end*/
 /* bit offset */
 enum {
