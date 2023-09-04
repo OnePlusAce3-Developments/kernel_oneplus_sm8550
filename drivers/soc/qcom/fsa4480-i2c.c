@@ -902,7 +902,7 @@ static int fsa4480_probe(struct i2c_client *i2c,
 		}
 #else /* OPLUS_ARCH_EXTENDS */
 		if (fsa_priv->usb_protocal != 1) {
-			rc = register_ucsi_glink_notifier(&fsa_priv->ucsi_nb);
+			rc = register_ucsi_glink_notifier(&fsa_priv->nb);
 			if (rc) {
 				dev_err(fsa_priv->dev, "%s: ucsi glink notifier registration failed: %d\n",
 					__func__, rc);
@@ -925,7 +925,7 @@ static int fsa4480_probe(struct i2c_client *i2c,
 					goto err_data;
 				}
 			}
-			rc = register_tcp_dev_notifier(tcpc, &fsa_priv->ucsi_nb, TCP_NOTIFY_TYPE_USB);
+			rc = register_tcp_dev_notifier(tcpc, &fsa_priv->nb, TCP_NOTIFY_TYPE_USB);
 			if (rc) {
 				dev_err(fsa_priv->dev, "%s: ucsi glink notifier registration failed: %d\n",
 					__func__, rc);
