@@ -723,6 +723,7 @@ static int sysmon_start(struct rproc_subdev *subdev)
 static void sysmon_stop(struct rproc_subdev *subdev, bool crashed)
 {
 	struct qcom_sysmon *sysmon = container_of(subdev, struct qcom_sysmon, subdev);
+	unsigned long timeout = 0;
 
 	trace_rproc_qcom_event(dev_name(sysmon->rproc->dev.parent), SYSMON_SUBDEV_NAME,
 			       crashed ? "crash stop" : "stop");
@@ -743,7 +744,7 @@ static void sysmon_stop(struct rproc_subdev *subdev, bool crashed)
 	if (crashed)
 		return;
 
-	sysmon->timeout_data.timer.function = sysmon_shutdown_notif_timeout_handler;
+	sysmon->timeout_data.timer.function = sysmon_notif_timeout_handler;
 	timeout = jiffies + msecs_to_jiffies(SYSMON_NOTIF_TIMEOUT);
 	mod_timer(&sysmon->timeout_data.timer, timeout);
 
