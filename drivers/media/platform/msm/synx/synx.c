@@ -61,7 +61,6 @@ void synx_external_callback(s32 sync_obj, int status, void *data)
 			goto fail;
 		}
 	}
-	}
 
 	pr_debug("[sess: %u] external callback from %d on handle %d\n",
 		client->id, sync_obj, bind_data->h_synx);
