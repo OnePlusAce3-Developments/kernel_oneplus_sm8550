@@ -872,7 +872,7 @@ static void walt_newidle_balance(struct rq *this_rq,
 	int has_misfit = 0;
 
 #if IS_ENABLED(CONFIG_OPLUS_FEATURE_LOADBALANCE)
-	if (__oplus_newidle_balance(unused, this_rq, rf, pulled_task, done))
+	if (__oplus_newidle_balance(NULL, this_rq, rf, pulled_task, done))
 		return;
 #endif
 
