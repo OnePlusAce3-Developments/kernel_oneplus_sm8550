@@ -4544,6 +4544,10 @@ static void android_rvh_tick_entry(void *unused, struct rq *rq)
 
 	if (is_ed_task_present(rq, wallclock, NULL))
 		waltgov_run_callback(rq, WALT_CPUFREQ_EARLY_DET);
+
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_FRAME_BOOST)
+	fbg_game_ed(rq);
+#endif
 }
 
 static void android_vh_scheduler_tick(void *unused, struct rq *rq)
