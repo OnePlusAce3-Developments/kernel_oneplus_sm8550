@@ -638,6 +638,20 @@ static void sysmon_notif_timeout_handler(struct timer_list *t)
 		     subdevice_state_string[sysmon->state]);
 }
 
+static void sysmon_shutdown_notif_timeout_handler(struct timer_list *t)
+{
+	struct notif_timeout_data *td = from_timer(td, t, timer);
+	struct qcom_sysmon *sysmon = container_of(td, struct qcom_sysmon, timeout_data);
+
+	if (IS_ENABLED(CONFIG_QCOM_PANIC_ON_NOTIF_TIMEOUT) &&
+	    system_state != SYSTEM_RESTART &&
+	    system_state != SYSTEM_POWER_OFF &&
+	    system_state != SYSTEM_HALT &&
+	    !qcom_device_shutdown_in_progress)
+		panic(shutdown_timeout_msg, sysmon->name);
+	else
+		WARN(1, shutdown_timeout_msg, sysmon->name);
+}
 
 static inline void send_event(struct qcom_sysmon *sysmon, struct qcom_sysmon *source)
 {
@@ -722,8 +736,8 @@ static int sysmon_start(struct rproc_subdev *subdev)
 
 static void sysmon_stop(struct rproc_subdev *subdev, bool crashed)
 {
+	unsigned long timeout;
 	struct qcom_sysmon *sysmon = container_of(subdev, struct qcom_sysmon, subdev);
-	unsigned long timeout = 0;
 
 	trace_rproc_qcom_event(dev_name(sysmon->rproc->dev.parent), SYSMON_SUBDEV_NAME,
 			       crashed ? "crash stop" : "stop");
@@ -744,7 +758,7 @@ static void sysmon_stop(struct rproc_subdev *subdev, bool crashed)
 	if (crashed)
 		return;
 
-	sysmon->timeout_data.timer.function = sysmon_notif_timeout_handler;
+	sysmon->timeout_data.timer.function = sysmon_shutdown_notif_timeout_handler;
 	timeout = jiffies + msecs_to_jiffies(SYSMON_NOTIF_TIMEOUT);
 	mod_timer(&sysmon->timeout_data.timer, timeout);
 
