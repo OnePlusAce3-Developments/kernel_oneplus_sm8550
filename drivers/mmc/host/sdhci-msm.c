@@ -1643,7 +1643,6 @@ static int sdhci_msm_dt_parse_vreg_info(struct device *dev,
 	snprintf(prop_name, MAX_PROP_SIZE, "%s-supply", vreg_name);
 	if (!of_parse_phandle(np, prop_name, 0)) {
 		dev_info(dev, "No vreg data found for %s\n", vreg_name);
-		ret = -ENOENT;
 		return ret;
 	}
 
@@ -4590,6 +4589,7 @@ static ssize_t dbg_state_show(struct device *dev,
 #if defined(CONFIG_SDHCI_MSM_DBG)
 	msm_host->dbg_en = true;
 #endif
+
 
 	return scnprintf(buf, PAGE_SIZE, "%d\n", msm_host->dbg_en);
 }
