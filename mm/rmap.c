@@ -820,11 +820,20 @@ static bool page_referenced_one(struct page *page, struct vm_area_struct *vma,
 #ifdef CONFIG_CONT_PTE_HUGEPAGE
 			if (ContPteHugePageHead(pvmw.page) &&
 			    pte_cont(READ_ONCE(*pvmw.pte))) {
+				/*
+				 * just like try_to_unmap_one, cont_pte might be formed during pte walk
+				 */
+				if (!IS_ALIGNED((unsigned long)pvmw.pte, sizeof(*pvmw.pte) * CONT_PTES)) {
+					/* don't struggle with the reclamation of a new formed cont_pte */
+					referenced++;
+					goto new_formed_cont_pte;
+				}
 				if (cont_ptep_clear_flush_young_notify(vma, address,
 								       pvmw.pte)) {
 					if (likely(!(vma->vm_flags & VM_SEQ_READ)))
 						referenced++;
 				}
+new_formed_cont_pte:
 				pra->mapcount--;
 				continue;
 			}
