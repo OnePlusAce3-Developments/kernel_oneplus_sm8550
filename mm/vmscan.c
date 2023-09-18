@@ -2092,11 +2092,8 @@ static unsigned long isolate_lru_pages(unsigned long nr_to_scan,
 
 		CHP_BUG_ON(chp_reclaim && sc->order != HPAGE_CONT_PTE_ORDER);
 #endif
-		if (page_zonenum(page) > sc->reclaim_idx) {
-=======
 		if (page_zonenum(page) > sc->reclaim_idx ||
 				skip_cma(page, sc)) {
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.138
 			nr_skipped[page_zonenum(page)] += nr_pages;
 			move_to = &pages_skipped;
 			goto move;

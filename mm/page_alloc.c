@@ -1833,12 +1833,9 @@ static void __free_pages_ok(struct page *page, unsigned int order,
 	unsigned long pfn = page_to_pfn(page);
 	struct zone *zone = page_zone(page);
 	bool skip_free_unref_page = false;
-<<<<<<< HEAD
 #ifdef CONFIG_CONT_PTE_HUGEPAGE
 	bool cont_pte = PageCont(page) && (PageTransCompound(page) || PageContExtAlloc(page));
 #endif
-=======
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.138
 
 	if (!free_pages_prepare(page, order, true, fpi_flags))
 		return;
@@ -3702,14 +3699,11 @@ void free_unref_page(struct page *page, unsigned int order)
 	if (skip_free_unref_page)
 		return;
 
-<<<<<<< HEAD
 #ifdef CONFIG_CONT_PTE_HUGEPAGE
 	CHP_BUG_ON(PageCont(page));
 	CHP_BUG_ON(PageContRefill(page));
 #endif
 
-=======
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.138
 	/*
 	 * We only track unmovable, reclaimable movable, and CMA on pcp lists.
 	 * Place ISOLATE pages on the isolated list because they are being

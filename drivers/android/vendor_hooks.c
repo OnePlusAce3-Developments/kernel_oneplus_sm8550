@@ -427,10 +427,7 @@ EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_anon_gfp_adjust);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_rvh_dma_buf_stats_teardown);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_madvise_cold_or_pageout);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_madvise_cold_or_pageout_abort);
-<<<<<<< HEAD
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_compact_finished);
-=======
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.138
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_cma_alloc_retry);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_encrypt_page);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_init_aes_encrypt);
