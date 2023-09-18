@@ -2008,6 +2008,25 @@ static __always_inline void update_lru_sizes(struct lruvec *lruvec,
 
 }
 
+#ifdef CONFIG_CMA
+/*
+ * It is waste of effort to scan and reclaim CMA pages if it is not available
+ * for current allocation context. Kswapd can not be enrolled as it can not
+ * distinguish this scenario by using sc->gfp_mask = GFP_KERNEL
+ */
+static bool skip_cma(struct page *page, struct scan_control *sc)
+{
+       return !current_is_kswapd() &&
+                       gfp_migratetype(sc->gfp_mask) != MIGRATE_MOVABLE &&
+                       get_pageblock_migratetype(page) == MIGRATE_CMA;
+}
+#else
+static bool skip_cma(struct page *page, struct scan_control *sc)
+{
+       return false;
+}
+#endif
+
 /*
  * Isolating page from the lruvec to fill in @dst list by nr_to_scan times.
  *
@@ -2057,6 +2076,7 @@ static unsigned long isolate_lru_pages(unsigned long nr_to_scan,
 		nr_pages = compound_nr(page);
 		total_scan += nr_pages;
 
+<<<<<<< HEAD
 #if defined(CONFIG_CONT_PTE_HUGEPAGE) && CONFIG_CONT_PTE_HUGEPAGE_LRU
 		if ((chp_reclaim && !ContPteCMAHugePageHead(page)) ||
 		    (!chp_reclaim && ContPteCMAHugePageHead(page)) ||
@@ -2073,6 +2093,10 @@ static unsigned long isolate_lru_pages(unsigned long nr_to_scan,
 		CHP_BUG_ON(chp_reclaim && sc->order != HPAGE_CONT_PTE_ORDER);
 #endif
 		if (page_zonenum(page) > sc->reclaim_idx) {
+=======
+		if (page_zonenum(page) > sc->reclaim_idx ||
+				skip_cma(page, sc)) {
+>>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.138
 			nr_skipped[page_zonenum(page)] += nr_pages;
 			move_to = &pages_skipped;
 			goto move;

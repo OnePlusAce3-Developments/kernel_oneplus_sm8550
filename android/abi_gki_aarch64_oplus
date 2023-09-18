@@ -464,6 +464,7 @@
   __traceiter_block_rq_merge
   __traceiter_block_rq_requeue
   __traceiter_block_split
+  __traceiter_mm_vmscan_direct_reclaim_begin
   __traceiter_net_dev_queue
   __traceiter_net_dev_xmit
   __traceiter_netif_receive_skb
@@ -534,6 +535,7 @@
   __tracepoint_android_vh_irqtime_account_process_tick
   __tracepoint_android_vh_killed_process
   __tracepoint_android_vh_kmalloc_slab
+  __tracepoint_android_vh_madvise_cold_or_pageout_abort
   __tracepoint_android_vh_mark_page_accessed
   __tracepoint_android_vh_madvise_cold_or_pageout_abort
   __tracepoint_android_vh_mem_cgroup_alloc
@@ -580,6 +582,7 @@
   __tracepoint_block_rq_merge
   __tracepoint_block_rq_requeue
   __tracepoint_block_split
+  __tracepoint_mm_vmscan_direct_reclaim_begin
   __tracepoint_net_dev_queue
   __tracepoint_net_dev_xmit
   __tracepoint_netif_receive_skb
