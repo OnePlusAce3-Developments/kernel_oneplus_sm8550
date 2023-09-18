@@ -2076,7 +2076,6 @@ static unsigned long isolate_lru_pages(unsigned long nr_to_scan,
 		nr_pages = compound_nr(page);
 		total_scan += nr_pages;
 
-<<<<<<< HEAD
 #if defined(CONFIG_CONT_PTE_HUGEPAGE) && CONFIG_CONT_PTE_HUGEPAGE_LRU
 		if ((chp_reclaim && !ContPteCMAHugePageHead(page)) ||
 		    (!chp_reclaim && ContPteCMAHugePageHead(page)) ||
