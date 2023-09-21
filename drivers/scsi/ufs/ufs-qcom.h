@@ -717,11 +717,14 @@ struct ufs_qcom_host {
 	atomic_t scale_up;
 	atomic_t clks_on;
 	unsigned long load_delay_ms;
-#define NUM_REQS_HIGH_THRESH 64
+#define NUM_REQS_JUDGE_THRESH 100
+#define REQS_JUDGE_SHORT_TIME 50000000
+#define REQS_JUDGE_LONG_TIME 150000000
+
 #define NUM_REQS_LOW_THRESH 32
 	atomic_t num_reqs_threshold;
 	bool cur_freq_vote;
-	struct delayed_work fwork;
+	struct work_struct fwork;
 	bool cpufreq_dis;
 	unsigned int min_cpu_scale_freq;
 	unsigned int max_cpu_scale_freq;
@@ -739,6 +742,7 @@ struct ufs_qcom_host {
 	cpumask_t gold_mask;
 	cpumask_t gold_prime_mask;
 	u32 vccq_lpm_uV;
+<<<<<<< HEAD
 	bool disable_wb_support;
 	struct ufs_qcom_ber_hist ber_hist[UFS_QCOM_BER_MODE_MAX];
 	struct list_head regs_list_head;
@@ -748,6 +752,9 @@ struct ufs_qcom_host {
 	bool bypass_pbl_rst_wa;
 	struct notifier_block ufs_qcom_panic_nb;
 
+=======
+	ktime_t throughput_judge_time;
+>>>>>>> 9db9993549b8fdcaa6991ab6fe611ca9c5c36085
 };
 
 static inline u32
