@@ -1590,17 +1590,10 @@ static void ufs_qcom_cpufreq_dwork(struct work_struct *work)
 
 	if (host->cur_freq_vote) {
 		freq_val = host->max_cpu_scale_freq;
-<<<<<<< HEAD
-		if (host->irq_affinity_support)
-			ufs_qcom_toggle_pri_affinity(host->hba, true);
-	} else if (cur_thres < NUM_REQS_LOW_THRESH && host->cur_freq_vote) {
-=======
 		ufs_qcom_toggle_pri_affinity(host->hba, true);
 	} else {
->>>>>>> 9db9993549b8fdcaa6991ab6fe611ca9c5c36085
 		freq_val = host->min_cpu_scale_freq;
-		if (host->irq_affinity_support)
-			ufs_qcom_toggle_pri_affinity(host->hba, false);
+		ufs_qcom_toggle_pri_affinity(host->hba, false);
 	}
 
 	err = ufs_qcom_mod_min_cpufreq(host->config_cpu, freq_val);
@@ -2507,7 +2500,6 @@ static void ufs_qcom_set_caps(struct ufs_hba *hba)
 {
 	struct ufs_qcom_host *host = ufshcd_get_variant(hba);
 
-<<<<<<< HEAD
 	if (!host->disable_lpm) {
 		hba->caps |= UFSHCD_CAP_CLK_GATING |
 		UFSHCD_CAP_HIBERN8_WITH_CLK_GATING |
@@ -2519,14 +2511,9 @@ static void ufs_qcom_set_caps(struct ufs_hba *hba)
 		hba->caps |= UFSHCD_CAP_AGGR_POWER_COLLAPSE;
 	}
 
-=======
-	hba->caps |= UFSHCD_CAP_CLK_GATING | UFSHCD_CAP_HIBERN8_WITH_CLK_GATING;
 	/* Haojun.Zhang@BSP.Kernel.Driver, UFS clkscaling hungtask problem workaround && turn off clkscale begin */
-	//hba->caps |= UFSHCD_CAP_CLK_SCALING;
+	hba->caps &= ~UFSHCD_CAP_CLK_SCALING;
 	/* Haojun.Zhang@BSP.Kernel.Driver, UFS clkscaling hungtask problem workaround && turn off clkscale end */
-	hba->caps |= UFSHCD_CAP_AUTO_BKOPS_SUSPEND;
-	hba->caps |= UFSHCD_CAP_WB_EN;
->>>>>>> 9db9993549b8fdcaa6991ab6fe611ca9c5c36085
 	hba->caps |= UFSHCD_CAP_CRYPTO;
 
 	if (host->hw_ver.major >= 0x2)
