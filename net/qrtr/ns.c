@@ -93,7 +93,7 @@ static struct qrtr_node *node_get(unsigned int node_id)
 	node->id = node_id;
 	xa_init(&node->servers);
 
-	if (radix_tree_insert(&nodes, node_id, node)) {
+	if(xa_is_err(xa_store(&nodes, node_id, node, GFP_ATOMIC))){
 		kfree(node);
 		return NULL;
 	}
