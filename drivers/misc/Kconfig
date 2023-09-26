@@ -513,6 +513,14 @@ config OPEN_DICE
 	  and sealing.
 
 	  If unsure, say N.
+#ifdef OPLUS_POWER_PROCS_LOAD
+#xieshaohua@POWER, 2023/07/12, Add for oplus power feature
+config OPLUS_POWER_PROCS_LOAD
+    tristate "oplus power procs load feature"
+    default n
+    help
+      define this config to enable oplus power procs load feature.
+#endif /* OPLUS_POWER_PROCS_LOAD */
 
 #ifdef OPLUS_FEATURE_RF_CABLE_DETECT
 config OPLUS_RF_CABLE_MONITOR
@@ -554,7 +562,6 @@ config HAPTIC_FEEDBACK
     help
       This option enables support for Haptic Driver Feedback.
 
-<<<<<<< HEAD
 config PROFILER
 	tristate "Qualcomm Technologies, Inc. trustzone Communicator driver"
 	help
@@ -562,16 +569,7 @@ config PROFILER
 	  trustzone using Secure Channel Manager (SCM) interface.
 	  It exposes APIs for userspace to get system profiling
 	  information.
-=======
-#ifdef OPLUS_POWER_PROCS_LOAD
-#xieshaohua@POWER, 2023/07/12, Add for oplus power feature
-config OPLUS_POWER_PROCS_LOAD
-    tristate "oplus power procs load feature"
-    default n
-    help
-      define this config to enable oplus power procs load feature.
-#endif /* OPLUS_POWER_PROCS_LOAD */
->>>>>>> 5fb62d64a1aba62c13f23d93a2cc186ea736298d
+
 
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
