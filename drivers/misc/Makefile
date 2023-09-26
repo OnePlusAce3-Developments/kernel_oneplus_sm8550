@@ -87,6 +87,14 @@ obj-$(CONFIG_HAPTIC_FEEDBACK) += aw8697_haptic/
 #endif
 
 obj-$(CONFIG_QSEECOM_PROXY) 	+= qseecom_proxy.o
+<<<<<<< HEAD
 obj-$(CONFIG_QPNP_MISC)		+= qpnp-misc.o
 obj-$(CONFIG_PROFILER)		+= profiler.o
 obj-$(CONFIG_QRC)		+= qrc/
+=======
+
+#ifdef OPLUS_POWER_PROCS_LOAD
+#xieshaohua@POWER, 2023/07/12, Add for oplus power feature
+obj-$(CONFIG_OPLUS_POWER_PROCS_LOAD) += oplus_procs_load/
+#endif /* OPLUS_POWER_PROCS_LOAD */
+>>>>>>> 5fb62d64a1aba62c13f23d93a2cc186ea736298d
