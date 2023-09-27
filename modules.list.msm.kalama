@@ -2,12 +2,14 @@ qcom_wdt_core.ko
 gh_virt_wdt.ko
 qcom_cpu_vendor_hooks.ko
 clk-rpmh.ko
+gcc-crow.ko
 gcc-kalama.ko
 icc-rpmh.ko
 camcc-kalama.ko
 qcom_ipcc.ko
 qcom_ipc_logging.ko
 qcom-pdc.ko
+thermal_minidump.ko
 qcom_tsens.ko
 rpmh-regulator.ko
 bwmon.ko
@@ -26,6 +28,7 @@ dcc_v2.ko
 dcvs_fp.ko
 debug-regulator.ko
 device_info.ko
+dispcc-crow.ko
 dispcc-kalama.ko
 tcsrcc-kalama.ko
 videocc-kalama.ko
@@ -49,13 +52,16 @@ mem_buf.ko
 memory_dump_v2.ko
 minidump.ko
 msm_dma_iommu_mapping.ko
+pinctrl-crow.ko
 pinctrl-kalama.ko
 qnoc-kalama.ko
+qnoc-crow.ko
 msm_rtb.ko
 ns.ko
 nvmem_qcom-spmi-sdam.ko
 phy-qcom-ufs.ko
 phy-qcom-ufs-qmp-v4-kalama.ko
+phy-qcom-ufs-qmp-v4-crow.ko
 phy-qcom-ufs-qrbtc-sdm845.ko
 pinctrl-msm.ko
 proxy-consumer.ko
@@ -65,6 +71,7 @@ oplus_bsp_mm_osvelte.ko
 qcom_dma_heaps.ko
 gic_intr_routing.ko
 qcom_hwspinlock.ko
+debug_symbol.ko
 qcom_logbuf_vh.ko
 qcom_iommu_util.ko
 qcom_llcc_pmu.ko

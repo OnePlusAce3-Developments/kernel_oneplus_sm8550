@@ -652,6 +652,9 @@ static int walt_lb_find_busiest_cpu(int dst_cpu, const cpumask_t *src_mask, int 
 	struct walt_rq *fsrc_wrq = (struct walt_rq *) cpu_rq(fsrc_cpu)->android_vendor_data1;
 	struct walt_rq *dst_wrq = (struct walt_rq *) cpu_rq(dst_cpu)->android_vendor_data1;
 
+	if (ignore_cluster_valid(NULL, cpu_rq(dst_cpu)))
+		return -1;
+
 	if (dst_wrq->cluster->id == fsrc_wrq->cluster->id)
 		busiest_cpu = walt_lb_find_busiest_similar_cap_cpu(dst_cpu,
 								src_mask, has_misfit, is_newidle);
@@ -855,9 +858,9 @@ static bool should_help_min_cap(int this_cpu)
 
 /* similar to sysctl_sched_migration_cost */
 #define NEWIDLE_BALANCE_THRESHOLD	500000
-static void walt_newidle_balance(void *unused, struct rq *this_rq,
+static void walt_newidle_balance(struct rq *this_rq,
 				 struct rq_flags *rf, int *pulled_task,
-				 int *done)
+				 int *done, int force_overload)
 {
 	int this_cpu = this_rq->cpu;
 	struct walt_rq *wrq = (struct walt_rq *) this_rq->android_vendor_data1;
@@ -869,7 +872,7 @@ static void walt_newidle_balance(void *unused, struct rq *this_rq,
 	int has_misfit = 0;
 
 #if IS_ENABLED(CONFIG_OPLUS_FEATURE_LOADBALANCE)
-	if (__oplus_newidle_balance(unused, this_rq, rf, pulled_task, done))
+	if (__oplus_newidle_balance(NULL, this_rq, rf, pulled_task, done))
 		return;
 #endif
 
@@ -912,7 +915,7 @@ static void walt_newidle_balance(void *unused, struct rq *this_rq,
 	if (walt_balance_rt(this_rq) || this_rq->nr_running)
 		goto rt_pulled;
 
-	if (!READ_ONCE(this_rq->rd->overload))
+	if (!force_overload && !READ_ONCE(this_rq->rd->overload))
 		goto repin;
 
 	if (atomic_read(&this_rq->nr_iowait) && !enough_idle)
@@ -1061,7 +1064,7 @@ void walt_smp_newidle_balance(void *ignored)
 
 	rq_lock(rq, &rf);
 	update_rq_clock(rq);
-	walt_newidle_balance(NULL, rq, &rf, &pulled_task, &done);
+	walt_newidle_balance(rq, &rf, &pulled_task, &done, true);
 	resched_curr(rq);
 	rq_unlock(rq, &rf);
 }
@@ -1165,6 +1168,13 @@ static void walt_can_migrate_task(void *unused, struct task_struct *p,
 	*can_migrate = 0;
 }
 
+static void walt_sched_newidle_balance(void *unused, struct rq *this_rq,
+				       struct rq_flags *rf, int *pulled_task,
+				       int *done)
+{
+	walt_newidle_balance(this_rq, rf, pulled_task, done, false);
+}
+
 void walt_lb_init(void)
 {
 	int cpu;
@@ -1174,7 +1184,7 @@ void walt_lb_init(void)
 	register_trace_android_rvh_sched_nohz_balancer_kick(walt_nohz_balancer_kick, NULL);
 	register_trace_android_rvh_can_migrate_task(walt_can_migrate_task, NULL);
 	register_trace_android_rvh_find_busiest_queue(walt_find_busiest_queue, NULL);
-	register_trace_android_rvh_sched_newidle_balance(walt_newidle_balance, NULL);
+	register_trace_android_rvh_sched_newidle_balance(walt_sched_newidle_balance, NULL);
 
 	for_each_cpu(cpu, cpu_possible_mask) {
 		call_single_data_t *csd;

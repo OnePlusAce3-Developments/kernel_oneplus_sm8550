@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -203,7 +203,6 @@ enum usb_qmi_audio_format {
 
 #define NUM_LOG_PAGES		10
 
-#ifdef OPLUS_FEATURE_CHG_BASIC
 void uaudio_qmi_ctrl_msg_quirk(struct usb_device *dev, unsigned int pipe,
 			   __u8 request, __u8 requesttype, __u16 value,
 			   __u16 index, void *data, __u16 size)
@@ -226,7 +225,11 @@ int uaudio_qmi_ctrl_msg(struct usb_device *dev, unsigned int pipe, __u8 request,
 		    __u8 requesttype, __u16 value, __u16 index, void *data,
 		    __u16 size)
 {
+#ifdef OPLUS_FEATURE_CHG_BASIC
 	int err = 0;
+#else
+	int err;
+#endif
 	void *buf = NULL;
 	int timeout;
 
@@ -244,6 +247,7 @@ int uaudio_qmi_ctrl_msg(struct usb_device *dev, unsigned int pipe, __u8 request,
 	else
 		timeout = USB_CTRL_SET_TIMEOUT;
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
 	if (size > 0) {
 		err = usb_control_msg(dev, pipe, request, requesttype,
 		      value, index, buf, size, timeout);
@@ -255,6 +259,15 @@ int uaudio_qmi_ctrl_msg(struct usb_device *dev, unsigned int pipe, __u8 request,
 		memcpy(data, buf, size);
 		kfree(buf);
 	}
+#else
+	err = usb_control_msg(dev, pipe, request, requesttype,
+			      value, index, buf, size, timeout);
+
+	if (size > 0) {
+		memcpy(data, buf, size);
+		kfree(buf);
+	}
+#endif
 
 	uaudio_qmi_ctrl_msg_quirk(dev, pipe, request, requesttype,
 			      value, index, data, size);
@@ -335,7 +348,6 @@ static int uaudio_snd_usb_pcm_change_state(struct snd_usb_substream *subs, int s
 
 	return 0;
 }
-#endif
 
 static void uaudio_iommu_unmap(enum mem_type mtype, unsigned long va,
 	size_t iova_size, size_t mapped_iova_size);
@@ -773,7 +785,6 @@ static int prepare_qmi_response(struct snd_usb_substream *subs,
 	memcpy(&resp->std_as_opr_intf_desc, &alts->desc, sizeof(alts->desc));
 	resp->std_as_opr_intf_desc_valid = 1;
 
-#ifdef OPLUS_FEATURE_CHG_BASIC
 	if (subs->data_endpoint) {
 		ep = usb_pipe_endpoint(subs->dev, subs->data_endpoint->pipe);
 		if (!ep) {
@@ -794,27 +805,6 @@ static int prepare_qmi_response(struct snd_usb_substream *subs,
 		}
 		resp->xhci_mem_info.tr_data.pa = dma;
 	}
-#else
-	ep = usb_pipe_endpoint(subs->dev, subs->data_endpoint->pipe);
-	if (!ep) {
-		uaudio_err("data ep # %d context is null\n",
-				subs->data_endpoint->ep_num);
-		ret = -ENODEV;
-		goto err;
-	}
-	data_ep_pipe = subs->data_endpoint->pipe;
-	memcpy(&resp->std_as_data_ep_desc, &ep->desc, sizeof(ep->desc));
-	resp->std_as_data_ep_desc_valid = 1;
-
-	tr_data_pa = xhci_get_xfer_ring_phys_addr(subs->dev, ep, &dma);
-	if (!tr_data_pa) {
-		uaudio_err("failed to get data ep ring dma address\n");
-		ret = -ENODEV;
-		goto err;
-	}
-
-	resp->xhci_mem_info.tr_data.pa = dma;
-#endif
 
 	if (subs->sync_endpoint) {
 		ep = usb_pipe_endpoint(subs->dev, subs->sync_endpoint->pipe);
@@ -1504,20 +1494,15 @@ static int enable_audio_stream(struct snd_usb_substream *subs,
 	_snd_pcm_hw_param_set(&params, SNDRV_PCM_HW_PARAM_RATE,
 			cur_rate, 0);
 
-#ifdef OPLUS_FEATURE_CHG_BASIC
 	if (!chip->intf[0])
 		return -ENODEV;
-#endif
 
 	pm_runtime_barrier(&chip->intf[0]->dev);
 	snd_usb_autoresume(chip);
 
-#ifdef OPLUS_FEATURE_CHG_BASIC
-	dev_err(&subs->dev->dev, "uaudio_snd_usb_pcm_change_state to UAC3_PD_STATE_D0\n");
 	ret = uaudio_snd_usb_pcm_change_state(subs, UAC3_PD_STATE_D0);
 	if (ret < 0)
 		return ret;
-#endif
 
 	fmt = find_format_and_si(&subs->fmt_list, pcm_format, cur_rate,
 			channels, datainterval, subs);
@@ -1543,7 +1528,7 @@ static int enable_audio_stream(struct snd_usb_substream *subs,
 
 		if (fmt->sync_ep) {
 			subs->sync_endpoint = snd_usb_endpoint_open(chip,
-					fmt, &params, false);
+					fmt, &params, true);
 			if (!subs->sync_endpoint) {
 				uaudio_err("failed to open sync endpoint\n");
 				return -EINVAL;
@@ -1572,11 +1557,7 @@ static int enable_audio_stream(struct snd_usb_substream *subs,
 				 BUS_INTERVAL_FULL_SPEED));
 	}
 
-#ifdef OPLUS_FEATURE_CHG_BASIC
 	return ret;
-#else
-	return 0;
-#endif
 }
 
 static void handle_uaudio_stream_req(struct qmi_handle *handle,
@@ -1646,20 +1627,22 @@ static void handle_uaudio_stream_req(struct qmi_handle *handle,
 			subs->cur_audiofmt->iface : -1, req_msg->enable);
 	if (atomic_read(&chip->shutdown) || !subs->stream || !subs->stream->pcm
 			|| !subs->stream->chip) {
-		uaudio_err("chip or sub not available: shutdown:%d stream:%p pcm:%p chip:%p\n",
-				atomic_read(&chip->shutdown), subs->stream,
-				subs->stream->pcm, subs->stream->chip);
+		uaudio_err("chip or sub not available: shutdown:%d stream:%p\n",
+				atomic_read(&chip->shutdown), subs->stream);
+
+		if (subs->stream)
+			uaudio_err("pcm:%p chip:%p\n", subs->stream->pcm, subs->stream->chip);
+
 		ret = -ENODEV;
 		goto response;
 	}
 
-	if (req_msg->enable) {
-		if (info_idx < 0) {
-			uaudio_err("interface# %d already in use card# %d\n",
-					subs->cur_audiofmt->iface, pcm_card_num);
-			ret = -EBUSY;
-			goto response;
-		}
+	if ((req_msg->enable) && (info_idx < 0)) {
+		uaudio_err("interface# %d already in use card# %d\n",
+				subs->cur_audiofmt ? subs->cur_audiofmt->iface : -1,
+				pcm_card_num);
+		ret = -EBUSY;
+		goto response;
 	}
 
 	if (req_msg->service_interval_valid) {

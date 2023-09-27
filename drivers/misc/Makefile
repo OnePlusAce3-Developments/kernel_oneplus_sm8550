@@ -68,6 +68,10 @@ obj-$(CONFIG_OPEN_DICE)		+= open-dice.o
 oplus_bsp_rfcablemonitor-y           := oplus_rf_cable_monitor.o
 obj-$(CONFIG_OPLUS_RF_CABLE_MONITOR)   += oplus_bsp_rfcablemonitor.o
 #endif /* OPLUS_FEATURE_RF_CABLE_DETECT */
+#ifdef OPLUS_POWER_PROCS_LOAD
+#xieshaohua@POWER, 2023/07/12, Add for oplus power feature
+obj-$(CONFIG_OPLUS_POWER_PROCS_LOAD) += oplus_procs_load/
+#endif /* OPLUS_POWER_PROCS_LOAD */
 
 #ifdef OPLUS_FEATURE_SIM_DETECT
 #Qicai.Gu@BSP.TP, 2020/08/10, modify for sim detect
@@ -87,8 +91,6 @@ obj-$(CONFIG_HAPTIC_FEEDBACK) += aw8697_haptic/
 #endif
 
 obj-$(CONFIG_QSEECOM_PROXY) 	+= qseecom_proxy.o
-
-#ifdef OPLUS_POWER_PROCS_LOAD
-#xieshaohua@POWER, 2023/07/12, Add for oplus power feature
-obj-$(CONFIG_OPLUS_POWER_PROCS_LOAD) += oplus_procs_load/
-#endif /* OPLUS_POWER_PROCS_LOAD */
+obj-$(CONFIG_QPNP_MISC)		+= qpnp-misc.o
+obj-$(CONFIG_PROFILER)		+= profiler.o
+obj-$(CONFIG_QRC)		+= qrc/
