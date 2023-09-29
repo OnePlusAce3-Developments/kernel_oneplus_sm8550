@@ -19,6 +19,9 @@
 #ifdef CONFIG_OPLUS_CPU_AUDIO_PERF
 #include <../kernel/oplus_cpu/sched/sched_assist/sa_audio.h>
 #endif
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_PIPELINE)
+#include <../kernel/oplus_cpu/sched/sched_assist/sa_pipeline.h>
+#endif
 #endif
 
 #if IS_ENABLED(CONFIG_OPLUS_FEATURE_FRAME_BOOST)
@@ -1061,7 +1064,9 @@ int walt_find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
 	struct compute_energy_output output;
 	struct walt_rq *prev_wrq = (struct walt_rq *) cpu_rq(prev_cpu)->android_vendor_data1;
 	struct walt_rq *start_wrq;
+#if !IS_ENABLED(CONFIG_OPLUS_FEATURE_PIPELINE)
 	struct walt_task_struct *wts;
+#endif
 	int pipeline_cpu;
 	bool ignore_cluster[4] = {0};
 	struct walt_sched_cluster *sched_cluster;
@@ -1081,6 +1086,7 @@ int walt_find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
 	candidates = this_cpu_ptr(&energy_cpus);
 	cpumask_clear(candidates);
 
+#if !IS_ENABLED(CONFIG_OPLUS_FEATURE_PIPELINE)
 	wts = (struct walt_task_struct *) p->android_vendor_data1;
 	pipeline_cpu = wts->pipeline_cpu;
 	if ((wts->low_latency & WALT_LOW_LATENCY_MASK) &&
@@ -1096,6 +1102,21 @@ int walt_find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
 			goto out;
 		}
 	}
+#else
+	pipeline_cpu = oplus_get_task_pipeline_cpu(p);
+	if (pipeline_cpu != -1) {
+		if (cpumask_test_cpu(pipeline_cpu, p->cpus_ptr) &&
+				cpu_active(pipeline_cpu) &&
+				!cpu_halted(pipeline_cpu) &&
+				!ignore_cluster[cpu_cluster(pipeline_cpu)->id]) {
+			if (oplus_get_task_pipeline_cpu(cpu_rq(pipeline_cpu)->curr) == -1) {
+				best_energy_cpu = pipeline_cpu;
+				fbt_env.fastpath = PIPELINE_FASTPATH;
+				goto out;
+			}
+		}
+	}
+#endif
 
 	walt_get_indicies(p, &order_index, &end_index, task_boost, uclamp_boost,
 						&energy_eval_needed, ignore_cluster);
