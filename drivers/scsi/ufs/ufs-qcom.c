@@ -30,6 +30,7 @@
 #include <scsi/scsi_cmnd.h>
 #include <soc/qcom/minidump.h>
 #include <linux/nvmem-consumer.h>
+#include <linux/rtc.h>
 
 //bsp.storage.ufs 2021.10.14 add for /proc/devinfo/ufs
 #include <soc/oplus/device_info.h>
@@ -67,6 +68,7 @@
 
 #define	UFS_QCOM_IRQ_PRIME_MASK	0x80
 #define	UFS_QCOM_IRQ_SLVR_MASK	0x0f
+#define ONE_DAY_SEC 86400
 
 #define UFS_QCOM_BER_TH_DEF_G1_G4	0
 #define UFS_QCOM_BER_TH_DEF_G5	3
@@ -419,6 +421,71 @@ static inline void cancel_dwork_unvote_cpufreq(struct ufs_hba *hba)
 	else
 		host->cur_freq_vote = false;
 	ufs_qcom_msg(DBG, hba->dev, "%s,err=%d\n", __func__, err);
+}
+
+int get_rtc_time(struct rtc_time *tm)
+{
+	struct rtc_device *rtc;
+	int rc = 0;
+
+	rtc = rtc_class_open("rtc0");
+	if (rtc == NULL) {
+		return -1;
+	}
+	rc = rtc_read_time(rtc, tm);
+	if (rc) {
+		goto close_time;
+	}
+	rc = rtc_valid_tm(tm);
+	if (rc) {
+		goto close_time;
+	}
+close_time:
+	rtc_class_close(rtc);
+
+	return rc;
+}
+
+void ufs_active_time_get(struct ufs_hba *hba)
+{
+	struct rtc_time tm;
+	int rc = 0;
+	ufs_transmission_status.active_count++;
+	rc = get_rtc_time(&tm);
+	if (rc != 0) {
+		ufs_qcom_msg(ERR, hba->dev, "get_rtc_time failed\n");
+		return;
+	}
+	ufs_transmission_status.resume_timing = (tm.tm_hour * 3600 + tm.tm_min * 60 + tm.tm_sec);
+	if (ufs_transmission_status.resume_timing < ufs_transmission_status.suspend_timing) {
+		ufs_transmission_status.sleep_time += ((ufs_transmission_status.resume_timing
+			+ ONE_DAY_SEC) - ufs_transmission_status.suspend_timing);
+		return;
+	}
+	ufs_transmission_status.sleep_time += (ufs_transmission_status.resume_timing
+		- ufs_transmission_status.suspend_timing);
+	return;
+}
+
+void ufs_sleep_time_get(struct ufs_hba *hba)
+{
+	struct rtc_time tm;
+	int rc = 0;
+	ufs_transmission_status.sleep_count++;
+	rc = get_rtc_time(&tm);
+	if (rc != 0) {
+		ufs_qcom_msg(ERR, hba->dev, "get_rtc_time failed\n");
+		return;
+	}
+	ufs_transmission_status.suspend_timing = (tm.tm_hour * 3600 + tm.tm_min * 60 + tm.tm_sec);
+	if (ufs_transmission_status.suspend_timing < ufs_transmission_status.resume_timing) {
+		ufs_transmission_status.active_time += ((ufs_transmission_status.suspend_timing
+			+ ONE_DAY_SEC) - ufs_transmission_status.resume_timing);
+		return;
+	}
+	ufs_transmission_status.active_time += (ufs_transmission_status.suspend_timing
+		- ufs_transmission_status.resume_timing);
+	return;
 }
 
 static int ufs_qcom_get_pwr_dev_param(struct ufs_qcom_dev_params *qcom_param,
@@ -1664,7 +1731,7 @@ static int ufs_qcom_suspend(struct ufs_hba *hba, enum ufs_pm_op pm_op,
 
 	if (status == PRE_CHANGE)
 		return 0;
-
+	ufs_sleep_time_get(hba);
 	/*
 	 * If UniPro link is not active or OFF, PHY ref_clk, main PHY analog
 	 * power rail and low noise analog power rail for PLL can be
@@ -1712,6 +1779,7 @@ static int ufs_qcom_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 	struct ufs_qcom_host *host = ufshcd_get_variant(hba);
 	int err;
 
+	ufs_active_time_get(hba);
 	if (host->vddp_ref_clk && (hba->rpm_lvl > UFS_PM_LVL_3 ||
 				   hba->spm_lvl > UFS_PM_LVL_3))
 		ufs_qcom_enable_vreg(hba->dev,

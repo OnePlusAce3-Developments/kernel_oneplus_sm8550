@@ -278,9 +278,11 @@ struct ufs_transmission_status_t
 
 	u64 active_count;
 	u64 active_time;
+	u64 resume_timing;
 
 	u64 sleep_count;
 	u64 sleep_time;
+	u64 suspend_timing;
 
 	u64 powerdown_count;
 	u64 powerdown_time;
