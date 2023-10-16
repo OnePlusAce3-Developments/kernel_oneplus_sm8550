@@ -2985,7 +2985,7 @@ early_param("cmdline_cont_pte_sup_mem", cmdline_parse_cont_pte_sup_mem);
 static int __init cmdline_parse_prjname(char *p)
 {
 	static const char *cn_prjs[] = {
-		"22811", "21131", "22851",
+		"22811", "21131", "22851", "23801",
 		NULL,
 	};
 	static const char *other_prjs[] = {
