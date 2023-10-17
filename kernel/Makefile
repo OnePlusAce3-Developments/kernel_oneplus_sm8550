@@ -176,6 +176,10 @@ obj-$(CONFIG_OPLUS_FEATURE_SUGOV_POWER_EFFIENCY) += oplus_cpu/cpufreq_effiency/
 obj-$(CONFIG_OPLUS_FEATURE_GKI_CPUFREQ_BOUNCING) += oplus_cpu/cpufreq_bouncing/
 #endif /* OPLUS_FEATURE_GKI_CPUFREQ_BOUNCING */
 
+#ifdef OPLUS_FEATURE_FREQQOS_MONITOR
+obj-$(CONFIG_OPLUS_FEATURE_FREQQOS_MONITOR) += oplus_cpu/freqqos_monitor/
+#endif /* OPLUS_FEATURE_FREQQOS_MONITOR */
+
 #ifdef OPLUS_FEATURE_OCH
 #shenshen.Mao@Kernel.Power, 2021/09/24, add for cpufreq health
 obj-$(CONFIG_OPLUS_FEATURE_OCH) += oplus_cpu/cpufreq_health/
