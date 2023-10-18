@@ -142,43 +142,43 @@ int tp_util_get_vendor(struct hw_resource *hw_res, struct panel_info *panel_data
 
 	if (IS_ERR_OR_NULL(panel_data->touch_custom_data)) {
 		return 0;
-	}
-	p_touch_custom_data = (struct touch_custom_data *)panel_data->touch_custom_data;
+	} else {
+		p_touch_custom_data = (struct touch_custom_data *)panel_data->touch_custom_data;
 
-	if (panel_data->firmware_name[p_touch_custom_data->j]) {
-		memcpy(panel_data->manufacture_info.version, panel_data->firmware_name[p_touch_custom_data->j],
-			strlen(panel_data->firmware_name[p_touch_custom_data->j]));
-		panel_data->vid_len = strlen(panel_data->firmware_name[p_touch_custom_data->j]);
-	}
+		if (panel_data->firmware_name[p_touch_custom_data->j]) {
+			memcpy(panel_data->manufacture_info.version, panel_data->firmware_name[p_touch_custom_data->j],
+				strlen(panel_data->firmware_name[p_touch_custom_data->j]));
+			panel_data->vid_len = strlen(panel_data->firmware_name[p_touch_custom_data->j]);
+		}
 
-	vendor = GET_TP_DEV_NAME(panel_data->tp_type);
-	if(panel_data->chip_num == 1) {
-		p_touch_custom_data->chip_name = panel_data->chip_name[0];
-	}
-	strcpy(panel_data->manufacture_info.manufacture, vendor);
-	snprintf(panel_data->fw_name, MAX_FW_NAME_LENGTH,
-		"tp/%d/FW_%s_%s.img",
-		p_touch_custom_data->g_tp_prj_id, p_touch_custom_data->chip_name, vendor);
-
-	if (panel_data->test_limit_name) {
-		snprintf(panel_data->test_limit_name, MAX_LIMIT_DATA_LENGTH,
-			"tp/%d/LIMIT_%s_%s.img",
+		vendor = GET_TP_DEV_NAME(panel_data->tp_type);
+		if(panel_data->chip_num == 1) {
+			p_touch_custom_data->chip_name = panel_data->chip_name[0];
+		}
+		strcpy(panel_data->manufacture_info.manufacture, vendor);
+		snprintf(panel_data->fw_name, MAX_FW_NAME_LENGTH,
+			"tp/%d/FW_%s_%s.img",
 			p_touch_custom_data->g_tp_prj_id, p_touch_custom_data->chip_name, vendor);
-	}
 
-	panel_data->manufacture_info.fw_path = panel_data->fw_name;
+		if (panel_data->test_limit_name) {
+			snprintf(panel_data->test_limit_name, MAX_LIMIT_DATA_LENGTH,
+				"tp/%d/LIMIT_%s_%s.img",
+				p_touch_custom_data->g_tp_prj_id, p_touch_custom_data->chip_name, vendor);
+		}
 
-	pr_info("[TP]vendor:%s fw:%s limit:%s\n",
-		vendor,
-		panel_data->fw_name,
-		panel_data->test_limit_name==NULL?"NO Limit":panel_data->test_limit_name);
+		panel_data->manufacture_info.fw_path = panel_data->fw_name;
 
-	if (panel_data->touch_custom_data) {
+		pr_info("[TP]vendor:%s fw:%s limit:%s\n",
+			vendor,
+			panel_data->fw_name,
+			panel_data->test_limit_name==NULL?"NO Limit":panel_data->test_limit_name);
+
 		kfree(panel_data->touch_custom_data);
 		panel_data->touch_custom_data = NULL;
+
+		return 0;
 	}
 
-	return 0;
 }
 EXPORT_SYMBOL(tp_util_get_vendor);
 #endif
