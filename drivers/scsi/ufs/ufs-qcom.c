@@ -124,6 +124,10 @@ struct device_attribute ufs_transmission_status_attr;
 /*feature-flashaging806-v001-1-begin*/
 struct unipro_signal_quality_ctrl signalCtrl;
 /*feature-flashaging806-v001-1-end*/
+
+int ufsplus_wb_status = 0;
+int ufsplus_hpb_status = 0;
+
 enum {
 	TSTBUS_UAWM,
 	TSTBUS_UARM,
@@ -6086,6 +6090,18 @@ static void ufs_qcom_hook_check_int_errors(void *param, struct ufs_hba *hba,
 	}
 }
 
+#ifdef CONFIG_SCSI_UFS_HPB
+static bool is_ufshpb_allowed(struct ufs_hba *hba)
+{
+	return !(hba->ufshpb_dev.hpb_disabled);
+}
+#else
+static bool is_ufshpb_allowed(struct ufs_hba *hba)
+{
+	pr_warn("ufshpb macro definition is not opened\n");
+	return false;
+}
+#endif
 //bsp.storage.ufs 2021.10.14 add for /proc/devinfo/ufs
 /*feature-devinfo-v001-1-begin*/
 static int create_devinfo_ufs(struct scsi_device *sdev)
@@ -6094,6 +6110,7 @@ static int create_devinfo_ufs(struct scsi_device *sdev)
 	static char vendor[9] = {0};
 	static char model[17] = {0};
 	int ret = 0;
+	struct ufs_hba *hba = NULL;
 
 	pr_info("get ufs device vendor/model/rev\n");
 	WARN_ON(!sdev);
@@ -6114,6 +6131,17 @@ static int create_devinfo_ufs(struct scsi_device *sdev)
 		pr_err("%s create ufs fail, ret=%d",__func__,ret);
 	}
 
+	hba = shost_priv(sdev->host);
+	if (hba && ufshcd_is_wb_allowed(hba)) {
+		ufsplus_wb_status = 1;
+	}
+	if (hba && is_ufshpb_allowed(hba)) {
+		ufsplus_hpb_status = 1;
+	}
+	ret = register_device_proc_for_ufsplus("ufsplus_status", &ufsplus_hpb_status, &ufsplus_wb_status);
+	if (ret) {
+		pr_err("%s create , ret=%d",__func__,ret);
+	}
 	return ret;
 }
 /*feature-devinfo-v001-1-end*/
