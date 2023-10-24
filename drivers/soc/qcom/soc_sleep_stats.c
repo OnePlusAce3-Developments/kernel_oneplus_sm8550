@@ -90,7 +90,6 @@ struct sleep_stats {
 	u64 accumulated;
 };
 
-<<<<<<< HEAD
 struct appended_stats {
 	u32 client_votes;
 	u32 reserved[3];
@@ -109,8 +108,6 @@ struct soc_sleep_stats_data {
 static struct soc_sleep_stats_data *drv_backup;
 #endif
 
-=======
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.146
 #if IS_ENABLED(CONFIG_MSM_QMP)
 struct ddr_stats_g_data {
 	bool read_vote_info;
