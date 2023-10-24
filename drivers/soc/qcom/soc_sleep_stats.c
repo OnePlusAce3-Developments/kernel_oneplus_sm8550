@@ -70,13 +70,6 @@ static struct subsystem_data subsystems[] = {
 };
 #endif
 
-struct stats_config {
-	unsigned int offset_addr;
-	unsigned int ddr_offset_addr;
-	unsigned int num_records;
-	bool appended_stats_avail;
-};
-
 struct stats_entry {
 	uint32_t name;
 	uint32_t count;
@@ -97,6 +90,7 @@ struct sleep_stats {
 	u64 accumulated;
 };
 
+<<<<<<< HEAD
 struct appended_stats {
 	u32 client_votes;
 	u32 reserved[3];
@@ -115,6 +109,8 @@ struct soc_sleep_stats_data {
 static struct soc_sleep_stats_data *drv_backup;
 #endif
 
+=======
+>>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.146
 #if IS_ENABLED(CONFIG_MSM_QMP)
 struct ddr_stats_g_data {
 	bool read_vote_info;
