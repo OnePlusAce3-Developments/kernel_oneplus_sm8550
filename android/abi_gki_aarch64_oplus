@@ -634,10 +634,7 @@
   __wake_up
   wake_up_process
   wq_worker_comm
-<<<<<<< HEAD
   rtc_read_alarm
   iov_iter_advance
-=======
   is_ashmem_file
   zero_pfn
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.146

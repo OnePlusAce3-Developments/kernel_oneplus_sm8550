@@ -31,11 +31,8 @@ struct oom_control;
 struct slabinfo;
 struct track;
 struct address_space;
-<<<<<<< HEAD
 struct readahead_control;
-=======
 struct page_vma_mapped_walk;
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.146
 
 DECLARE_RESTRICTED_HOOK(android_rvh_set_skip_swapcache_flags,
 			TP_PROTO(gfp_t *flags),
