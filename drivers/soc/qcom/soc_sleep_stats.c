@@ -90,11 +90,6 @@ struct sleep_stats {
 	u64 accumulated;
 };
 
-struct appended_stats {
-	u32 client_votes;
-	u32 reserved[3];
-};
-
 #ifdef CONFIG_OPLUS_POWERINFO_RPMH
 struct soc_sleep_stats_data {
 	struct device_node *node;
