@@ -967,9 +967,6 @@ void *fuse_file_write_iter_finalize(struct fuse_bpf_args *fa,
 	return ERR_PTR(fwio->ret);
 }
 
-<<<<<<< HEAD
-=======
-
 long fuse_backing_ioctl(struct file *file, unsigned int command, unsigned long arg, int flags)
 {
 	struct fuse_file *ff = file->private_data;
@@ -983,7 +980,6 @@ long fuse_backing_ioctl(struct file *file, unsigned int command, unsigned long a
 	return ret;
 }
 
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.146
 int fuse_file_flock_backing(struct file *file, int cmd, struct file_lock *fl)
 {
 	struct fuse_file *ff = file->private_data;

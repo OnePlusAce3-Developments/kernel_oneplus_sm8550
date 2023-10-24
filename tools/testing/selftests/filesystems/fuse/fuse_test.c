@@ -1337,10 +1337,6 @@ out:
 	return result;
 }
 
-<<<<<<< HEAD
-
-=======
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.146
 static int flock_test(const char *mount_dir)
 {
 	const char *file = "file";
@@ -1349,10 +1345,6 @@ static int flock_test(const char *mount_dir)
 	int fuse_dev = -1;
 	int fd = -1, fd2 = -1;
 	int backing_fd = -1;
-<<<<<<< HEAD
-	char *addr = NULL;
-=======
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.146
 
 	TEST(src_fd = open(ft_src, O_DIRECTORY | O_RDONLY | O_CLOEXEC),
 	     src_fd != -1);
@@ -2182,11 +2174,7 @@ int main(int argc, char *argv[])
 		MAKE_TEST(bpf_test_revalidate_handle_backing_fd),
 		MAKE_TEST(bpf_test_lookup_postfilter),
 		MAKE_TEST(flock_test),
-<<<<<<< HEAD
-=======
 		MAKE_TEST(bpf_test_create_and_remove_bpf),
-
->>>>>>> AU_LINUX_KERNEL.PLATFORM.2.0.R1.00.00.00.004.146
 	};
 #undef MAKE_TEST
 
