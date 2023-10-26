@@ -44,6 +44,8 @@ enum panel_event_notifier_client {
 //#ifdef OPLUS_FEATURE_HYBRIDSWAP
 	PANEL_EVENT_NOTIFIER_CLIENT_MM,
 //#endif
+    /* zhongwenjie@BSP.TP.MISC. 2023/10/26, add for tri state key */
+	PANEL_EVENT_NOTIFIER_CLIENT_TRI_STATE_KEY,
 	PANEL_EVENT_NOTIFIER_CLIENT_MAX
 };
 
