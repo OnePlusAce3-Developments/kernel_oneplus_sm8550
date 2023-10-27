@@ -151,6 +151,10 @@ struct fsa4480_priv {
 	/*add WAS4783 support*/
 	struct notifier_block chg_nb;
 	struct mutex noti_lock;
+	/*add for 3rd protocal stack notifer*/
+	#if IS_ENABLED(CONFIG_TCPC_CLASS)
+	struct tcpc_device *tcpc;
+	#endif
 	#endif
 	u32 use_powersupply;
 };
@@ -955,7 +959,9 @@ static int fsa4480_parse_dt(struct fsa4480_priv *fsa_priv,
 	struct device *dev)
 {
 	struct device_node *dNode = dev->of_node;
+	const char *usb_protocal_name = "fsa4480,use-3rd-usb-protocal";
 	int ret = 0;
+	int rc = 0;
 
 	if (dNode == NULL)
 		return -ENODEV;
@@ -978,6 +984,12 @@ static int fsa4480_parse_dt(struct fsa4480_priv *fsa_priv,
 	}
 
 	gpio_direction_output(fsa_priv->hs_det_pin, 1);
+
+	rc = of_property_read_u32(dNode, usb_protocal_name, &fsa_priv->usb_protocal);
+	if (rc) {
+		pr_info("%s: %s in dt node is missing\n", __func__, usb_protocal_name);
+		fsa_priv->usb_protocal = 0;
+	}
 
 	return ret;
 }
@@ -1014,10 +1026,6 @@ static int fsa4480_probe(struct i2c_client *i2c,
 	#ifdef OPLUS_ARCH_EXTENDS
 	/* Add DIO4480 support */
 	unsigned int reg_value = 0;
-	/* Add for 3rd protocal stack notifer */
-#if IS_ENABLED(CONFIG_TCPC_CLASS)
-	struct tcpc_device *tcpc;
-#endif
 	#endif /* OPLUS_ARCH_EXTENDS */
 
 	#ifdef OPLUS_ARCH_EXTENDS
@@ -1115,9 +1123,9 @@ static int fsa4480_probe(struct i2c_client *i2c,
 			}
 		} else {
 #if IS_ENABLED(CONFIG_TCPC_CLASS)
-			dev_err(fsa_priv->dev, "%s: start register 3rd protocal stack notifier\n", __func__);
-			tcpc = tcpc_dev_get_by_name("type_c_port0");
-			if (!tcpc) {
+			dev_info(fsa_priv->dev, "%s: start register 3rd protocal stack notifier\n", __func__);
+			fsa_priv->tcpc = tcpc_dev_get_by_name("type_c_port0");
+			if (!fsa_priv->tcpc) {
 				if (probe_retry > 30) {
 					dev_err(fsa_priv->dev, "%s: get tcpc failed, jump tcp register\n", __func__);
 					rc = 0;
@@ -1130,7 +1138,7 @@ static int fsa4480_probe(struct i2c_client *i2c,
 					goto err_data;
 				}
 			}
-			rc = register_tcp_dev_notifier(tcpc, &fsa_priv->nb, TCP_NOTIFY_TYPE_USB);
+			rc = register_tcp_dev_notifier(fsa_priv->tcpc, &fsa_priv->nb, TCP_NOTIFY_TYPE_USB);
 			if (rc) {
 				dev_err(fsa_priv->dev, "%s: ucsi glink notifier registration failed: %d\n",
 					__func__, rc);
@@ -1211,7 +1219,7 @@ tcp_register_finish:
 
 	#ifdef OPLUS_ARCH_EXTENDS
 	/* Add for log */
-	pr_err("%s: finished\n", __func__);
+	pr_info("%s: finished\n", __func__);
 	#endif /* OPLUS_ARCH_EXTENDS */
 
 	return 0;
@@ -1236,11 +1244,29 @@ err_data:
 
 static int fsa4480_remove(struct i2c_client *i2c)
 {
+	#ifdef OPLUS_ARCH_EXTENDS
+	/*add for 3rd protocal stack notifier*/
+	#if IS_ENABLED(CONFIG_TCPC_CLASS)
+	int ret = 0;
+	#endif
+	#endif /* OPLUS_ARCH_EXTENDS */
 	struct fsa4480_priv *fsa_priv =
 			(struct fsa4480_priv *)i2c_get_clientdata(i2c);
 
 	if (!fsa_priv)
 		return -EINVAL;
+
+	#ifdef OPLUS_ARCH_EXTENDS
+	/*add for 3rd protocal stack notifier*/
+	#if IS_ENABLED(CONFIG_TCPC_CLASS)
+	if (fsa_priv->tcpc) {
+		ret = unregister_tcp_dev_notifier(fsa_priv->tcpc, &fsa_priv->ucsi_nb, TCP_NOTIFY_TYPE_ALL);
+		if (ret < 0) {
+			pr_err("%s unregister tcpc notifier fail(%d)\n", __func__);
+		}
+	}
+	#endif
+	#endif /* OPLUS_ARCH_EXTENDS */
 
 	if (fsa_priv->use_powersupply) {
 		/* deregister from PMI */
