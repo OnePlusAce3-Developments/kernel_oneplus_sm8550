@@ -429,17 +429,17 @@ int get_rtc_time(struct rtc_time *tm)
 	int rc = 0;
 
 	rtc = rtc_class_open("rtc0");
-	if (rtc == NULL) {
+	if (rtc == NULL)
 		return -1;
-	}
+
 	rc = rtc_read_time(rtc, tm);
-	if (rc) {
+	if (rc)
 		goto close_time;
-	}
+
 	rc = rtc_valid_tm(tm);
-	if (rc) {
+	if (rc)
 		goto close_time;
-	}
+
 close_time:
 	rtc_class_close(rtc);
 
@@ -462,6 +462,9 @@ void ufs_active_time_get(struct ufs_hba *hba)
 			+ ONE_DAY_SEC) - ufs_transmission_status.suspend_timing);
 		return;
 	}
+	if(ufs_transmission_status.suspend_timing == 0)
+		return;
+
 	ufs_transmission_status.sleep_time += (ufs_transmission_status.resume_timing
 		- ufs_transmission_status.suspend_timing);
 	return;
@@ -483,6 +486,9 @@ void ufs_sleep_time_get(struct ufs_hba *hba)
 			+ ONE_DAY_SEC) - ufs_transmission_status.resume_timing);
 		return;
 	}
+	if(ufs_transmission_status.resume_timing == 0)
+		return;
+
 	ufs_transmission_status.active_time += (ufs_transmission_status.suspend_timing
 		- ufs_transmission_status.resume_timing);
 	return;
@@ -3705,7 +3711,7 @@ static void ufshcd_lrb_scsicmd_time_statistics(struct ufs_hba *hba, struct ufshc
 				ktime_us_delta(lrbp->compl_time_stamp, lrbp->issue_time_stamp);
 		}
 
-		if (hba->pwr_info.gear_tx == 3 || hba->pwr_info.gear_tx == 4) {
+		if (hba->pwr_info.gear_tx == 5 || hba->pwr_info.gear_tx == 4) {
 			ufs_transmission_status.gear_max_write_sec += blk_rq_sectors(scsi_cmd_to_rq(lrbp->cmd));
 			ufs_transmission_status.gear_max_write_us +=
 				ktime_us_delta(lrbp->compl_time_stamp, lrbp->issue_time_stamp);
@@ -3717,7 +3723,7 @@ static void ufshcd_lrb_scsicmd_time_statistics(struct ufs_hba *hba, struct ufshc
 				ktime_us_delta(lrbp->compl_time_stamp, lrbp->issue_time_stamp);
 		}
 
-		if (hba->pwr_info.gear_rx == 3 || hba->pwr_info.gear_rx == 4) {
+		if (hba->pwr_info.gear_rx == 5 || hba->pwr_info.gear_rx == 4) {
 			ufs_transmission_status.gear_max_read_sec += blk_rq_sectors(scsi_cmd_to_rq(lrbp->cmd));
 			ufs_transmission_status.gear_max_read_us +=
 				ktime_us_delta(lrbp->compl_time_stamp, lrbp->issue_time_stamp);
@@ -3728,7 +3734,7 @@ static void ufshcd_lrb_scsicmd_time_statistics(struct ufs_hba *hba, struct ufshc
 			ufs_transmission_status.gear_min_other_us += ktime_us_delta(lrbp->compl_time_stamp, lrbp->issue_time_stamp);
 		}
 
-		if (hba->pwr_info.gear_rx == 3 || hba->pwr_info.gear_rx == 4) {
+		if (hba->pwr_info.gear_rx == 5 || hba->pwr_info.gear_rx == 4) {
 			ufs_transmission_status.gear_max_other_sec += blk_rq_sectors(scsi_cmd_to_rq(lrbp->cmd));
 			ufs_transmission_status.gear_max_other_us += ktime_us_delta(lrbp->compl_time_stamp, lrbp->issue_time_stamp);
 		}
@@ -3744,7 +3750,7 @@ static void ufshcd_lrb_devcmd_time_statistics(struct ufs_hba *hba, struct ufshcd
 			ktime_us_delta(lrbp->compl_time_stamp, lrbp->issue_time_stamp);
 	}
 
-	if (hba->pwr_info.gear_tx == 3 || hba->pwr_info.gear_tx == 4) {
+	if (hba->pwr_info.gear_tx == 5 || hba->pwr_info.gear_tx == 4) {
 		ufs_transmission_status.gear_max_dev_us +=
 			ktime_us_delta(lrbp->compl_time_stamp, lrbp->issue_time_stamp);
 	}
