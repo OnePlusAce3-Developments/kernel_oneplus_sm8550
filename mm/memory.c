@@ -618,6 +618,28 @@ static void print_bad_pte(struct vm_area_struct *vma, unsigned long addr,
 		 mapping ? mapping->a_ops->readpage : NULL);
 	dump_stack();
 	add_taint(TAINT_BAD_PAGE, LOCKDEP_NOW_UNRELIABLE);
+
+	if (page) {
+		int i;
+		struct page *sub_page;
+		struct page *head;
+
+		pr_alert("@Bad pte debug: pid:%d tgid:%d leader_comm:%s vma:0x%lx addr:0x%lx pte_val:0x%llx "
+				"page:0x%lx PageHead:%d ContPteHugePage:%d mt:%ld flags:%lx @\n",
+				current->pid, current->tgid, current->group_leader ? current->group_leader->comm : NULL,
+				(unsigned long)vma, (unsigned long)addr, pte_val(pte), (unsigned long)page, PageHead(page),
+				ContPteHugePage(page), get_pageblock_migratetype(page), page->flags);
+
+		if (PageCompound(page)) {
+			head = compound_head(page);
+			for (i = 0; i < HPAGE_CONT_PTE_NR; i++) {
+				sub_page = &head[i];
+				pr_alert("@ i:%d sub_page:%lx flags:%lx ref_count:%d mapcount:%d %s @\n",
+					 i, (unsigned long)sub_page, sub_page->flags, page_ref_count(sub_page),
+					 page_mapcount(sub_page), (page == sub_page) ? "<---" : "");
+			}
+		}
+	}
 }
 
 /*
@@ -1155,6 +1177,14 @@ again:
 		 */
 		if (progress >= 32) {
 			progress = 0;
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+			/*
+			 * XXX: don't release ptl at an unligned address as cont_pte might form while
+			 * ptl is released, this causes double-map
+			 */
+			if (!vma_is_chp_anonymous(src_vma) ||
+			    (vma_is_chp_anonymous(src_vma) && IS_ALIGNED(addr, HPAGE_CONT_PTE_SIZE)))
+#endif
 			if (need_resched() ||
 			    spin_needbreak(src_ptl) || spin_needbreak(dst_ptl))
 				break;

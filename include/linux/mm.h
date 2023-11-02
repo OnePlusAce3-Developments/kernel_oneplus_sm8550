@@ -4070,6 +4070,10 @@ extern void __split_huge_cont_pte(struct vm_area_struct *vma, pte_t *pte,
 				  unsigned long address, bool freeze,
 				  struct page *page, spinlock_t *ptl);
 
+extern void __split_huge_cont_pte_double_ptl(struct vm_area_struct *vma, pte_t *pte,
+				  unsigned long address, bool freeze,
+				  struct page *page, spinlock_t *src_ptl, spinlock_t *dst_ptl);
+
 extern void change_huge_cont_pte(struct vm_area_struct *vma, pte_t *pte,
 				 unsigned long addr, pgprot_t newprot,
 				 unsigned long cp_flags);

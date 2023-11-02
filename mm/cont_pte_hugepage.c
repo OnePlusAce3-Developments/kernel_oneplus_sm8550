@@ -1690,15 +1690,15 @@ static void __split_huge_cont_pte_locked(struct vm_area_struct *vma, pte_t *pte,
 	}
 }
 
-void __split_huge_cont_pte(struct vm_area_struct *vma, pte_t *pte,
+void __split_huge_cont_pte_double_ptl(struct vm_area_struct *vma, pte_t *pte,
 			   unsigned long address, bool freeze,
-			   struct page *page, spinlock_t *ptl)
+			   struct page *page, spinlock_t *src_ptl, spinlock_t *dst_ptl)
 {
 	bool do_unlock_page = false;
 	unsigned long haddr = address & HPAGE_CONT_PTE_MASK;
 	pte_t _pte;
 
-	CHP_BUG_ON(!ptl);
+	CHP_BUG_ON(!src_ptl);
 
 	if (address != haddr)
 		pte -= (address - haddr)/PAGE_SIZE;
@@ -1721,9 +1721,13 @@ repeat:
 				if (unlikely(!trylock_page(page))) {
 					get_page(page);
 					_pte = *pte;
-					spin_unlock(ptl);
+					spin_unlock(src_ptl);
+					if (dst_ptl)
+						spin_unlock(dst_ptl);
 					lock_page(page);
-					spin_lock(ptl);
+					if (dst_ptl)
+						spin_lock(dst_ptl);
+					spin_lock(src_ptl);
 					if (unlikely(!pte_same(*pte, _pte))) {
 						unlock_page(page);
 						put_page(page);
@@ -1752,6 +1756,14 @@ repeat:
 out:
 	if (do_unlock_page)
 		unlock_page(page);
+}
+
+void __split_huge_cont_pte(struct vm_area_struct *vma, pte_t *pte,
+			   unsigned long address, bool freeze,
+			   struct page *page, spinlock_t *ptl)
+{
+	__split_huge_cont_pte_double_ptl(vma, pte, address, freeze,
+					page, ptl, NULL);
 }
 
 void split_huge_cont_pte_address(struct vm_area_struct *vma,

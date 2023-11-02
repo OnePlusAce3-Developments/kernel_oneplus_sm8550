@@ -1666,8 +1666,14 @@ static inline void unlock_page_lruvec_irqrestore(struct lruvec *lruvec,
 /* Test requires a stable page->memcg binding, see page_memcg() */
 static inline bool page_matches_lruvec(struct page *page, struct lruvec *lruvec)
 {
+#if defined(CONFIG_CONT_PTE_HUGEPAGE) && CONFIG_CONT_PTE_HUGEPAGE_LRU
+	return lruvec_pgdat(lruvec) == page_pgdat(page) &&
+	       lruvec_memcg(lruvec) == page_memcg(page) &&
+		!(is_chp_lruvec(lruvec) ^ ContPteCMAHugePageHead(page));
+#else
 	return lruvec_pgdat(lruvec) == page_pgdat(page) &&
 	       lruvec_memcg(lruvec) == page_memcg(page);
+#endif
 }
 
 /* Don't lock again iff page's lruvec locked */
@@ -1689,19 +1695,8 @@ static inline struct lruvec *relock_page_lruvec_irqsave(struct page *page,
 		struct lruvec *locked_lruvec, unsigned long *flags)
 {
 	if (locked_lruvec) {
-#if defined(CONFIG_CONT_PTE_HUGEPAGE) && CONFIG_CONT_PTE_HUGEPAGE_LRU
-		if (ContPteCMAHugePageHead(page)) {
-			/*
-			 * NOTE: We cannot reuse lruvec by page_matches_lruvec
-			 * when the page is a cont-pte hugepage within cma,
-			 * we need to regain lruvec for the cont-pte hugepage!
-			 */
-			unlock_page_lruvec_irqrestore(locked_lruvec, *flags);
-			return lock_page_lruvec_irqsave(page, flags);
-		} else
-#endif
-			if (page_matches_lruvec(page, locked_lruvec))
-				return locked_lruvec;
+		if (page_matches_lruvec(page, locked_lruvec))
+			return locked_lruvec;
 
 		unlock_page_lruvec_irqrestore(locked_lruvec, *flags);
 	}

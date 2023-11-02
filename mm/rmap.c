@@ -1582,15 +1582,8 @@ static bool try_to_unmap_one(struct page *page, struct vm_area_struct *vma,
 			 * (which may still be PTE-mapped after DoubleMap was
 			 * cleared).  But stop unmapping even in those cases.
 			 */
-#ifndef CONFIG_CONT_PTE_HUGEPAGE
 			if (!PageTransCompound(page) || (PageHead(page) &&
 			     !PageDoubleMap(page) && !PageAnon(page)))
-#else
-			if (!PageTransCompound(page) || (PageHead(page) &&
-			     !PageDoubleMap(page) && !PageAnon(page)) ||
-				(ContPteHugePage(page) && !PageDoubleMap(page)))
-
-#endif
 				mlock_vma_page(page);
 			page_vma_mapped_walk_done(&pvmw);
 			ret = false;

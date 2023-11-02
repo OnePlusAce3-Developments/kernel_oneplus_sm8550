@@ -3621,7 +3621,31 @@ static bool free_unref_page_prepare(struct page *page, unsigned long pfn,
 
 #ifdef CONFIG_CONT_PTE_HUGEPAGE
 	CHP_BUG_ON(PageCont(page));
-	CHP_BUG_ON(PageContRefill(page));
+
+	if (PageContRefill(page)) {
+		int i;
+		struct page *sub_page;
+		struct page *head;
+
+		pr_alert("@PageContRefill debug: pid:%d tgid:%d leader_comm:%s pfn:%ld order:%d "
+				"page:0x%lx PageHead:%d ContPteHugePage:%d mt:%ld flags:%lx @\n",
+				current->pid, current->tgid, current->group_leader ? current->group_leader->comm : NULL,
+				pfn, order, (unsigned long)page, PageHead(page),
+				ContPteHugePage(page), get_pageblock_migratetype(page), page->flags);
+
+		if (PageCompound(page)) {
+			head = compound_head(page);
+			for (i = 0; i < HPAGE_CONT_PTE_NR; i++) {
+				sub_page = &head[i];
+				pr_alert("@ i:%d sub_page:%lx flags:%lx ref_count:%d mapcount:%d %s @\n",
+						i, (unsigned long)sub_page, sub_page->flags, page_ref_count(sub_page),
+						page_mapcount(sub_page), (page == sub_page) ? "<---" : "");
+			}
+		}
+		dump_page(page, "PageContRefill in free_unref_page_prepare");
+		CHP_BUG_ON(1);
+	}
+
 #endif
 	if (!free_pcp_prepare(page, order))
 		return false;
