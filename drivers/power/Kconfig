@@ -187,4 +187,10 @@ config OPLUS_AUDIO_SWITCH_GLINK
 	help
 	  Say Y here to declare audio switch glink support
 endif
+
+config OPLUS_VOOCPHY_MAX77939
+	bool "bidirect cp max77939 support"
+	depends on OPLUS_CHG_VOOCPHY_CHGLIB && OPLUS_CHG_AP_VOOCPHY
+	help
+	  Say Y here to declare bidirect cp max77939 support
 #endif
