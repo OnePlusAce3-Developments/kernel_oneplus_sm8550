@@ -6384,8 +6384,9 @@ static void ufs_qcom_shutdown(struct platform_device *pdev)
 	 * reset, so deassert ufs device reset line after UFS device shutdown
 	 * to ensure the UFS_RESET TLMM register value is POR value
 	 */
-	if (!host->bypass_pbl_rst_wa)
-		ufs_qcom_device_reset_ctrl(hba, false);
+	dev_info(&pdev->dev, "%s, bypass_pbl_rst_wa.\n", __func__);
+	//if (!host->bypass_pbl_rst_wa)
+	//	ufs_qcom_device_reset_ctrl(hba, false);
 }
 
 static int ufs_qcom_system_suspend(struct device *dev)
