@@ -1111,7 +1111,8 @@ int walt_find_energy_efficient_cpu(struct task_struct *p, int prev_cpu,
 				cpu_active(pipeline_cpu) &&
 				!cpu_halted(pipeline_cpu) &&
 				!ignore_cluster[cpu_cluster(pipeline_cpu)->id]) {
-			if (oplus_get_task_pipeline_cpu(cpu_rq(pipeline_cpu)->curr) == -1) {
+			if (!((pipeline_cpu == nr_cpu_ids - 1) && is_reserved(pipeline_cpu)) &&
+				!oplus_pipeline_low_latency_task(pipeline_cpu)) {
 				best_energy_cpu = pipeline_cpu;
 				fbt_env.fastpath = PIPELINE_FASTPATH;
 				goto out;

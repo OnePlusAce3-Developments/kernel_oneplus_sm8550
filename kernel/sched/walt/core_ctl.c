@@ -843,6 +843,11 @@ static unsigned int apply_limits(const struct cluster_data *cluster,
 	if (!cluster->enable)
 		return cluster->num_cpus;
 
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_PIPELINE)
+	if (cluster->boost && oplus_is_pipeline_scene())
+		return cluster->num_cpus;
+#endif
+
 	return min(max(cluster->min_cpus, need_cpus), cluster->max_cpus);
 }
 
@@ -851,6 +856,11 @@ static unsigned int apply_limits_32bit(const struct cluster_data *cluster,
 {
 	if (!cluster->enable)
 		return cluster->num_32bit_cpus;
+
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_PIPELINE)
+	if (cluster->boost && oplus_is_pipeline_scene())
+		return cluster->num_32bit_cpus;
+#endif
 
 	return min(need_cpus, cluster->num_32bit_cpus);
 }

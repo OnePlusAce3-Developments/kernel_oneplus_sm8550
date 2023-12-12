@@ -11,6 +11,9 @@
 
 #if IS_ENABLED(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
 #include <../../oplus_cpu/sched/sched_assist/sa_fair.h>
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_PIPELINE)
+#include <../kernel/oplus_cpu/sched/sched_assist/sa_pipeline.h>
+#endif
 #endif
 #if IS_ENABLED(CONFIG_OPLUS_FEATURE_LOADBALANCE)
 #include <../../oplus_cpu/sched/sched_assist/sa_balance.h>
@@ -311,6 +314,11 @@ static inline bool need_active_lb(struct task_struct *p, int dst_cpu,
 
 	if (!wts->misfit)
 		return false;
+
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_PIPELINE)
+	if (oplus_pipeline_task_skip_cpu(p, dst_cpu))
+		return false;
+#endif
 
 	return true;
 }

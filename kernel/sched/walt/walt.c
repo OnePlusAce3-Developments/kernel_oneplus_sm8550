@@ -52,6 +52,10 @@
 #include <../kernel/oplus_cpu/sched/eas_opt/oplus_iowait.h>
 #endif
 
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_PIPELINE)
+#include <../kernel/oplus_cpu/sched/sched_assist/sa_pipeline.h>
+#endif
+
 const char *task_event_names[] = {
 	"PUT_PREV_TASK",
 	"PICK_NEXT_TASK",
@@ -4402,9 +4406,13 @@ static void walt_irq_work(struct irq_work *irq_work)
 
 	if (!is_migration) {
 		wrq = (struct walt_rq *) this_rq()->android_vendor_data1;
+#if !IS_ENABLED(CONFIG_OPLUS_FEATURE_PIPELINE)
 		find_heaviest_topapp(wrq->window_start);
 		rearrange_heavy(wrq->window_start);
 		rearrange_pipeline_preferred_cpus(wrq->window_start);
+#else
+		qcom_rearrange_pipeline_preferred_cpus(walt_scale_demand_divisor);
+#endif
 		core_ctl_check(wrq->window_start);
 	}
 }
