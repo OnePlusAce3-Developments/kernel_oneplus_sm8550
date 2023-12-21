@@ -521,8 +521,6 @@ static void qcom_sg_release(struct dma_buf *dmabuf)
 {
 	struct qcom_sg_buffer *buffer = dmabuf->priv;
 
-        //add by zhenghaiqing@oppo.com for dma debug
-        trace_qcom_dma_free(buffer->len, file_inode(dmabuf->file)->i_ino, dmabuf->exp_name?:"NULL");
 	if (mem_buf_vmperm_release(buffer->vmperm))
 		return;
 
@@ -530,6 +528,8 @@ static void qcom_sg_release(struct dma_buf *dmabuf)
 
 #ifdef CONFIG_QCOM_DMABUF_HEAPS_SYSTEM
 	if (is_system_heap_deferred_free(buffer->free)) {
+                //add by zhenghaiqing@oppo.com for dma debug
+                trace_qcom_dma_free(buffer->len, dmabuf->android_kabi_reserved2, dmabuf->exp_name?:"NULL");
 		if (atomic64_sub_return(buffer->len, &qcom_system_heap_total) < 0) {
 			pr_info("warn: %s, total memory underflow, 0x%lx!!, reset as 0\n",
 				__func__, atomic64_read(&qcom_system_heap_total));

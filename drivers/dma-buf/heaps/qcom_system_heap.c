@@ -556,12 +556,18 @@ static struct dma_buf *system_heap_allocate(struct dma_heap *heap,
 	exp_info.flags = fd_flags;
 	exp_info.priv = buffer;
 	dmabuf = mem_buf_dma_buf_export(&exp_info, &qcom_sg_buf_ops);
-        //add by zhenghaiqing@oppo.com for dma debug
-        trace_qcom_dma_alloc(len, file_inode(dmabuf->file)->i_ino, exp_info.exp_name?:"NULL");
 	if (IS_ERR(dmabuf)) {
 		ret = PTR_ERR(dmabuf);
 		goto vmperm_release;
 	}
+        //add by zhenghaiqing@oppo.com for dma debug
+        /*
+	 * use android_kabi_reserved2 as inode no. but it has potential risk if
+	 * google uses it.
+	 */
+	dmabuf->android_kabi_reserved2 = file_inode(dmabuf->file)->i_ino;
+	trace_qcom_dma_alloc(len, dmabuf->android_kabi_reserved2,
+			     exp_info.exp_name ?: "NULL");
 
 	atomic64_add(dmabuf->size, &qcom_system_heap_total);
 	return dmabuf;
