@@ -113,12 +113,11 @@ DECLARE_HOOK(android_vh_task_blocks_on_rtmutex,
 DECLARE_HOOK(android_vh_rtmutex_waiter_prio,
 	TP_PROTO(struct task_struct *task, int *waiter_prio),
 	TP_ARGS(task, waiter_prio));
-<<<<<<< HEAD
+
 struct percpu_rw_semaphore;
 DECLARE_HOOK(android_vh_percpu_rwsem_wq_add,
 	TP_PROTO(struct percpu_rw_semaphore *sem, bool reader),
 	TP_ARGS(sem, reader));
-=======
 
 DECLARE_HOOK(android_vh_exit_signal_whether_wake,
 	TP_PROTO(struct task_struct *p, bool *wake),
@@ -131,7 +130,6 @@ DECLARE_HOOK(android_vh_exit_check,
 DECLARE_HOOK(android_vh_freeze_whether_wake,
 	TP_PROTO(struct task_struct *t, bool *wake),
 	TP_ARGS(t, wake));
->>>>>>> origin/android13-5.15-2023-11_r1_tmp_2024-01-04-14-28
 
 #endif /* _TRACE_HOOK_DTASK_H */
 /* This part must be outside protection */
