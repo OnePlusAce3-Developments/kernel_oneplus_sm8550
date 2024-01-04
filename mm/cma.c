@@ -481,10 +481,19 @@ struct page *cma_alloc(struct cma *cma, unsigned long count,
 	int ret = -ENOMEM;
 	int num_attempts = 0;
 	int max_retries = 5;
+<<<<<<< HEAD
 #ifdef CONFIG_CONT_PTE_HUGEPAGE
 	bool lock = (cma == cont_pte_cma);
 	bool spinlock = is_cont_pte_cma(cma);
 #endif
+=======
+	bool bypass = false;
+
+	trace_android_vh_cma_alloc_bypass(cma, count, align, no_warn,
+				&page, &bypass);
+	if (bypass)
+		return page;
+>>>>>>> origin/android13-5.15-2023-11_r1_tmp_2024-01-04-14-28
 
 	if (!cma || !cma->count || !cma->bitmap)
 		goto out;
