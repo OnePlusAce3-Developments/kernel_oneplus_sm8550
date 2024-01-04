@@ -289,11 +289,8 @@
   register_sysctl_table
   register_tcf_proto_ops
   remove_proc_subtree
-<<<<<<< HEAD
-=======
   root_mem_cgroup
   rtc_read_alarm
->>>>>>> origin/android13-5.15-2023-11_r1_tmp_2024-01-04-14-28
   __rtnl_link_unregister
   sched_clock
   sched_setscheduler_nocheck

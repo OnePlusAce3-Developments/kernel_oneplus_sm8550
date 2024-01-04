@@ -5873,7 +5873,6 @@ struct page *__alloc_pages(gfp_t gfp, unsigned int order, int preferred_nid,
 	gfp_t alloc_gfp; /* The gfp_t that was actually used for allocation */
 	struct alloc_context ac = { };
 
-<<<<<<< HEAD
 #ifdef CONFIG_CONT_PTE_HUGEPAGE
 	if (unlikely(order >= MAX_ORDER)) {
 		page = alloc_chp_ext(gfp, &order);
@@ -5882,9 +5881,7 @@ struct page *__alloc_pages(gfp_t gfp, unsigned int order, int preferred_nid,
 	}
 #endif
 
-=======
 	trace_android_vh_alloc_pages_entry(&gfp, order, preferred_nid, nodemask);
->>>>>>> origin/android13-5.15-2023-11_r1_tmp_2024-01-04-14-28
 	/*
 	 * There are several places where we assume that the order value is sane
 	 * so bail out early if the request is out of bound.

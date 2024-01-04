@@ -3083,20 +3083,15 @@ static inline int cow_user_page(struct page *dst, struct page *src,
 	unsigned long addr = vmf->address;
 
 	if (likely(src)) {
-<<<<<<< HEAD
 #ifdef CONFIG_CONT_PTE_HUGEPAGE
 		if (ContPteHugePage(src) && ContPteHugePage(dst))
 			return cow_cont_pte_user_page(dst, src, vmf);
 #endif
-		copy_user_highpage(dst, src, addr, vma);
-		return true;
-=======
 		if (copy_mc_user_highpage(dst, src, addr, vma)) {
 			memory_failure_queue(page_to_pfn(src), 0);
 			return -EHWPOISON;
 		}
 		return 0;
->>>>>>> origin/android13-5.15-2023-11_r1_tmp_2024-01-04-14-28
 	}
 
 	/*
