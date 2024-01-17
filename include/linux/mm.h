@@ -3994,7 +3994,7 @@ static inline int vmf_may_cont_pte(struct vm_fault *vmf)
 	return inode ? inode->may_cont_pte : false;
 }
 
-static inline bool cow_cont_pte_user_page(struct page *dst, struct page *src,
+static inline int cow_cont_pte_user_page(struct page *dst, struct page *src,
 		struct vm_fault *vmf)
 {
 	unsigned long addr = vmf->address & HPAGE_CONT_PTE_MASK;
@@ -4003,7 +4003,7 @@ static inline bool cow_cont_pte_user_page(struct page *dst, struct page *src,
 	for (i = 0; i < HPAGE_CONT_PTE_NR; i++)
 		copy_user_highpage(dst + i, src + i, addr + i * PAGE_SIZE, vmf->vma);
 
-	return true;
+	return 0;
 }
 
 static inline bool cont_pte_readonly(struct vm_fault *vmf)
