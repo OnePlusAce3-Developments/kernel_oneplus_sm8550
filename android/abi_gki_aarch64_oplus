@@ -664,3 +664,4 @@
   iov_iter_advance
   is_ashmem_file
   zero_pfn
+  is_transparent_hugepage
