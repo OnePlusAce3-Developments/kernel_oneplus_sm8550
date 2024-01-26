@@ -84,6 +84,8 @@
 #include "shuffle.h"
 #include "page_reporting.h"
 
+EXPORT_TRACEPOINT_SYMBOL_GPL(mm_page_alloc);
+
 /* Free Page Internal flags: for internal, non-pcp variants of free_pages(). */
 typedef int __bitwise fpi_t;
 
@@ -3725,7 +3727,7 @@ void free_unref_page(struct page *page, unsigned int order)
 	struct per_cpu_pages *pcp;
 	struct zone *zone;
 	unsigned long pfn = page_to_pfn(page);
-	int migratetype;
+	int migratetype, pcpmigratetype;
 	bool pcp_skip_cma_pages = false;
 	bool skip_free_unref_page = false;
 
@@ -3745,11 +3747,11 @@ void free_unref_page(struct page *page, unsigned int order)
 	/*
 	 * We only track unmovable, reclaimable movable, and CMA on pcp lists.
 	 * Place ISOLATE pages on the isolated list because they are being
-	 * offlined but treat HIGHATOMIC as movable pages so we can get those
-	 * areas back if necessary. Otherwise, we may have to free
+	 * offlined but treat HIGHATOMIC and CMA as movable pages so we can
+	 * get those areas back if necessary. Otherwise, we may have to free
 	 * excessively into the page allocator
 	 */
-	migratetype = get_pcppage_migratetype(page);
+	migratetype = pcpmigratetype = get_pcppage_migratetype(page);
 	if (unlikely(migratetype >= MIGRATE_PCPTYPES)) {
 #ifndef CONFIG_CONT_PTE_HUGEPAGE
 		/*We use this hook in cont_pte_hugepage.c, when enable CONT_PTE_HUGEPAGE*/
@@ -3761,14 +3763,14 @@ void free_unref_page(struct page *page, unsigned int order)
 			free_one_page(page_zone(page), page, pfn, order, migratetype, FPI_NONE);
 			return;
 		}
-		migratetype = MIGRATE_MOVABLE;
+		pcpmigratetype = MIGRATE_MOVABLE;
 	}
 
 	zone = page_zone(page);
 	pcp_trylock_prepare(UP_flags);
 	pcp = pcp_spin_trylock_irqsave(zone_per_cpu_pageset(zone), flags);
 	if (pcp) {
-		free_unref_page_commit(zone, pcp, page, pfn, migratetype, order);
+		free_unref_page_commit(zone, pcp, page, pfn, pcpmigratetype, order);
 		pcp_spin_unlock_irqrestore(pcp, flags);
 	} else {
 		free_one_page(zone, page, pfn, order, migratetype, FPI_NONE);
@@ -5879,6 +5881,7 @@ struct page *__alloc_pages(gfp_t gfp, unsigned int order, int preferred_nid,
 	}
 #endif
 
+	trace_android_vh_alloc_pages_entry(&gfp, order, preferred_nid, nodemask);
 	/*
 	 * There are several places where we assume that the order value is sane
 	 * so bail out early if the request is out of bound.
