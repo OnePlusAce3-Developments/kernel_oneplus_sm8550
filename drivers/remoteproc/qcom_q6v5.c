@@ -379,15 +379,19 @@ static irqreturn_t q6v5_wdog_interrupt(int irq, void *data)
 		"disabled and lead to device crash" :
 		"enabled and kick reovery process");
 
-	if (q6v5->rproc->recovery_disabled) {
-		schedule_work(&q6v5->crash_handler);
-	} else {
-		if (q6v5->ssr_subdev)
-			qcom_notify_early_ssr_clients(q6v5->ssr_subdev);
-
-		rproc_report_crash(q6v5->rproc, RPROC_WATCHDOG);
+    if (q6v5->ssr_subdev)
+	{
+		qcom_notify_early_ssr_clients(q6v5->ssr_subdev);
 	}
 
+    if (q6v5->rproc->recovery_disabled)
+	{
+		schedule_work(&q6v5->crash_handler);
+	}
+    else
+	{
+		rproc_report_crash(q6v5->rproc, RPROC_WATCHDOG);
+	}
 	return IRQ_HANDLED;
 }
 
@@ -466,15 +470,19 @@ static irqreturn_t q6v5_fatal_interrupt(int irq, void *data)
 	dev_err(q6v5->dev, "rproc recovery state: %s\n",
 		q6v5->rproc->recovery_disabled ? "disabled and lead to device crash" :
 		"enabled and kick reovery process");
-	if (q6v5->rproc->recovery_disabled) {
-		schedule_work(&q6v5->crash_handler);
-	} else {
-		if (q6v5->ssr_subdev)
-			qcom_notify_early_ssr_clients(q6v5->ssr_subdev);
-
-		rproc_report_crash(q6v5->rproc, RPROC_FATAL_ERROR);
+    if (q6v5->ssr_subdev)
+	{
+		qcom_notify_early_ssr_clients(q6v5->ssr_subdev);
 	}
 
+    if (q6v5->rproc->recovery_disabled)
+	{
+		schedule_work(&q6v5->crash_handler);
+	}
+    else
+	{
+		rproc_report_crash(q6v5->rproc, RPROC_FATAL_ERROR);
+	}
 	return IRQ_HANDLED;
 }
 
