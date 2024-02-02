@@ -47,3 +47,5 @@ source "Documentation/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)Kconfig.ext"
 
 source "kernel/sched/walt/Kconfig"
+
+source "$(KCONFIG_EXT_PREFIX)drivers/oplus_inject/Kconfig"
