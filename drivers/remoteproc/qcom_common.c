@@ -136,7 +136,6 @@ static void qcom_minidump_cleanup(struct rproc *rproc)
 {
 	struct rproc_dump_segment *entry, *tmp;
 
-	dev_err(&rproc->dev, "qcom_minidump_cleanup: for %s\n", rproc->name);
 	list_for_each_entry_safe(entry, tmp, &rproc->dump_segments, node) {
 		list_del(&entry->node);
 		kfree(entry->priv);
@@ -155,8 +154,6 @@ static int qcom_add_minidump_segments(struct rproc *rproc, struct minidump_subsy
 	char *name, *dbg_buf_name = "md_dbg_buf";
 	int len = strlen(dbg_buf_name);
 
-	dev_err(&rproc->dev, "qcom_add_minidump_segments: for %s, subsystem->region_count is %d\n", rproc->name,le32_to_cpu(subsystem->region_count));
-
 	if (WARN_ON(!list_empty(&rproc->dump_segments))) {
 		dev_err(&rproc->dev, "dump segment list already populated\n");
 		return -EUCLEAN;
@@ -165,19 +162,11 @@ static int qcom_add_minidump_segments(struct rproc *rproc, struct minidump_subsy
 	seg_cnt = le32_to_cpu(subsystem->region_count);
 	ptr = ioremap((unsigned long)le64_to_cpu(subsystem->regions_baseptr),
 		      seg_cnt * sizeof(struct minidump_region));
-
-	dev_err(&rproc->dev, "dump_segments list inf 0x%x\n", ptr);
-
 	if (!ptr)
 		return -EFAULT;
 
 	for (i = 0; i < seg_cnt; i++) {
 		memcpy_fromio(&region, ptr + i, sizeof(region));
-
-		dev_err(&rproc->dev, "dump_segments list seg_cnt(%d)_(%d)\n", seg_cnt, i);
-		dev_err(&rproc->dev, "                                  region.name=%s, region.address(0x%x), region.size(%d)\n", name, le64_to_cpu(region.address), le32_to_cpu(region.size));
-		dev_err(&rproc->dev, "                                  region.valid=0x%x(MD_REGION_VALID=0x%x)\n", region.valid, MD_REGION_VALID);
-
 		if (region.valid == MD_REGION_VALID) {
 			name = kstrdup(region.name, GFP_KERNEL);
 			if (!name) {
@@ -186,8 +175,6 @@ static int qcom_add_minidump_segments(struct rproc *rproc, struct minidump_subsy
 			}
 			da = le64_to_cpu(region.address);
 			size = le32_to_cpu(region.size);
-			dev_err(&rproc->dev, "qcom_add_minidump_segments: for %s, do rproc_coredump_add_custom_segment(%s), seg_cnt(%d)_(%d)\n", rproc->name, name, seg_cnt, i);
-
 			if (le32_to_cpu(subsystem->encryption_status) != MD_SS_ENCR_DONE) {
 				if (!i && len < MAX_REGION_NAME_LENGTH &&
 				    !strcmp(name, dbg_buf_name))
@@ -306,8 +293,6 @@ static void qcom_rproc_minidump(struct rproc *rproc, struct device *md_dev)
 		shdr += elf_size_of_shdr(class);
 	}
 
-	dev_err(&rproc->dev, "qcom_rproc_minidump,dev_coredumpv.\n");
-
 	dev_coredumpv(md_dev, data, data_size, GFP_KERNEL);
 }
 
@@ -398,9 +383,6 @@ void qcom_minidump(struct rproc *rproc, struct device *md_dev,
 	if (le32_to_cpu(subsystem->encryption_status) != MD_SS_ENCR_DONE)
 		dev_err(&rproc->dev, "encryption_status != MD_SS_ENCR_DONE\n");
 
-	dev_err(&rproc->dev, "qcom_minidump: rproc->elf_class is 0x%x, elf_machine is 0x%x\n", (unsigned int)rproc->elf_class, (unsigned int)rproc->elf_machine);
-	dev_err(&rproc->dev, "qcom_minidump: rproc->dump_conf is 0x%x\n", (unsigned int)rproc->dump_conf);
-
 	rproc_coredump_cleanup(rproc);
 
 	ret = qcom_add_minidump_segments(rproc, subsystem, dumpfn);
@@ -408,8 +390,6 @@ void qcom_minidump(struct rproc *rproc, struct device *md_dev,
 		dev_err(&rproc->dev, "Failed with error: %d while adding minidump entries\n", ret);
 		goto clean_minidump;
 	}
-
-	dev_err(&rproc->dev, "dump_segments empty %d\n", list_empty(&rproc->dump_segments));
 
 	if (rproc->elf_class == ELFCLASS64)
 		qcom_rproc_minidump(rproc, md_dev);
