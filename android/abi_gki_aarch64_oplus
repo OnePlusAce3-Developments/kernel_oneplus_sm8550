@@ -234,6 +234,8 @@
   nr_running
   __num_online_cpus
   of_css
+  osq_lock
+  osq_unlock
   page_endio
   __page_file_index
   __page_mapcount
@@ -467,6 +469,8 @@
   __traceiter_android_vh_rmqueue
   __traceiter_android_vh_rtmutex_waiter_prio
   __traceiter_android_vh_rwsem_can_spin_on_owner
+  __traceiter_android_vh_rwsem_direct_rsteal
+  __traceiter_android_vh_rwsem_optimistic_rspin
   __traceiter_android_vh_rwsem_opt_spin_finish
   __traceiter_android_vh_rwsem_opt_spin_start
   __traceiter_android_vh_rwsem_wake_finish
@@ -605,6 +609,8 @@
   __tracepoint_android_vh_rmqueue
   __tracepoint_android_vh_rtmutex_waiter_prio
   __tracepoint_android_vh_rwsem_can_spin_on_owner
+  __tracepoint_android_vh_rwsem_direct_rsteal
+  __tracepoint_android_vh_rwsem_optimistic_rspin
   __tracepoint_android_vh_rwsem_opt_spin_finish
   __tracepoint_android_vh_rwsem_opt_spin_start
   __tracepoint_android_vh_rwsem_wake_finish
