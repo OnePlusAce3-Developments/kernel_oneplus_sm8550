@@ -387,6 +387,9 @@
   __traceiter_android_vh_binder_proc_transaction
   __traceiter_android_vh_binder_proc_transaction_entry
   __traceiter_android_vh_binder_proc_transaction_finish
+  __traceiter_android_vh_binder_find_desc
+  __traceiter_android_vh_binder_set_desc_bit
+  __traceiter_android_vh_binder_desc_init
   __traceiter_android_vh_alloc_oem_binder_struct
   __traceiter_android_vh_binder_transaction_received
   __traceiter_android_vh_free_oem_binder_struct
@@ -526,6 +529,9 @@
   __tracepoint_android_vh_binder_proc_transaction
   __tracepoint_android_vh_binder_proc_transaction_entry
   __tracepoint_android_vh_binder_proc_transaction_finish
+  __tracepoint_android_vh_binder_find_desc
+  __tracepoint_android_vh_binder_set_desc_bit
+  __tracepoint_android_vh_binder_desc_init
   __tracepoint_android_vh_alloc_oem_binder_struct
   __tracepoint_android_vh_binder_transaction_received
   __tracepoint_android_vh_free_oem_binder_struct
