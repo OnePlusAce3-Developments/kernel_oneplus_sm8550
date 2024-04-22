@@ -3617,6 +3617,45 @@ enum pool_watermarks {
 #define POOL_OOM_FAIL 2
 #define POOL_OOM_ITEM 3
 
+enum chp_vma_type {
+	CHP_VMA_NONE,
+	CHP_VMA_NATIVE,
+	CHP_VMA_DALVIK,
+};
+
+/* as sys.c #define ANON_VMA_NAME_INVALID_CHARS	"\\`$[]" said, these character
+ * never used for anon_name, use this for chp flag.
+ */
+#define CHP_VMA_SPECIAL_CHAR		'['
+#define VMA_NAME_DALVIK_MAIN		"dalvik-main space (region space)"
+#define VMA_NAME_DALVIK_MAIN_V		"dalvik-main space"
+#define VMA_NAME_JEMALLOC		"libc_malloc"
+#define VMA_NAME_SCUDO_PRIMARY		"scudo:primary"
+#define VMA_NAME_SCUDO_SECONDARY	"scudo:secondary"
+
+struct chp_vma_name_address {
+	unsigned long dalvik_main;
+	union {
+		struct {
+			unsigned long scudo_primary, scudo_secondary;
+		};
+		struct {
+			unsigned long libc_malloc, libc_malloc_pad;
+		};
+	};
+};
+
+static inline char chp_decode_anon_name(const char *name)
+{
+	if (name[1] == 'i')
+		return 'l';
+	if (name[1] == 'a')
+		return 'd';
+	if (name[1] == 'c')
+		return 's';
+	return name[0];
+}
+
 extern wait_queue_head_t pool_direct_reclaim_wait[MAX_NUMNODES];
 #endif
 
@@ -4143,8 +4182,9 @@ extern bool is_critical_native(struct task_struct *tsk);
 extern inline bool current_is_hybridswapd(void);
 extern void chp_uid_blacklist_update(void);
 extern unsigned long read_zram_used_pages(int inx);
-extern bool handle_chp_prctl_user_addrs(const char __user *name,
-					unsigned long start, unsigned long len);
+extern enum chp_vma_type chp_handle_prctl_set_anon_name(const char __user *name,
+							char *kname,
+							unsigned long len);
 extern inline void handle_chp_get_unmapped_area(struct vm_unmapped_area_info *info,
 						struct file *filp,
 						unsigned long pgoff);

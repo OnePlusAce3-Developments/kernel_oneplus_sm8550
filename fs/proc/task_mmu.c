@@ -330,7 +330,16 @@ show_map_vma(struct seq_file *m, struct vm_area_struct *vma)
 		anon_name = anon_vma_name(vma);
 		if (anon_name) {
 			seq_pad(m, ' ');
+#ifdef CONFIG_CONT_PTE_HUGEPAGE
+			if (anon_name->name[0] == CHP_VMA_SPECIAL_CHAR)
+				seq_printf(m, "[anon:%c%s]",
+					   chp_decode_anon_name(anon_name->name),
+					   anon_name->name + 1);
+			else
+				seq_printf(m, "[anon:%s]", anon_name->name);
+#else
 			seq_printf(m, "[anon:%s]", anon_name->name);
+#endif
 		}
 	}
 

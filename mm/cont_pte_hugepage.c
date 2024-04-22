@@ -57,10 +57,8 @@
 #define SYSTEM_APP_UID KUIDT_INIT(1000)
 #define AUDIOSERVER_UID KUIDT_INIT(1041)    /* audioserver process */
 
-#define DALVIK_MAIN_HEAP "dalvik-main space (region space)"
-#define NATIVE_HEAP "libc_malloc"
-#define MAX_LEN_CHP_VMA_NAME (sizeof(DALVIK_MAIN_HEAP) + 1)
-#define DALVIK_MAIN_HEAP_BIT (1ul << 63)
+#define LIBC_SO "libc.so"
+#define LIBC_64BIT_PREFIX "lib64"
 
 DEFINE_STATIC_KEY_FALSE(cont_pte_huge_page_enabled_key);
 
@@ -668,116 +666,148 @@ void __free_cont_pte_hugepages(struct page *page)
 	}
 }
 
-bool handle_chp_prctl_user_addrs(const char __user *name, unsigned long start,
-				 unsigned long len)
+static bool is_addr_in_libc_code_segment(struct mm_struct *mm,
+					 unsigned long addr, const char *name)
 {
-	int i;
-	u64 rsv = current->mm->android_kabi_reserved1;
-	unsigned long name_addr = untagged_addr((unsigned long)name);
-	unsigned long native_addr = rsv & ~(DALVIK_MAIN_HEAP_BIT);
-	unsigned long page_start_vaddr;
-	unsigned long page_offset;
-	unsigned long num_pages;
-	unsigned long max_len = MAX_LEN_CHP_VMA_NAME - 1;
-	char buf[MAX_LEN_CHP_VMA_NAME] = {0};
-	unsigned long buf_offs = 0;
-	struct mm_struct *mm = current->mm;
+	bool ret = false;
+	struct vm_area_struct *vma;
+	struct file *vm_file;
 
-	if (!cont_pte_huge_page_enabled())
-		return false;
-
-	if (unlikely(!config_anon_enable || !name_addr ||
-		     test_thread_flag(TIF_32BIT)))
-		return false;
-
-	if (len < SZ_2M)
-		return false;
-
-	if (find_uid_in_blacklist(from_kuid(&init_user_ns, task_uid(current))))
-		return false;
-
-	if (native_addr) {
-		if (native_addr == name_addr)
-			return true;
-
-		if (DALVIK_MAIN_HEAP_BIT & rsv)
-			return false;
-	}
-
-	/* slow path */
 	mmap_read_lock(mm);
-	page_start_vaddr = name_addr & PAGE_MASK;
-	page_offset = name_addr - page_start_vaddr;
-	num_pages = DIV_ROUND_UP(page_offset + max_len, PAGE_SIZE);
+	/*
+	 * uid == 0 /system/lib64/bootstrap/libc.so
+	 * uid == 1000 /apex/com.android.runtime/lib64/bionic/libc.so
+	 */
+	vma = find_vma(mm, addr);
 
-	for (i = 0; i < num_pages; i++) {
-		int len;
-		int write_len;
-		const char *kaddr;
-		long pages_pinned;
-		struct page *page;
+	if (!vma || vma_is_anonymous(vma))
+		goto unlock;
 
-		pages_pinned = get_user_pages_remote(mm, page_start_vaddr, 1, 0,
-						     &page, NULL, NULL);
-		if (pages_pinned < 1) {
-			mmap_read_unlock(mm);
-			return false;
-		}
+	vm_file = vma->vm_file;
+	if (unlikely(!vm_file || !vm_file->f_path.dentry))
+		goto unlock;
 
-		kaddr = (const char *)kmap(page);
-		len = min(max_len, PAGE_SIZE - page_offset);
-		write_len = strnlen(kaddr + page_offset, len);
-		memcpy(buf + buf_offs, kaddr + page_offset, write_len);
-		kunmap(page);
-		/* put_user_page(page); */ /* kernel-5.15 doesn't have this func */
-		put_page(page);
+	/*
+	 * uid == 0 /system/lib64/bootstrap/libc.so
+	 * uid == 1000 /apex/com.android.runtime/lib64/bionic/libc.so
+	 */
+	if (i_uid_read(vm_file->f_inode) != 1000 &&
+	    i_uid_read(vm_file->f_inode) != 0)
+		goto unlock;
 
-		/* if strnlen hit a null terminator then we're done */
-		if (write_len != len)
-			break;
-
-		buf_offs += write_len;
-		max_len -= len;
-		page_offset = 0;
-		page_start_vaddr += PAGE_SIZE;
-	}
+	/*
+	 * MT6989 use hbt_translator to simulate 32 bit process results in
+	 * TIF_32BIT flag could not work as expect.
+	 */
+	if (strncmp(vm_file->f_path.dentry->d_name.name,
+		    LIBC_SO, sizeof(LIBC_SO) - 1) == 0 &&
+	    vm_file->f_path.dentry->d_parent &&
+	    vm_file->f_path.dentry->d_parent->d_parent &&
+	    strncmp(vm_file->f_path.dentry->d_parent->d_parent->d_name.name,
+		    LIBC_64BIT_PREFIX, sizeof(LIBC_64BIT_PREFIX) - 1) == 0)
+		ret = true;
+	else
+		chp_loge("invalid %s:%lx in %s\n", name, addr,
+			 vm_file->f_path.dentry->d_name.name);
+unlock:
 	mmap_read_unlock(mm);
+	return ret;
+}
 
-	if (strcmp(NATIVE_HEAP, buf) == 0) {
-		struct vm_area_struct *vma;
-		bool ret = false;
+/*
+ * check whether vma name support CHP,
+ *
+ * 1. compare length with minimum required.
+ * 2. if addr already saved, compare
+ * 3. slowpath, compare vma name & check address whether in libc.so if libc
+ * vma_name
+ */
+bool is_vma_name_valid(bool is_libc, const char *vma_name, const char *name,
+		       unsigned long min_len, unsigned long len,
+		       struct mm_struct *mm, unsigned long uaddr,
+		       unsigned long *addr)
+{
+	if (len < min_len)
+		return false;
 
-		if (unlikely(native_addr && native_addr != name_addr))
-			return ret;
+	if (*addr)
+		return *addr == uaddr;
 
-		mmap_read_lock(mm);
-		/*
-		 * uid == 0 /system/lib64/bootstrap/libc.so
-		 * uid == 1000 /apex/com.android.runtime/lib64/bionic/libc.so
-		 */
-		vma = find_vma(mm, name_addr);
-		if (vma && !vma_is_anonymous(vma) && vma->vm_file &&
-		    (i_uid_read(vma->vm_file->f_inode) == 1000 ||
-		     i_uid_read(vma->vm_file->f_inode) == 0) &&
-		    strcmp(vma->vm_file->f_path.dentry->d_name.name,
-			   "libc.so") == 0) {
-			current->mm->android_kabi_reserved1 |= name_addr;
-			ret = true;
-		} else {
-			if (vma && !(vma_is_anonymous(vma) && vma->vm_file))
-				chp_loge("vma %s ineligible %lx %s\n",
-					 NATIVE_HEAP,
-					 (unsigned long)name_addr,
-					 vma->vm_file->f_path.dentry->d_name.name);
-		}
-		mmap_read_unlock(mm);
-		return ret;
-	} else if (strcmp(DALVIK_MAIN_HEAP, buf) == 0) {
-		current->mm->android_kabi_reserved1 |= DALVIK_MAIN_HEAP_BIT;
+	if (strcmp(vma_name, name) == 0 &&
+	    (!is_libc || is_addr_in_libc_code_segment(mm, uaddr, name))) {
+		*addr = uaddr;
 		return true;
 	}
-
 	return false;
+}
+
+enum chp_vma_type chp_handle_prctl_set_anon_name(const char __user *uname,
+						 char *name, unsigned long len)
+{
+	int ret = CHP_VMA_NONE;
+	bool b;
+	struct mm_struct *mm = current->mm;
+	unsigned long uaddr = untagged_addr((unsigned long)uname);
+	struct chp_vma_name_address *address =
+		(struct chp_vma_name_address *)mm->android_kabi_reserved1;
+
+	if (!cont_pte_huge_page_enabled())
+		return ret;
+
+	if (unlikely(!config_anon_enable || test_thread_flag(TIF_32BIT)))
+		return ret;
+
+	if (find_uid_in_blacklist(from_kuid(&init_user_ns, task_uid(current))))
+		return ret;
+
+	if (address->dalvik_main == uaddr ||
+	    address->scudo_primary == uaddr || address->scudo_secondary == uaddr)
+		return true;
+
+	if (address->dalvik_main && address->scudo_primary &&
+	    address->scudo_secondary)
+		return false;
+
+	switch (name[0]) {
+	case 'd':
+		/* dalvik_main only have one in a process */
+		b = is_vma_name_valid(false, VMA_NAME_DALVIK_MAIN_V, name,
+				      SZ_256M, len, mm, uaddr,
+				      &address->dalvik_main) ||
+			is_vma_name_valid(false, VMA_NAME_DALVIK_MAIN, name,
+					  SZ_256M, len, mm, uaddr,
+					  &address->dalvik_main);
+		if (b)
+			ret = CHP_VMA_DALVIK;
+		break;
+	case 'l':
+		/* jemalloc set all vma name with libc_malloc */
+		b = is_vma_name_valid(true, VMA_NAME_JEMALLOC, name,
+				      SZ_2M, len, mm, uaddr,
+				      &address->libc_malloc);
+		if (b) {
+			address->libc_malloc_pad = address->libc_malloc;
+			ret = CHP_VMA_NATIVE;
+		}
+		break;
+	case 's':
+		/*
+		 * scudo also support scudo:ringbuffer, scudo:primary_reserve
+		 * which are for debug only
+		 */
+		b = is_vma_name_valid(true, VMA_NAME_SCUDO_PRIMARY, name,
+				      SZ_256K, len, mm, uaddr,
+				      &address->scudo_primary) ||
+			is_vma_name_valid(true, VMA_NAME_SCUDO_SECONDARY, name,
+					  SZ_64K, len, mm, uaddr,
+					  &address->scudo_secondary);
+		if (b)
+			ret = CHP_VMA_NATIVE;
+		break;
+	default:
+		break;
+	}
+	return ret;
 }
 
 /*
