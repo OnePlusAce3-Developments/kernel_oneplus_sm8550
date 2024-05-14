@@ -199,6 +199,10 @@ obj-$(CONFIG_OPLUS_CPU_FREQ_GOV_UAG) += oplus_cpu/uad/
 obj-$(CONFIG_OPLUS_FEATURE_ABNORMAL_FLAG) += oplus_cpu/oplus_overload/
 #endif
 
+#ifdef OPLUS_FEATURE_WAKER_IDENTIFY
+obj-$(CONFIG_OPLUS_FEATURE_WAKER_IDENTIFY) += oplus_cpu/waker_identify/
+#endif OPLUS_FEATURE_WAKER_IDENTIFY
+
 #
 # ANDROID: GKI: Generate headerfiles required for gki_module.o
 #

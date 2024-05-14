@@ -148,3 +148,4 @@ oplus_ipa_thermal.ko
 oplus_freeze_debug.ko
 oplus_subsys_sleep_monitor.ko
 oplus_procs_load.ko
+oplus_bsp_waker_identify.ko
