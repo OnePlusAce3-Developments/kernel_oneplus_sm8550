@@ -34,12 +34,9 @@ DECLARE_HOOK(android_vh_alter_rwsem_list_add,
 DECLARE_HOOK(android_vh_rwsem_wake_finish,
 	TP_PROTO(struct rw_semaphore *sem),
 	TP_ARGS(sem));
-<<<<<<< HEAD
-=======
 DECLARE_HOOK(android_vh_rwsem_downgrade_wake_finish,
 	TP_PROTO(struct rw_semaphore *sem),
 	TP_ARGS(sem));
->>>>>>> origin/android13-5.15-2024-06_r3_tmp_2024-09-02-17-44
 DECLARE_HOOK(android_vh_rwsem_direct_rsteal,
 	TP_PROTO(struct rw_semaphore *sem, bool *steal),
 	TP_ARGS(sem, steal));

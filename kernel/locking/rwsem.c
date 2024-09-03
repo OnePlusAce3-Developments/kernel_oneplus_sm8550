@@ -981,10 +981,6 @@ rwsem_down_read_slowpath(struct rw_semaphore *sem, long count, unsigned int stat
 	/*
 	 * Reader optimistic lock stealing.
 	 */
-<<<<<<< HEAD
-=======
-	trace_android_vh_rwsem_direct_rsteal(sem, &steal);
->>>>>>> origin/android13-5.15-2024-06_r3_tmp_2024-09-02-17-44
 	if (steal && !(count & (RWSEM_WRITER_LOCKED | RWSEM_FLAG_HANDOFF))) {
 		rwsem_set_reader_owned(sem);
 		lockevent_inc(rwsem_rlock_steal);

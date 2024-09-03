@@ -2001,7 +2001,7 @@ static struct worker *create_worker(struct worker_pool *pool)
 		pr_err_once("workqueue: Failed to create a worker thread: %pe",
 			    worker->task);
 		goto fail;
-<<<<<<< HEAD
+	}
 #ifdef CONFIG_BLOCKIO_UX_OPT
 	if (pool->attrs->nice == VIRTUAL_KWORKER_NICE) {
 		set_kworker_light(worker->task);
@@ -2009,10 +2009,6 @@ static struct worker *create_worker(struct worker_pool *pool)
 	} else
 		set_user_nice(worker->task, pool->attrs->nice);
 #else
-=======
-	}
-
->>>>>>> origin/android13-5.15-2024-06_r3_tmp_2024-09-02-17-44
 	set_user_nice(worker->task, pool->attrs->nice);
 #endif
 	kthread_bind_mask(worker->task, pool->attrs->cpumask);
