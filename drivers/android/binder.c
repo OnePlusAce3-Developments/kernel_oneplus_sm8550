@@ -3904,22 +3904,14 @@ binder_free_buf(struct binder_proc *proc,
 		struct binder_buffer *buffer, bool is_failure)
 {
 	bool enqueue_task = true;
-<<<<<<< HEAD
-	bool buffer_t_present = false;
-=======
 	bool has_transaction = false;
->>>>>>> origin/android13-5.15-2024-06_r3_tmp_2024-09-02-17-44
 
 	trace_android_vh_binder_free_buf(proc, thread, buffer);
 	binder_inner_proc_lock(proc);
 	if (buffer->transaction) {
 		buffer->transaction->buffer = NULL;
 		buffer->transaction = NULL;
-<<<<<<< HEAD
-		buffer_t_present = true;
-=======
 		has_transaction = true;
->>>>>>> origin/android13-5.15-2024-06_r3_tmp_2024-09-02-17-44
 	}
 	binder_inner_proc_unlock(proc);
 	if (buffer->async_transaction && buffer->target_node) {
@@ -3943,13 +3935,8 @@ binder_free_buf(struct binder_proc *proc,
 		}
 		binder_node_inner_unlock(buf_node);
 	}
-<<<<<<< HEAD
-	trace_android_vh_binder_buffer_release(proc, thread,
-		buffer, buffer_t_present);
-=======
 	trace_android_vh_binder_buffer_release(proc, thread, buffer,
 			has_transaction);
->>>>>>> origin/android13-5.15-2024-06_r3_tmp_2024-09-02-17-44
 	trace_binder_transaction_buffer_release(buffer);
 	binder_release_entire_buffer(proc, thread, buffer, is_failure);
 	binder_alloc_free_buf(&proc->alloc, buffer);

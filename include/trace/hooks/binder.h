@@ -23,10 +23,7 @@ struct binder_transaction_data;
 struct task_struct;
 struct binder_work;
 struct binder_buffer;
-<<<<<<< HEAD
 struct rb_node;
-=======
->>>>>>> origin/android13-5.15-2024-06_r3_tmp_2024-09-02-17-44
 
 DECLARE_HOOK(android_vh_binder_transaction_init,
 	TP_PROTO(struct binder_transaction *t),
@@ -132,9 +129,8 @@ DECLARE_HOOK(android_vh_binder_free_buf,
 	TP_ARGS(proc, thread, buffer));
 DECLARE_HOOK(android_vh_binder_buffer_release,
 	TP_PROTO(struct binder_proc *proc, struct binder_thread *thread,
-<<<<<<< HEAD
-		struct binder_buffer *buffer, bool buffer_t_present),
-	TP_ARGS(proc, thread, buffer, buffer_t_present));
+		struct binder_buffer *buffer, bool has_transaction),
+	TP_ARGS(proc, thread, buffer, has_transaction));
 DECLARE_HOOK(android_vh_binder_find_desc,
 	TP_PROTO(struct binder_proc *proc, uint32_t *ref_desc,
 		struct rb_node *nd_desc, bool *loop),
@@ -145,10 +141,6 @@ DECLARE_HOOK(android_vh_binder_set_desc_bit,
 DECLARE_HOOK(android_vh_binder_desc_init,
 	TP_PROTO(struct binder_proc *proc),
 	TP_ARGS(proc));
-=======
-		struct binder_buffer *buffer, bool has_transaction),
-	TP_ARGS(proc, thread, buffer, has_transaction));
->>>>>>> origin/android13-5.15-2024-06_r3_tmp_2024-09-02-17-44
 
 #endif /* _TRACE_HOOK_BINDER_H */
 /* This part must be outside protection */
