@@ -80,3 +80,5 @@ obj-$(CONFIG_OPLUS_FREEZE_DEBUG)     += oplus/power/freeze_debug/
 #Colin.Liu@POWER, 2023/04/12, add for qualcomm subsystem sleep monitor
 obj-$(CONFIG_OPLUS_SUBSYS_SLEEP_MONITOR)     += oplus/power/subsys_sleep_monitor/
 #endif /* OPLUS_SUBSYS_SLEEP_MONITOR */
+
+obj-y     += oplus/storage/

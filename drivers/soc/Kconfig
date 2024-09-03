@@ -120,3 +120,5 @@ source "drivers/soc/oplus/power/freeze_debug/Kconfig"
 #Colin.Liu@POWER, 2023/04/12, add for qualcomm subsystem sleep monitor
 source "drivers/soc/oplus/power/subsys_sleep_monitor/Kconfig"
 #endif /* OPLUS_SUBSYS_SLEEP_MONITOR */
+
+source "drivers/soc/oplus/storage/Kconfig"
