@@ -267,8 +267,6 @@ DECLARE_HOOK(android_vh_isolate_freepages,
 DECLARE_HOOK(android_vh_do_swap_page_spf,
 	TP_PROTO(bool *allow_swap_spf),
 	TP_ARGS(allow_swap_spf));
-<<<<<<< HEAD
-=======
 DECLARE_HOOK(android_vh_tune_fault_around_bytes,
 	TP_PROTO(unsigned long *fault_around_bytes),
 	TP_ARGS(fault_around_bytes));
@@ -287,7 +285,6 @@ DECLARE_HOOK(android_vh_oom_swapmem_gather_init,
 DECLARE_HOOK(android_vh_oom_swapmem_gather_finish,
 	TP_PROTO(struct mm_struct *mm),
 	TP_ARGS(mm));
->>>>>>> origin/android13-5.15-2024-06_r3_tmp_2024-09-02-17-44
 #endif /* _TRACE_HOOK_MM_H */
 
 /* This part must be outside protection */

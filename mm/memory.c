@@ -4898,10 +4898,7 @@ vm_fault_t do_swap_page(struct vm_fault *vmf)
 				swap_readpage(page, true);
 				set_page_private(page, 0);
 			}
-<<<<<<< HEAD
 			}
-=======
->>>>>>> origin/android13-5.15-2024-06_r3_tmp_2024-09-02-17-44
 		} else if (vmf->flags & FAULT_FLAG_SPECULATIVE) {
 			/*
 			 * Don't try readahead during a speculative page fault

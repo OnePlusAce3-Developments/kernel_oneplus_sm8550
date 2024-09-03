@@ -59,11 +59,7 @@ DECLARE_HOOK(android_vh_check_page_look_around_ref,
 	TP_ARGS(page, skip));
 DECLARE_HOOK(android_vh_vmscan_kswapd_done,
 	TP_PROTO(int node_id, unsigned int highest_zoneidx, unsigned int alloc_order,
-<<<<<<< HEAD
-		unsigned int reclaim_order),
-=======
 	        unsigned int reclaim_order),
->>>>>>> origin/android13-5.15-2024-06_r3_tmp_2024-09-02-17-44
 	TP_ARGS(node_id, highest_zoneidx, alloc_order, reclaim_order));
 #endif /* _TRACE_HOOK_VMSCAN_H */
 /* This part must be outside protection */
