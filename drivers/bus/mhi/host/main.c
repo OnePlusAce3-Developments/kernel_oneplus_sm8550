@@ -270,15 +270,6 @@ static void mhi_del_ring_element(struct mhi_controller *mhi_cntrl,
 	smp_wmb();
 }
 
-<<<<<<< HEAD
-=======
-static bool is_valid_ring_ptr(struct mhi_ring *ring, dma_addr_t addr)
-{
-	return addr >= ring->iommu_base && addr < ring->iommu_base + ring->len &&
-			!(addr & (sizeof(struct mhi_ring_element) - 1));
-}
-
->>>>>>> origin/android13-5.15-2024-06_r3_tmp_2024-09-02-17-44
 int mhi_destroy_device(struct device *dev, void *data)
 {
 	struct mhi_chan *ul_chan, *dl_chan;
@@ -1264,11 +1255,6 @@ static int mhi_queue(struct mhi_device *mhi_dev, struct mhi_buf_info *buf_info,
 	ret = mhi_gen_tre(mhi_cntrl, mhi_chan, buf_info, mflags);
 	if (unlikely(ret))
 		return ret;
-<<<<<<< HEAD
-=======
-
-	read_lock_irqsave(&mhi_cntrl->pm_lock, flags);
->>>>>>> origin/android13-5.15-2024-06_r3_tmp_2024-09-02-17-44
 
 	/* Let controller mark last busy for runtime PM framework if needed */
 	if (mhi_cntrl->runtime_last_busy)
@@ -1290,12 +1276,6 @@ static int mhi_queue(struct mhi_device *mhi_dev, struct mhi_buf_info *buf_info,
 	    rsc_ch_ring_db_check(mhi_cntrl, mhi_chan))
 		mhi_ring_chan_db(mhi_cntrl, mhi_chan);
 
-<<<<<<< HEAD
-=======
-	if (dir == DMA_FROM_DEVICE)
-		mhi_cntrl->runtime_put(mhi_cntrl);
-
->>>>>>> origin/android13-5.15-2024-06_r3_tmp_2024-09-02-17-44
 	read_unlock_irqrestore(&mhi_cntrl->pm_lock, flags);
 
 	return ret;
