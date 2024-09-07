@@ -453,6 +453,16 @@ binder_enqueue_thread_work_ilocked(struct binder_thread *thread,
 {
 	WARN_ON(!list_empty(&thread->waiting_thread_node));
 	binder_enqueue_work_ilocked(work, &thread->todo);
+
+	/* (e)poll-based threads require an explicit wakeup signal when
+	 * queuing their own work; they rely on these events to consume
+	 * messages without I/O block. Without it, threads risk waiting
+	 * indefinitely without handling the work.
+	 */
+	if (thread->looper & BINDER_LOOPER_STATE_POLL &&
+	    thread->pid == current->pid && !thread->process_todo)
+		wake_up_interruptible_sync(&thread->wait);
+
 	thread->process_todo = true;
 }
 
@@ -1872,6 +1882,7 @@ static size_t binder_get_object(struct binder_proc *proc,
 	if (offset > buffer->data_size || read_size < sizeof(*hdr) ||
 	    !IS_ALIGNED(offset, sizeof(u32)))
 		return 0;
+
 	if (u) {
 		if (copy_from_user(object, u + offset, read_size))
 			return 0;
@@ -3893,14 +3904,14 @@ binder_free_buf(struct binder_proc *proc,
 		struct binder_buffer *buffer, bool is_failure)
 {
 	bool enqueue_task = true;
-	bool buffer_t_present = false;
+	bool has_transaction = false;
 
 	trace_android_vh_binder_free_buf(proc, thread, buffer);
 	binder_inner_proc_lock(proc);
 	if (buffer->transaction) {
 		buffer->transaction->buffer = NULL;
 		buffer->transaction = NULL;
-		buffer_t_present = true;
+		has_transaction = true;
 	}
 	binder_inner_proc_unlock(proc);
 	if (buffer->async_transaction && buffer->target_node) {
@@ -3924,8 +3935,8 @@ binder_free_buf(struct binder_proc *proc,
 		}
 		binder_node_inner_unlock(buf_node);
 	}
-	trace_android_vh_binder_buffer_release(proc, thread,
-		buffer, buffer_t_present);
+	trace_android_vh_binder_buffer_release(proc, thread, buffer,
+			has_transaction);
 	trace_binder_transaction_buffer_release(buffer);
 	binder_release_entire_buffer(proc, thread, buffer, is_failure);
 	binder_alloc_free_buf(&proc->alloc, buffer);
@@ -4959,6 +4970,7 @@ static void binder_release_work(struct binder_proc *proc,
 				"undelivered TRANSACTION_ERROR: %u\n",
 				e->cmd);
 		} break;
+		case BINDER_WORK_TRANSACTION_ONEWAY_SPAM_SUSPECT:
 		case BINDER_WORK_TRANSACTION_COMPLETE: {
 			binder_debug(BINDER_DEBUG_DEAD_TRANSACTION,
 				"undelivered TRANSACTION_COMPLETE\n");
@@ -5181,7 +5193,7 @@ static __poll_t binder_poll(struct file *filp,
 
 	thread = binder_get_thread(proc);
 	if (!thread)
-		return POLLERR;
+		return EPOLLERR;
 
 	binder_inner_proc_lock(thread->proc);
 	thread->looper |= BINDER_LOOPER_STATE_POLL;
@@ -6770,6 +6782,7 @@ err_init_binder_device_failed:
 
 err_alloc_device_names_failed:
 	debugfs_remove_recursive(binder_debugfs_dir_entry_root);
+	binder_alloc_shrinker_exit();
 
 	return ret;
 }
