@@ -42,6 +42,7 @@
 #include <../../remoteproc/qcom_common.h>
 #endif
 #include <uapi/misc/adsp_sleepmon.h>
+#include <linux/timekeeping.h>
 
 #define ADSPSLEEPMON_SMEM_ADSP_PID                              2
 #define ADSPSLEEPMON_SLEEPSTATS_ADSP_SMEM_ID                    606
@@ -313,6 +314,24 @@ struct adspsleepmon {
 #endif
 };
 
+//how many seconds to trigger the adsp reboot again
+#define  TRIGGER_RESTART_LIMIT_TIME      14400
+static long last_trigger_time = 0;
+
+struct timeval {
+	long tv_sec;
+	long tv_usec;
+};
+
+static void do_gettimeofday(struct timeval *tv)
+{
+	struct timespec64 now;
+
+        ktime_get_real_ts64(&now);
+        tv->tv_sec = now.tv_sec;
+        tv->tv_usec = now.tv_nsec/1000;
+}
+
 static struct adspsleepmon g_adspsleepmon;
 static void adspsleepmon_timer_cb(struct timer_list *unused);
 static DEFINE_TIMER(adspsleep_timer, adspsleepmon_timer_cb);
@@ -567,7 +586,7 @@ static int sleepmon_rpmsg_callback(struct rpmsg_device *dev, void *data,
 	if (msg->feature_id == SLEEPMON_ADSP_FEATURE_INFO) {
 		g_adspsleepmon.adsp_version = msg->ver_info;
 		pr_info("Received ADSP version 0x%x\n",
-			g_adspsleepmon.adsp_version);
+		g_adspsleepmon.adsp_version);
 
 		/*
 		 * ADSP is booting up, time to initialize
@@ -685,8 +704,25 @@ static int debugfs_adsp_panic_state_write(void *data, u64 val)
 
 	if (!(val & 0x1))
 		g_adspsleepmon.b_config_adsp_panic_lpm = false;
-	else
+	else {
+		#if 0
+		//make sure the time and trigger adsp restart ok
+		struct timeval tv;
+		long current_time = 0, delta_time = 0;
+
+		do_gettimeofday(&tv);
+		current_time= tv.tv_sec;
+		delta_time = current_time - last_trigger_time;
+
+		pr_err("delta time = %ld \n", delta_time);
+		if ((delta_time > TRIGGER_RESTART_LIMIT_TIME)||(last_trigger_time == 0)) {
+			pr_err("Sending panic command to ADSP for LPM violation\n");
+			sleepmon_send_ssr_command();
+			last_trigger_time = current_time;
+		}
+		#endif
 		g_adspsleepmon.b_config_adsp_panic_lpm = true;
+		}
 	if (!(val & 0x2))
 		g_adspsleepmon.b_config_adsp_panic_lpi = false;
 	else
@@ -1015,6 +1051,8 @@ static void sleepmon_lpm_exception_check(u64 curr_timestamp, u64 elapsed_time)
 	struct dsppm_stats curr_dsppm_stats;
 	struct sysmon_event_stats sysmon_event_stats;
 	bool is_audio_active = false;
+	struct timeval tv;
+	long current_time = 0,delta_time = 0;
 
 	/*
 	 * Read ADSP sleep statistics and
@@ -1079,6 +1117,16 @@ static void sleepmon_lpm_exception_check(u64 curr_timestamp, u64 elapsed_time)
 					g_adspsleepmon.accumulated_duration = 0;
 					g_adspsleepmon.accumulated_resumes = 0;
 				}
+			}
+			//If adsp not slepp, every 4h to trigger adsp restart
+			do_gettimeofday(&tv);
+			current_time = tv.tv_sec;
+			delta_time = current_time - last_trigger_time;
+
+			if (is_audio_active && ((delta_time > TRIGGER_RESTART_LIMIT_TIME)||(last_trigger_time == 0))) {
+				pr_err("Sending panic command to ADSP for LPM violation\n");
+				sleepmon_send_ssr_command();
+				last_trigger_time = current_time;
 			}
 		} else {
 			g_adspsleepmon.accumulated_duration = 0;
