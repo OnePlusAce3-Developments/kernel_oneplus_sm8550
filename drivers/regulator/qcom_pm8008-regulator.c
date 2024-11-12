@@ -135,7 +135,6 @@ static const struct regulator_data pm8008_reg_data[PM8008_MAX_LDO] = {
 	{"l7", "vdd_l7",    1504000, 3400000, 10000, 300000},
 };
 
-// huangqipeng@Camera.Drv 2022/08/05, change pm8010 0x4255 0x4355 value to 0x8C for power noise
 static const struct reg_init_data pm8010_p300_reg_init_data[] = {
 	{0x55, 0x8C},
 	{0x77, 0x03},
@@ -869,7 +868,6 @@ static int pm8008_parse_regulator(struct regmap *regmap, struct device *dev)
 		return -ENODATA;
 	}
 
-	// huangqipeng@Camera.Drv, 2022/08/05, Add for power noise on LDO7
 	if(pmic_subtype == PM8010_SUBTYPE) {
 		rc = pm8008_masked_write(regmap, 0x2C53,
 			0xFF, 0x85);

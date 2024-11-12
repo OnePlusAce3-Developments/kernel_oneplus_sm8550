@@ -65,7 +65,7 @@
 #include "../../../mm/chp_ext.h"
 #endif
 
-//add by zhenghaiqing@oppo.com for dma debug
+//add by zhenghaiqing for dma debug
 #include "qcom_dma_trace.h"
 
 #ifdef CONFIG_OPLUS_FEATURE_MM_BOOSTPOOL
@@ -560,7 +560,7 @@ static struct dma_buf *system_heap_allocate(struct dma_heap *heap,
 		ret = PTR_ERR(dmabuf);
 		goto vmperm_release;
 	}
-        //add by zhenghaiqing@oppo.com for dma debug
+        //add by zhenghaiqing for dma debug
         /*
 	 * use android_kabi_reserved2 as inode no. but it has potential risk if
 	 * google uses it.

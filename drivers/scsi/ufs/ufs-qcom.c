@@ -2605,9 +2605,7 @@ static void ufs_qcom_set_caps(struct ufs_hba *hba)
 		hba->caps |= UFSHCD_CAP_AGGR_POWER_COLLAPSE;
 	}
 
-	/* Haojun.Zhang@BSP.Kernel.Driver, UFS clkscaling hungtask problem workaround && turn off clkscale begin */
 	hba->caps &= ~UFSHCD_CAP_CLK_SCALING;
-	/* Haojun.Zhang@BSP.Kernel.Driver, UFS clkscaling hungtask problem workaround && turn off clkscale end */
 	hba->caps |= UFSHCD_CAP_CRYPTO;
 
 	if (host->hw_ver.major >= 0x2)
@@ -3349,7 +3347,6 @@ static void ufs_qcom_qos(struct ufs_hba *hba, int tag, bool is_scsi_cmd)
 
 	if (qcg->perf_core && !host->cpufreq_dis){
 		atomic_inc(&host->num_reqs_threshold);
-		// /* WangRui@BSP.Kernel.Driver, turn off clkscale need  start cpu vote after
 		//  * ufs resume only for msm-5.15 kernel at perf purpose.begin */
 		if (atomic_read(&host->num_reqs_threshold) >= NUM_REQS_JUDGE_THRESH) {
 			ktime_t now = ktime_get();
@@ -3364,7 +3361,6 @@ static void ufs_qcom_qos(struct ufs_hba *hba, int tag, bool is_scsi_cmd)
 			atomic_set(&host->num_reqs_threshold, 0);
 			host->throughput_judge_time = now;
 		}
-		// /* WangRui@BSP.Kernel.Driver, turn off clkscale need  start cpu vote after
 		//  * ufs resume only for msm-5.15 kernel at perf purpose.end */
 	}
 

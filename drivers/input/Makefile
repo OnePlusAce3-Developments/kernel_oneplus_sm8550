@@ -31,7 +31,6 @@ obj-$(CONFIG_INPUT_APMPOWER)	+= apm-power.o
 obj-$(CONFIG_RMI4_CORE)		+= rmi4/
 
 #ifdef OPLUS_FEATURE_UFF_FINGERPRINT
-#guomingzhi@BSP.Biometrics.Fingerprint, 2022/02/12, add for fingerprint driver
 obj-$(CONFIG_UFF_FINGERPRINT)  += uff_fp_drivers/
 #endif /*OPLUS_FEATURE_UFF_FINGERPRINT*/
 

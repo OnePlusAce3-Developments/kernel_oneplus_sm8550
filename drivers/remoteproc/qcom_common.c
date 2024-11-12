@@ -45,7 +45,6 @@
 #define MD_SS_ENABLED		('E' << 24 | 'N' << 16 | 'B' << 8 | 'L' << 0)
 
 #ifdef OPLUS_FEATURE_MODEM_MINIDUMP
-//Wentiam.Mai@PSW.NW.EM.1248599, 2018/01/25
 //Add for customized subsystem ramdump to skip generate dump cause by SAU
 bool SKIP_GENERATE_RAMDUMP = false;
 EXPORT_SYMBOL(SKIP_GENERATE_RAMDUMP);
@@ -324,7 +323,6 @@ void qcom_minidump(struct rproc *rproc, struct device *md_dev,
 	}
 
 	#ifdef OPLUS_FEATURE_MODEM_MINIDUMP
-	 //Wentiam.Mai@PSW.NW.EM.1248599, 2018/01/25
 	 //Add for customized subsystem ramdump to skip generate dump cause by SAU
 	 if (SKIP_GENERATE_RAMDUMP) {
 		dev_err(&rproc->dev, "Skip ramdump cuase by ap normal trigger.\n");
@@ -367,7 +365,6 @@ void qcom_minidump(struct rproc *rproc, struct device *md_dev,
 	    le32_to_cpu(subsystem->enabled) != MD_SS_ENABLED) {
 
 		#ifdef OPLUS_FEATURE_MODEM_MINIDUMP
-		//Wentiam.Mai@PSW.NW.EM.1248599, 2018/01/25
 			dev_err(&rproc->dev, "qcom_minidump: modem minidump_subsystem->status is 0x%x\n",
 				(unsigned int)le32_to_cpu(subsystem->status));
 			dev_err(&rproc->dev, "qcom_minidump: modem minidump_subsystem->enabled is 0x%x\n",

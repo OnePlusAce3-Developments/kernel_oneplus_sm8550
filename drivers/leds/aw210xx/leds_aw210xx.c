@@ -1852,7 +1852,6 @@ static void  aw210xx_led_cc_deactivate(struct led_classdev *cdev)
 	return;
 }
 
-/*Donghui.Chen@bsp.tp add for vivien rgbleds 4 leds with different color*/
 static int aw210xx_led_new_always_on_activate(struct led_classdev *cdev)
 {
 	int ret = 0;

@@ -24,10 +24,8 @@ enum panel_event_notifier_client {
 	PANEL_EVENT_NOTIFIER_CLIENT_SECONDARY_TOUCH,
 	PANEL_EVENT_NOTIFIER_CLIENT_ECM,
 #ifdef OPLUS_FEATURE_DISPLAY
-/* Fox.zhang@MULTIMEDIA.DISPLAY.LCD.Stability, 2021/08/24, add for finger notify */
 	PANEL_EVENT_NOTIFIER_CLIENT_PRIMARY_ONSCREENFINGERPRINT,
 	PANEL_EVENT_NOTIFIER_CLIENT_SECONDARY_ONSCREENFINGERPRINT,
-	/* Six.Xu@MM.Display.LCD, 2022/03/30, add for backlight notifier */
 	PANEL_EVENT_NOTIFIER_CLIENT_PRIMARY_BACKLIGHT,
 	PANEL_EVENT_NOTIFIER_CLIENT_SECONDARY_BACKLIGHT,
 #endif /* OPLUS_FEATURE_DISPLAY */
@@ -37,7 +35,6 @@ enum panel_event_notifier_client {
   	PANEL_EVENT_NOTIFIER_CLIENT_SECONDARY_CHG,
 //#endif
 //#if IS_ENABLED(CONFIG_OPLUS_FEATURE_THEIA)
-	/* liwei@BSP.kernel.stability. 2022/8/4, add for theia pwrkey monitor */
 	PANEL_EVENT_NOTIFIER_CLIENT_PRIMARY_THEIA_BLACK,
 	PANEL_EVENT_NOTIFIER_CLIENT_PRIMARY_THEIA_BRIGHT,
 //#endif
@@ -45,7 +42,6 @@ enum panel_event_notifier_client {
 	PANEL_EVENT_NOTIFIER_CLIENT_PRIMARY_MM,
 	PANEL_EVENT_NOTIFIER_CLIENT_SECONDARY_MM,
 //#endif
-    /* zhongwenjie@BSP.TP.MISC. 2023/10/26, add for tri state key */
 	PANEL_EVENT_NOTIFIER_CLIENT_TRI_STATE_KEY,
 	PANEL_EVENT_NOTIFIER_CLIENT_MAX
 };
@@ -60,10 +56,8 @@ enum panel_event_notification_type {
 	DRM_PANEL_EVENT_FOR_TOUCH,
 #endif
 #ifdef OPLUS_FEATURE_DISPLAY
-/* Fox.zhang@MULTIMEDIA.DISPLAY.LCD.Stability, 2021/08/24, add for finger notify */
 	DRM_PANEL_EVENT_ONSCREENFINGERPRINT_UI_READY = 0x10,
 	DRM_PANEL_EVENT_ONSCREENFINGERPRINT_UI_DISAPPEAR = 0x11,
-	/* Six.Xu@MM.Display.LCD, 2022/03/30, add for backlight notifier */
 	DRM_PANEL_EVENT_BACKLIGHT = 0x12,
 	DRM_PANEL_EVENT_DC_MODE = 0x13,
 	DRM_PANEL_EVENT_PWM_TURBO = 0x14,
@@ -81,7 +75,6 @@ struct panel_event_notification_data {
 	int *lcd_ctl_blank;
 #endif
 #ifdef OPLUS_FEATURE_DISPLAY
-	/* Six.Xu@MM.Display.LCD, 2022/03/30, add for backlight notifier */
 	u32 data;
 #endif /* OPLUS_FEATURE_DISPLAY */
 };

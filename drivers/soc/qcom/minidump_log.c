@@ -94,8 +94,7 @@ static struct md_suspend_context_data md_suspend_context;
 
 static bool is_vmap_stack __read_mostly;
 
-/* #ifdef OPLUS_FEATURE_DFR
-#xiebaixue@TECH.BSP.Stability,2024/02/26, add for minidump vcpu stack */
+/* #ifdef OPLUS_FEATURE_DFR */
 static bool md_stack_inited = false;
 /* #endif */
 
@@ -340,8 +339,7 @@ static void register_vmapped_stack(struct md_region *mdr, int *mdno,
 	sp &= ~(PAGE_SIZE - 1);
 	for (i = 0; i < STACK_NUM_PAGES; i++) {
 		if (unlikely(!update)) {
-/* #ifdef OPLUS_FEATURE_DFR
-#xiebaixue@TECH.BSP.Stability,2024/02/26, add for minidump vcpu stack */
+/* #ifdef OPLUS_FEATURE_DFR */
 			if (md_stack_inited) {
 				*mdno = msm_minidump_add_region(mdr);
 				if (*mdno < 0)
@@ -370,8 +368,7 @@ static void register_normal_stack(struct md_region *mdr, int *mdno,
 {
 	sp &= ~(THREAD_SIZE - 1);
 	if (unlikely(!update)) {
-/* #ifdef OPLUS_FEATURE_DFR
-#xiebaixue@TECH.BSP.Stability,2024/02/26, add for minidump vcpu stack */
+/* #ifdef OPLUS_FEATURE_DFR */
 		if (md_stack_inited) {
 			*mdno = msm_minidump_add_region(mdr);
 			if (*mdno < 0)
@@ -1459,8 +1456,7 @@ static void register_pstore_info(void)
 }
 #endif
 
-/* #ifdef OPLUS_FEATURE_DFR
-xiebaixue@TECH.BSP.Stability,2024/02/26, add for minidump vcpu stack */
+/* #ifdef OPLUS_FEATURE_DFR */
 static bool current_stack_enable = false;
 static void unregister_vmapped_stack(struct md_region *mdr)
 {
@@ -1593,8 +1589,7 @@ static int __init msm_minidump_log_init(void)
 int msm_minidump_log_init(void)
 #endif
 {
-	/* #ifdef OPLUS_FEATURE_DFR
-	xiebaixue@TECH.BSP.Stability,2024/02/26, add for minidump vcpu stack */
+	/* #ifdef OPLUS_FEATURE_DFR */
 	struct proc_dir_entry *pe;
 	pr_info("msm_minidump_log_init\n");
 	pe = proc_create("minidump_vcpu_stack", 0666, NULL, &current_stack_fops);
@@ -1609,7 +1604,6 @@ int msm_minidump_log_init(void)
 	register_irq_stack();
 
 /*#ifdef OPLUS_FEATURE_DFR
-xiebaixue@TECH.BSP.Stability,2024/02/26, add for minidump vcpu stack
 #ifdef CONFIG_QCOM_DYN_MINIDUMP_STACK
 	register_current_stack();
 	register_suspend_context();

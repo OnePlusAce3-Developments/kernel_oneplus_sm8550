@@ -507,7 +507,6 @@ config OPEN_DICE
 
 	  If unsure, say N.
 #ifdef OPLUS_POWER_PROCS_LOAD
-#xieshaohua@POWER, 2023/07/12, Add for oplus power feature
 config OPLUS_POWER_PROCS_LOAD
     tristate "oplus power procs load feature"
     default n
@@ -525,7 +524,6 @@ config OPLUS_RF_CABLE_MONITOR
 	  Say Y here to enable OPLUS rf cable monitor system support
 #endif /* OPLUS_FEATURE_RF_CABLE_DETECT */
 #ifdef OPLUS_FEATURE_SIM_DETECT
-#Qicai.Gu@BSP.TP, 2020/08/25, modify for sim detect
 config SIM_DETECT
 	tristate "SIM_DETECT system"
 	default n
@@ -534,7 +532,6 @@ config SIM_DETECT
 #endif /* OPLUS_FEATURE_SIM_DETECT */
 
 #ifdef OPLUS_FEATURE_SIM_DETECT
-#ChenGuyao@NETWORK.IMS, 2020/08/28, add for communicating with modem
 config OEM_QMI
 	tristate "oem qmi feature"
 	default n
@@ -542,7 +539,6 @@ config OEM_QMI
 	  Say Y here to enable oem qmi support
 #endif /* OPLUS_FEATURE_SIM_DETECT */
 
-#ChenGuoyao@NETWORK.IMS 2020/06/10, Add for control oplus gpio
 #change 'y' to 'n', if you want fo close this controller
 config OPLUS_GPIO
     tristate "oplus gpio controller"

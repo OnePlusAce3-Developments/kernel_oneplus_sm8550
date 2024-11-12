@@ -28,7 +28,6 @@ int qti_flash_led_prepare(struct led_trigger *trig,
 int qti_flash_led_set_param(struct led_trigger *trig,
 			struct flash_led_param param);
 
-//tangruiye@camera.dev 2022/01/20 disable max_battery_current fo flash
 #ifdef OPLUS_FEATURE_CAMERA_COMMON
 int set_flash_max_current_mA(int max_current_mA);
 #endif

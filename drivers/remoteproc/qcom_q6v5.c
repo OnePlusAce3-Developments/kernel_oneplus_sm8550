@@ -40,7 +40,6 @@
 #define Q6V5_PANIC_DELAY_MS	200
 
 #ifdef OPLUS_FEATURE_MODEM_MINIDUMP
-/* Liu.Wei@NETWORK.RF.10384, 2020/12/31, Add for report modem crash uevent */
 #define MAX_REASON_LEN 300
 #define MAX_DEVICE_NAME 32
 struct dev_crash_report_work {
@@ -54,7 +53,6 @@ static struct workqueue_struct *crash_report_workqueue = NULL;
 #endif
 
 #ifdef OPLUS_FEATURE_MODEM_MINIDUMP
-//Wentiam.Mai@PSW.NW.EM.1248599, 2018/01/25
 //Add for customized subsystem ramdump to skip generate dump cause by SAU
 #define MAX_SSR_REASON_LEN	256U
 #define MAX_SSR_DEFAULT_REASON_LEN 16
@@ -64,7 +62,6 @@ extern void mdmreason_set(char * buf);
 #endif
 
 #ifdef OPLUS_FEATURE_MODEM_MINIDUMP
-/* Xiaoyu.Wu@NETWORK.ARCH.1183754, 2021/04/25, Add for modem crash reason get hashid */
 unsigned int getBKDRHash(char *str, unsigned int len)
 {
 	unsigned int seed = 131; /* 31 131 1313 13131 131313 etc.. */
@@ -80,7 +77,6 @@ unsigned int getBKDRHash(char *str, unsigned int len)
 }
 EXPORT_SYMBOL(getBKDRHash);
 
-/* Liu.Wei@NETWORK.RF.10384, 2020/03/27, Add for report modem crash uevent */
 static void __modem_send_uevent(struct device *dev, char *reason)
 {
 	int ret_val;
@@ -342,7 +338,6 @@ static irqreturn_t q6v5_wdog_interrupt(int irq, void *data)
 	if (!IS_ERR(msg) && len > 0 && msg[0]) {
 		strlcpy(reason, msg, min(len, (size_t)MAX_SSR_REASON_LEN));
 		dev_err(q6v5->dev, "%s subsystem failure reason: %s.\n", name, reason);
-		//Wentiam.Mai@PSW.NW.EM.1248599, 2018/01/25
 		//Add for customized subsystem ramdump to skip generate dump cause by SAU
 		if (strstr(name, REMOTEPROC_MSS)) {
 			mdmreason_set(reason);
@@ -352,12 +347,10 @@ static irqreturn_t q6v5_wdog_interrupt(int irq, void *data)
 				SKIP_GENERATE_RAMDUMP = true;
 			}
 			#ifdef OPLUS_FEATURE_MODEM_MINIDUMP
-			/* Liu.Wei@NETWORK.RF.10384, 2020/03/27, Add for report modem crash uevent */
 			dev_err(q6v5->dev, "[crash_log]: %s to schedule crash work1!\n", name);
 			subsystem_schedule_crash_uevent_work(q6v5->dev, name, reason);
 			#endif
 		}
-		/* Liu.Wei@NETWORK.RF.10384, 2020/03/27, Add for report adsp crash uevent */
 		if (strstr(name, REMOTEPROC_ADSP)) {
 			dev_err(q6v5->dev, "[crash_log]: %s to schedule crash work2!\n", name);
 			subsystem_schedule_crash_uevent_work(q6v5->dev, name, reason);
@@ -365,7 +358,6 @@ static irqreturn_t q6v5_wdog_interrupt(int irq, void *data)
 	}
 	else {
 		dev_err(q6v5->dev, "%s SFR: (unknown, empty string found).\n", name);
-		//Liu.Wei@NETWORK.RF.10384, 2020/03/27, Add for report modem crash uevent
 		//if (!strncmp(name, "modem", 5) || !strncmp(name, "adsp", 4)) {
 		if (strstr(name, REMOTEPROC_ADSP) || strstr(name, REMOTEPROC_MSS)) {
 			subsystem_schedule_crash_uevent_work(q6v5->dev, name, 0);
@@ -435,7 +427,6 @@ static irqreturn_t q6v5_fatal_interrupt(int irq, void *data)
 	if (!IS_ERR(msg) && len > 0 && msg[0]) {
 		strlcpy(reason, msg, min(len, (size_t)MAX_SSR_REASON_LEN));
 		dev_err(q6v5->dev, "%s subsystem failure reason: %s.\n", name, reason);
-		//Wentiam.Mai@PSW.NW.EM.1248599, 2018/01/25
 		//Add for customized subsystem ramdump to skip generate dump cause by SAU
 		if (strstr(name, REMOTEPROC_MSS)) {
 			mdmreason_set(reason);
@@ -446,12 +437,10 @@ static irqreturn_t q6v5_fatal_interrupt(int irq, void *data)
 			}
 
 			#ifdef OPLUS_FEATURE_MODEM_MINIDUMP
-			/* Liu.Wei@NETWORK.RF.10384, 2020/03/27, Add for report modem crash uevent */
 			dev_err(q6v5->dev, "[crash_log]: %s to schedule crash work1!\n", name);
 			subsystem_schedule_crash_uevent_work(q6v5->dev, name, reason);
 			#endif
 		}
-		/* Liu.Wei@NETWORK.RF.10384, 2020/03/27, Add for report adsp crash uevent */
 		if (strstr(name, REMOTEPROC_ADSP)) {
 			dev_err(q6v5->dev, "[crash_log]: %s to schedule crash work2!\n", name);
 			subsystem_schedule_crash_uevent_work(q6v5->dev, name, reason);
@@ -459,7 +448,6 @@ static irqreturn_t q6v5_fatal_interrupt(int irq, void *data)
 	}
 	else {
 		dev_err(q6v5->dev, "%s SFR: (unknown, empty string found).\n", name);
-		//Liu.Wei@NETWORK.RF.10384, 2020/03/27, Add for report modem crash uevent
 		if (strstr(name, REMOTEPROC_ADSP) || strstr(name, REMOTEPROC_MSS)) {
 			subsystem_schedule_crash_uevent_work(q6v5->dev, name, 0);
 		}
@@ -693,7 +681,6 @@ int qcom_q6v5_init(struct qcom_q6v5 *q6v5, struct platform_device *pdev,
 	}
 
 #ifdef OPLUS_FEATURE_MODEM_MINIDUMP
-	/* Liu.Wei@NETWORK.RF.10384, 2020/12/31, Add for report modem crash uevent by workqueue */
 	if (crash_report_workqueue == NULL) {
 		crash_report_workqueue = create_singlethread_workqueue("crash_report_workqueue");
 		if (crash_report_workqueue == NULL) {

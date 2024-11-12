@@ -45,7 +45,6 @@ obj-$(CONFIG_OPLUS_FEATURE_MIDAS_GKI) += oplus/midas/
 obj-y                           += oplus/sensor/
 
 #ifdef CONFIG_OPLUS_SENSOR_CONSUMER_IR
-#pei.lu@BSP.SENSOR, 2022/07/29, Add for consumer ir
 obj-$(CONFIG_OPLUS_SENSOR_CONSUMER_IR_CORE) += oplus/oplus_consumer_ir/
 #endif /* CONFIG_OPLUS_SENSOR_CONSUMER_IR */
 
@@ -62,22 +61,18 @@ obj-y += oplus/dfr/
 #endif /* OPLUS_FEATURE_DFR */
 
 #ifdef OPLUS_FEATURE_MDMFEATURE
-#Xueqian.Zheng@NETWORK.SIM.2500814, 2021/11/5, add for mdm feature
 obj-$(CONFIG_OPLUS_FEATURE_MDMFEATURE)     += oplus/mdmfeature/
 #endif /*OPLUS_FEATURE_MDMFEATURE*/
 
 #ifdef OPLUS_FEATURE_MODEM_MINIDUMP
-#xiaoyu.wu@NETWORK.ARCH.3830854, 2022/07/14, add for mdmrst
 obj-$(CONFIG_OPLUS_FEATURE_RECORD_MDMRST)     += oplus/mdmrst/
 #endif /*OPLUS_FEATURE_MODEM_MINIDUMP*/
 
 #ifdef OPLUS_FREEZE_DEBUG
-#Colin.Liu@POWER, 2023/03/09, add for freezing tasks failed logging on
 obj-$(CONFIG_OPLUS_FREEZE_DEBUG)     += oplus/power/freeze_debug/
 #endif /* OPLUS_FREEZE_DEBUG */
 
 #ifdef OPLUS_SUBSYS_SLEEP_MONITOR
-#Colin.Liu@POWER, 2023/04/12, add for qualcomm subsystem sleep monitor
 obj-$(CONFIG_OPLUS_SUBSYS_SLEEP_MONITOR)     += oplus/power/subsys_sleep_monitor/
 #endif /* OPLUS_SUBSYS_SLEEP_MONITOR */
 

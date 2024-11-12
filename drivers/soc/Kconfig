@@ -35,7 +35,6 @@ source "drivers/soc/oplus/multimedia/Kconfig"
 #endif /* OPLUS_FEATURE_MM_FEEDBACK */
 
 #ifdef OPLUS_FEATURE_SENSOR_SMEM
-#qiuzuolin@BSP.Sensor.Basic 2020/07/31 add for oplus sensor smem
 source "drivers/soc/oplus/sensor/Kconfig"
 #endif /* OPLUS_FEATURE_SENSOR_SMEM */
 
@@ -56,12 +55,10 @@ source "drivers/soc/oplus/boot/Kconfig"
 #endif /* OPLUS_FEATURE_BOOT */
 
 #ifdef OPLUS_FEATURE_OCH
-#shenshen.Mao@Kernel.Power, 2021/09/24, add for cpufreq health
 source "kernel/oplus_cpu/cpufreq_health/Kconfig"
 #endif /* OPLUS_FEATURE_OCH */
 
 #ifdef OPLUS_FEATURE_OMRG
-#Long.Gao@BSP.Power 2021/09/13, add for oplus omrg
 source "kernel/oplus_cpu/oplus_omrg/Kconfig"
 #endif /* OPLUS_FEATURE_OMRG */
 
@@ -70,7 +67,6 @@ source "kernel/oplus_cpu/detection/Kconfig"
 #endif /* OPLUS_FEATURE_ATD */
 
 #ifdef OPLUS_FEATURE_SUGOV_POWER_EFFIENCY
-#chengzhangtao@bsp.power.basic, 2021/10/08, add for cpu power effiency
 source "kernel/oplus_cpu/cpufreq_effiency/Kconfig"
 #endif /* OPLUS_FEATURE_SUGOV_POWER_EFFIENCY */
 
@@ -85,12 +81,10 @@ source "kernel/oplus_cpu/freqqos_monitor/Kconfig"
 source "kernel/oplus_cpu/uad/Kconfig"
 
 #ifdef OPLUS_FEATURE_MDMFEATURE
-#Xueqian.Zheng@NETWORK.SIM.2500814, 2021/11/5, add for mdm feature
 source "drivers/soc/oplus/mdmfeature/Kconfig"
 #endif /*OPLUS_FEATURE_MDMFEATURE*/
 
 #ifdef OPLUS_FEATURE_MODEM_MINIDUMP
-#xiaoyu.wu@NETWORK.ARCH.3830854, 2022/07/14, add for mdmrst
 source "drivers/soc/oplus/mdmrst/Kconfig"
 #endif /*OPLUS_FEATURE_MODEM_MINIDUMP*/
 
@@ -112,12 +106,10 @@ source "kernel/oplus_cpu/waker_identify/Kconfig"
 #endif /* OPLUS_FEATURE_WAKER_IDENTIFY */
 
 #ifdef OPLUS_FREEZE_DEBUG
-#Colin.Liu@POWER, 2023/03/09, add for freezing tasks failed logging on
 source "drivers/soc/oplus/power/freeze_debug/Kconfig"
 #endif /* OPLUS_FREEZE_DEBUG */
 
 #ifdef OPLUS_SUBSYS_SLEEP_MONITOR
-#Colin.Liu@POWER, 2023/04/12, add for qualcomm subsystem sleep monitor
 source "drivers/soc/oplus/power/subsys_sleep_monitor/Kconfig"
 #endif /* OPLUS_SUBSYS_SLEEP_MONITOR */
 

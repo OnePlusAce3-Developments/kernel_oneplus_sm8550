@@ -173,7 +173,6 @@ elif [ "${LOCALVERSION+set}" != "set" ]; then
 fi
 
 # finally, add the abXXX number if BUILD_NUMBER is set
-#Martin.li@core.plform 2022.4.5,if add BUILD_NUMBER, UTS_RELEASE will exceeds 64 characters
 #if test -n "${BUILD_NUMBER}"; then
 #	res="$res-ab${BUILD_NUMBER}"
 #fi

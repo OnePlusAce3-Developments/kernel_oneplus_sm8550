@@ -93,7 +93,6 @@
 
 #define LED_MASK_ALL(led)		GENMASK(led->max_channels - 1, 0)
 
-//tangruiye@camera.dev 2022/01/20 disable max_battery_current fo flash
 #ifdef OPLUS_FEATURE_CAMERA_COMMON
 int flsh_max_current_mA = 0;
 #endif
@@ -948,7 +947,6 @@ static int qti_flash_led_get_voltage_headroom(
 	return voltage_hdrm_max;
 }
 
-//tangruiye@camera.dev 2022/01/20 disable max_battery_current fo flash
 #ifdef OPLUS_FEATURE_CAMERA_COMMON
 int set_flash_max_current_mA(int max_current_mA)
 {
@@ -971,7 +969,6 @@ static int qti_flash_led_calc_max_avail_current(
 		vph_flash_uv, vin_flash_uv, p_flash_fw;
 	union power_supply_propval prop = {};
 
-	//tangruiye@camera.dev 2022/01/20 disable max_battery_current fo flash
 #ifdef OPLUS_FEATURE_CAMERA_COMMON
 	if (flsh_max_current_mA > 0) {
 		*max_current_ma = flsh_max_current_mA;

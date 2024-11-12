@@ -181,7 +181,6 @@ obj-$(CONFIG_OPLUS_FEATURE_FREQQOS_MONITOR) += oplus_cpu/freqqos_monitor/
 #endif /* OPLUS_FEATURE_FREQQOS_MONITOR */
 
 #ifdef OPLUS_FEATURE_OCH
-#shenshen.Mao@Kernel.Power, 2021/09/24, add for cpufreq health
 obj-$(CONFIG_OPLUS_FEATURE_OCH) += oplus_cpu/cpufreq_health/
 #endif /* OPLUS_FEATURE_OCH */
 
@@ -195,7 +194,6 @@ obj-$(CONFIG_OPLUS_FEATURE_ATD) += oplus_cpu/detection/
 obj-$(CONFIG_OPLUS_CPU_FREQ_GOV_UAG) += oplus_cpu/uad/
 
 #ifdef OPLUS_FEATURE_ABNORMAL_FLAG
-#ziyu.qi@oppo.com, 2022/11/25, Add for task overload
 obj-$(CONFIG_OPLUS_FEATURE_ABNORMAL_FLAG) += oplus_cpu/oplus_overload/
 #endif
 
